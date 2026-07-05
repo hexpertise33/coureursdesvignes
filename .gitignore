@@ -3,3 +3,7 @@
 
 # Config locale Claude Code (machine-specific)
 .claude/settings.local.json
+
+# Artefacts de build / déploiement Cloudflare
+dist/
+.wrangler/

@@ -13,7 +13,7 @@
   <link rel="icon" href="assets/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -55,27 +55,23 @@
 
   <!-- ============ HÉROS ============ -->
   <section class="hero">
-    <div class="hero__rows" aria-hidden="true"></div>
-    <div class="container hero__grid">
-      <div class="hero__text">
-        <span class="eyebrow hero__eyebrow hero-rise" style="--i:0">Montagne · Gironde</span>
-        <h1 class="hero__title hero-rise" style="--i:1">Le vignoble est notre <em>terrain</em>.</h1>
-        <p class="hero__lead hero-rise" style="--i:2">Club de course à pied entre les rangs de vigne de Montagne. Chemins, coteaux et routes — du premier footing au trail. Débutants bienvenus.</p>
-        <div class="hero__actions hero-rise" style="--i:3">
-          <a href="contact.html" class="btn btn--shoot">Séance d'essai offerte <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-          <a href="entrainements.html" class="btn btn--outline-vine">Voir les entraînements</a>
-        </div>
+    <div class="hero__media" aria-hidden="true"><img src="assets/hero.jpg" alt="" fetchpriority="high" decoding="async" /></div>
+    <div class="container hero__inner">
+      <span class="eyebrow hero__eyebrow">Montagne · Gironde</span>
+      <h1 class="hero__title">Le vignoble<br>est notre <em>terrain</em>.</h1>
+      <p class="hero__lead">Club de course à pied entre les rangs de vigne de Montagne. Chemins, coteaux et routes — du premier footing au trail. Débutants bienvenus.</p>
+      <div class="hero__actions">
+        <a href="contact.html" class="btn btn--shoot">Séance d'essai offerte <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a href="entrainements.html" class="btn btn--ghost">Voir les entraînements</a>
       </div>
-      <figure class="hero__map hero-rise" style="--i:2">
-        <img src="assets/hero.jpg" alt="" fetchpriority="high" decoding="async" />
-        <svg class="hero__route" viewBox="0 0 440 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-          <path class="route-line" d="M60,522 C132,470 66,408 150,368 C232,330 190,274 272,244 C342,218 306,150 382,108"/>
-          <circle class="route-dot" cx="150" cy="368" r="5"/>
-          <circle class="route-dot" cx="272" cy="244" r="5"/>
-          <circle class="route-start" cx="60" cy="522" r="9"/>
-          <circle class="route-end" cx="382" cy="108" r="8"/>
-        </svg>
-      </figure>
+    </div>
+    <!-- Signature : tracé du parcours -->
+    <div class="hero__trace" aria-hidden="true">
+      <svg viewBox="0 0 1200 240" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="trace-path trace-draw" d="M-10,182 C120,150 200,92 342,124 C462,150 520,214 662,182 C820,146 900,82 1062,112 C1140,126 1182,150 1212,150"/>
+        <circle class="trace-dot" cx="342" cy="124" r="6"/>
+        <circle class="trace-dot" cx="1062" cy="112" r="6"/>
+      </svg>
     </div>
   </section>
 
