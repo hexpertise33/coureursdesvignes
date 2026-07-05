@@ -1,0 +1,37 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Les Coureurs des Vignes">
+  <defs>
+    <clipPath id="badge"><circle cx="64" cy="64" r="60"/></clipPath>
+  </defs>
+  <!-- Badge -->
+  <circle cx="64" cy="64" r="62" fill="#14331E"/>
+  <circle cx="64" cy="64" r="60" fill="none" stroke="#A9CE3C" stroke-width="2"/>
+  <g clip-path="url(#badge)">
+    <!-- Coteaux -->
+    <path d="M4 92 Q40 70 70 84 T124 82 L124 128 L4 128 Z" fill="#1c4a2c"/>
+    <path d="M4 104 Q46 86 74 98 T124 96 L124 128 L4 128 Z" fill="#256b3a"/>
+    <!-- Rangs de vigne -->
+    <g stroke="#14331E" stroke-width="2" opacity=".55">
+      <line x1="20" y1="118" x2="30" y2="100"/>
+      <line x1="40" y1="120" x2="50" y2="102"/>
+      <line x1="60" y1="121" x2="70" y2="103"/>
+      <line x1="80" y1="120" x2="90" y2="102"/>
+      <line x1="100" y1="118" x2="110" y2="100"/>
+    </g>
+    <!-- Tracé du parcours -->
+    <path d="M6 60 Q28 40 46 54 T86 48 T122 40" fill="none" stroke="#A9CE3C" stroke-width="3" stroke-linecap="round"/>
+    <!-- Coureur -->
+    <g fill="#FAF8F1">
+      <circle cx="58" cy="34" r="6.4"/>
+      <!-- torse -->
+      <path d="M60 40 L66 58 L60 60 L52 45 Z"/>
+      <!-- bras avant -->
+      <path d="M60 44 L72 44 L73 49 L60 49 Z" transform="rotate(18 60 46)"/>
+      <!-- bras arrière -->
+      <path d="M56 45 L45 41 L44 46 L55 50 Z"/>
+      <!-- jambe avant -->
+      <path d="M63 57 L74 66 L70 71 L58 62 Z"/>
+      <!-- jambe arrière -->
+      <path d="M61 59 L52 72 L47 69 L56 57 Z"/>
+    </g>
+  </g>
+</svg>

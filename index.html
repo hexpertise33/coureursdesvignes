@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>document.documentElement.classList.add('js')</script>
+  <title>Les Coureurs des Vignes — Course à pied à Montagne</title>
+  <meta name="description" content="Club de course à pied à Montagne. Chemins, coteaux et routes entre les vignes, du premier footing au trail. Débutants bienvenus, séance d'essai offerte." />
+  <meta name="theme-color" content="#14331e" />
+  <meta property="og:title" content="Les Coureurs des Vignes — Course à pied au cœur du vignoble" />
+  <meta property="og:description" content="Chemins, coteaux et routes entre les vignes de Montagne. Débutants bienvenus." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="scroll-progress" aria-hidden="true"></div>
+
+  <!-- ============ EN-TÊTE ============ -->
+  <header class="site-header">
+    <div class="container masthead">
+      <a href="index.html" class="brand">
+        <img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/logo.svg'" alt="" class="brand__badge logo-coin" width="46" height="46" />
+        <span class="brand__name"><strong>Les Coureurs des Vignes</strong><span>Montagne</span></span>
+        <svg class="brand__grape" viewBox="0 0 44 50" width="38" height="43" aria-hidden="true">
+          <path d="M22 20 C20.5 14 22 9 26 5" fill="none" stroke="#5f9a2e" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M26 5 C31 1.5 39 3 41 8 C37.5 9.5 35 13 30 12.5 C26.5 11.5 25 8.5 26 5 Z" fill="#7fb63f"/>
+          <path d="M28 6.5 C31.5 8 35 9 38.5 8.2" fill="none" stroke="#4e8526" stroke-width="1" opacity=".7"/>
+          <g fill="#b0496b">
+            <circle cx="16.5" cy="22" r="5.6"/>
+            <circle cx="27.5" cy="22" r="5.6"/>
+            <circle cx="11" cy="30" r="5.6"/>
+            <circle cx="22" cy="29.5" r="5.6"/>
+            <circle cx="33" cy="30" r="5.6"/>
+            <circle cx="16.5" cy="37.5" r="5.6"/>
+            <circle cx="27.5" cy="37.5" r="5.6"/>
+            <circle cx="22" cy="44.5" r="5.6"/>
+          </g>
+        </svg>
+      </a>
+      <button class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul class="nav__list">
+        <li><a href="index.html" class="nav__link is-active">Accueil</a></li>
+        <li><a href="entrainements.html" class="nav__link">Entraînements</a></li>
+        <li><a href="evenements.html" class="nav__link">Événements</a></li><li><a href="blog.html" class="nav__link">Blog</a></li>
+        <li><a href="adhesion.html" class="nav__link">Adhésion</a></li>
+        <li><a href="contact.html" class="nav__link">Contact</a></li>
+        <li class="nav__cta"><a href="adhesion.html" class="btn btn--shoot">Nous rejoindre <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- ============ HÉROS ============ -->
+  <section class="hero">
+    <div class="hero__rows" aria-hidden="true"></div>
+    <div class="container hero__grid">
+      <div class="hero__text">
+        <span class="eyebrow hero__eyebrow hero-rise" style="--i:0">Montagne · Gironde</span>
+        <h1 class="hero__title hero-rise" style="--i:1">Le vignoble est notre <em>terrain</em>.</h1>
+        <p class="hero__lead hero-rise" style="--i:2">Club de course à pied entre les rangs de vigne de Montagne. Chemins, coteaux et routes — du premier footing au trail. Débutants bienvenus.</p>
+        <div class="hero__actions hero-rise" style="--i:3">
+          <a href="contact.html" class="btn btn--shoot">Séance d'essai offerte <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a href="entrainements.html" class="btn btn--outline-vine">Voir les entraînements</a>
+        </div>
+      </div>
+      <figure class="hero__map hero-rise" style="--i:2">
+        <img src="assets/hero.jpg" alt="" fetchpriority="high" decoding="async" />
+        <svg class="hero__route" viewBox="0 0 440 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <path class="route-line" d="M60,522 C132,470 66,408 150,368 C232,330 190,274 272,244 C342,218 306,150 382,108"/>
+          <circle class="route-dot" cx="150" cy="368" r="5"/>
+          <circle class="route-dot" cx="272" cy="244" r="5"/>
+          <circle class="route-start" cx="60" cy="522" r="9"/>
+          <circle class="route-end" cx="382" cy="108" r="8"/>
+        </svg>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ LES TERRAINS ============ -->
+  <section class="section surface-limestone">
+    <div class="container">
+      <div class="head reveal">
+        <span class="eyebrow">Les terrains</span>
+        <h2 class="head__title">Trois terrains, une même passion</h2>
+        <p class="head__lead">Selon votre envie et votre forme du jour, choisissez votre décor. Chaque sortie est encadrée et pensée pour progresser sans se faire mal.</p>
+      </div>
+      <div class="terrains">
+        <article class="terrain reveal">
+          <div class="terrain__icon">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 42h36"/><path d="M12 42c4-10 8-14 8-22M28 42c-2-6 0-10 4-14"/><circle cx="20" cy="12" r="3"/><path d="M14 22l6-3 6 4M30 20l6 6"/></svg>
+          </div>
+          <span class="terrain__label">Chemin</span>
+          <h3 class="terrain__title">Chemin &amp; trail</h3>
+          <p class="terrain__text">Sentiers entre les parcelles, sous-bois et vieilles pierres. Pour se ressourcer, travailler l'endurance et courir le terroir autrement.</p>
+        </article>
+        <article class="terrain reveal" style="--delay:90ms">
+          <div class="terrain__icon">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L8 42M30 6l10 36"/><path d="M24 8v3M24 18v3M24 28v3M24 38v3"/></svg>
+          </div>
+          <span class="terrain__label">Route</span>
+          <h3 class="terrain__title">Route &amp; vitesse</h3>
+          <p class="terrain__text">Fractionné, allure et sorties longues sur bitume pour préparer vos objectifs : premier 10 km, semi ou marathon.</p>
+        </article>
+        <article class="terrain reveal" style="--delay:180ms">
+          <div class="terrain__icon">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 40l12-18 8 10 6-9 14 17z"/><circle cx="34" cy="12" r="4"/></svg>
+          </div>
+          <span class="terrain__label">Coteaux</span>
+          <h3 class="terrain__title">Coteaux vallonnés</h3>
+          <p class="terrain__text">Les côtes de Montagne pour renforcer le foncier, apprivoiser le dénivelé et prendre le grand air au-dessus des vignes.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Séparateur tracé -->
+  <div class="container" aria-hidden="true">
+    <svg class="trace-divider" viewBox="0 0 1200 60" preserveAspectRatio="none"><path class="trace-path trace-draw reveal" d="M0,42 C160,10 260,52 420,34 C600,14 700,54 880,36 C1020,22 1120,44 1200,30" style="stroke:var(--vine)"/></svg>
+  </div>
+
+  <!-- ============ À PROPOS ============ -->
+  <section class="section surface-chalk">
+    <div class="container about">
+      <div class="about__figure reveal">
+        <img src="assets/photo-groupe.jpg" alt="Coureurs du club dans les vignes de Montagne" loading="lazy" decoding="async" onerror="this.remove()" />
+        <!-- Illustration de repli (visible tant qu'aucune photo n'est déposée) -->
+        <svg viewBox="0 0 480 360" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d4a2b"/><stop offset="1" stop-color="#2e6b3e"/></linearGradient>
+            <linearGradient id="h1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#347a47"/><stop offset="1" stop-color="#256b3a"/></linearGradient>
+          </defs>
+          <rect width="480" height="360" fill="url(#sky)"/>
+          <circle cx="380" cy="82" r="42" fill="#a9ce3c" opacity=".85"/>
+          <path d="M0 210 Q120 168 240 196 T480 188 V360 H0 Z" fill="url(#h1)"/>
+          <path d="M0 250 Q140 214 260 240 T480 236 V360 H0 Z" fill="#1c4a2c"/>
+          <g stroke="#14331e" stroke-width="2" opacity=".5">
+            <path d="M30 356 l14-70M80 358 l14-72M130 356 l14-70M180 358 l14-72M230 356 l14-70M280 358 l14-72M330 356 l14-70M380 356 l14-70M430 356 l14-72"/>
+          </g>
+          <path d="M-10 300 C90 276 150 320 250 292 C360 262 420 300 500 280" fill="none" stroke="#a9ce3c" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="about__figcaption">Coteaux de Montagne</span>
+      </div>
+      <div class="about__body reveal" style="--delay:120ms">
+        <span class="eyebrow">Le club</span>
+        <h2 class="head__title">Un club né entre les rangs de vigne</h2>
+        <p>Les Coureurs des Vignes rassemblent les passionnés de course à pied de Montagne et des communes voisines. Née début 2026, l'association fait déjà courir ensemble une belle bande, dans la bonne humeur, sur les plus beaux chemins du vignoble.</p>
+        <p>Premier footing ou dossard de trail : vous trouverez toujours un groupe à votre allure.</p>
+        <ul class="about__list">
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>Sorties encadrées plusieurs fois par semaine</span></li>
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>Tous niveaux : débutant, loisir, compétition</span></li>
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>Une ambiance familiale et un vrai esprit d'équipe</span></li>
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>Des sorties conviviales et les courses de la région</span></li>
+        </ul>
+        <a href="contact.html" class="btn btn--outline-vine">Poser une question <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MÉTRIQUES ============ -->
+  <section class="section surface-vine">
+    <div class="container">
+      <div class="head head--center reveal">
+        <span class="eyebrow">Le club en chiffres</span>
+        <h2 class="head__title">Une belle bande de coureurs</h2>
+      </div>
+      <div class="metrics">
+        <div class="metric reveal"><div class="metric__value" data-count="50">0</div><div class="metric__label">Adhérents</div></div>
+        <div class="metric reveal" style="--delay:90ms"><div class="metric__value" data-count="1">0</div><div class="metric__label">Sortie / semaine</div></div>
+        <div class="metric reveal" style="--delay:180ms"><div class="metric__value" data-count="15">0</div><div class="metric__label">Parcours balisés</div></div>
+        <div class="metric reveal" style="--delay:270ms"><div class="metric__value" data-count="12">0</div><div class="metric__label">Courses / an</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CITATION (immersive) ============ -->
+  <section class="section quote-band">
+    <div class="container">
+      <blockquote class="quote reveal">
+        <div class="quote__mark" aria-hidden="true">“</div>
+        <p class="quote__text">Je n'avais jamais couru. Quelques mois après avoir rejoint le club, je me suis lancée sur mon premier trail dans les vignes — portée par le groupe du début à la fin.</p>
+        <cite class="quote__author">Camille — membre depuis la première saison</cite>
+      </blockquote>
+    </div>
+  </section>
+
+  <!-- ============ ÉVÉNEMENTS ============ -->
+  <section class="section surface-chalk">
+    <div class="container">
+      <div class="head reveal">
+        <span class="eyebrow">L'agenda</span>
+        <h2 class="head__title">Les prochains rendez-vous</h2>
+        <p class="head__lead">Courses, trails et sorties conviviales : le club bouge toute l'année.</p>
+      </div>
+      <div class="events">
+        <article class="event event--wine reveal">
+          <div class="event__date"><b>04</b><span>Oct.</span></div>
+          <div class="event__body">
+            <h3 class="event__title">Le Trail des Vignes — 1re édition</h3>
+            <p>Un trail au cœur du vignoble de Montagne : 12,5 km chronométré, marche / rando, course enfant et repas sur place.</p>
+            <div class="event__meta"><span>12,5 KM · 240 D+</span><span>MONTAGNE · 33570</span><span>OCTOBRE ROSE</span></div>
+          </div>
+          <div class="event__cta"><a href="evenements.html" class="btn btn--wine">Détails</a></div>
+        </article>
+      </div>
+      <div class="text-center mt-2 reveal"><a href="evenements.html" class="btn btn--outline-vine">Tout l'agenda <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="section surface-limestone">
+    <div class="container">
+      <div class="grape-divider reveal" aria-hidden="true"><span class="grape-mark"></span></div>
+      <div class="cta-band reveal" style="margin-top:2rem;">
+        <h2>Votre première séance est offerte</h2>
+        <p>Venez rencontrer le groupe et courir un parcours dans les vignes. Sans engagement — prévenez-nous simplement de votre venue.</p>
+        <div class="hero__actions">
+          <a href="adhesion.html" class="btn btn--shoot">Devenir adhérent <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a href="contact.html" class="btn btn--ghost">Nous écrire</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PIED DE PAGE ============ -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <div class="footer__brand"><img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/logo.svg'" alt="" class="logo-coin" width="52" height="52" /><strong>Les Coureurs des Vignes</strong></div>
+          <p>Club de course à pied à Montagne. Chemin, route et coteaux, au cœur du vignoble. Association loi 1901 — créée début 2026.</p>
+          <div class="social">
+            <a href="https://www.facebook.com/profile.php?id=61583955603270" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 9h3l.5-3H14V4.5c0-.8.3-1.5 1.5-1.5H18V.2C17.5.1 16.3 0 15.2 0 12.8 0 11 1.5 11 4.2V6H8v3h3v9h3V9z"/></svg></a>
+            <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+            <a href="mailto:coureursdesvignes@gmail.com" aria-label="E-mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></a>
+          </div>
+        </div>
+        <nav class="footer__col">
+          <h4>Navigation</h4>
+          <a href="index.html">Accueil</a>
+          <a href="entrainements.html">Entraînements</a>
+          <a href="evenements.html">Événements</a><a href="blog.html">Blog</a>
+          <a href="adhesion.html">Adhésion</a>
+          <a href="contact.html">Contact</a>
+        </nav>
+        <div class="footer__col">
+          <h4>Contact</h4>
+          <a href="mailto:coureursdesvignes@gmail.com">coureursdesvignes@gmail.com</a>
+          <a href="tel:+33635484392">06 35 48 43 92</a>
+          <a href="#">Montagne · 33570</a>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© <span data-year>2026</span> Les Coureurs des Vignes</span>
+        <span>Mentions légales · Confidentialité · Photos vignes © Pascal Moulin &amp; Lauchantoiseau (CC BY-SA 4.0)</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>document.documentElement.classList.add('js')</script>
+  <title>Entraînements — Les Coureurs des Vignes</title>
+  <meta name="description" content="Horaires, lieux de rendez-vous et niveaux des entraînements du club Les Coureurs des Vignes à Montagne." />
+  <meta name="theme-color" content="#14331e" />
+  <link rel="icon" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="scroll-progress" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container masthead">
+      <a href="index.html" class="brand">
+        <img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/logo.svg'" alt="" class="brand__badge logo-coin" width="46" height="46" />
+        <span class="brand__name"><strong>Les Coureurs des Vignes</strong><span>Montagne</span></span>
+        <svg class="brand__grape" viewBox="0 0 44 50" width="38" height="43" aria-hidden="true">
+          <path d="M22 20 C20.5 14 22 9 26 5" fill="none" stroke="#5f9a2e" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M26 5 C31 1.5 39 3 41 8 C37.5 9.5 35 13 30 12.5 C26.5 11.5 25 8.5 26 5 Z" fill="#7fb63f"/>
+          <path d="M28 6.5 C31.5 8 35 9 38.5 8.2" fill="none" stroke="#4e8526" stroke-width="1" opacity=".7"/>
+          <g fill="#b0496b">
+            <circle cx="16.5" cy="22" r="5.6"/>
+            <circle cx="27.5" cy="22" r="5.6"/>
+            <circle cx="11" cy="30" r="5.6"/>
+            <circle cx="22" cy="29.5" r="5.6"/>
+            <circle cx="33" cy="30" r="5.6"/>
+            <circle cx="16.5" cy="37.5" r="5.6"/>
+            <circle cx="27.5" cy="37.5" r="5.6"/>
+            <circle cx="22" cy="44.5" r="5.6"/>
+          </g>
+        </svg>
+      </a>
+      <button class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul class="nav__list">
+        <li><a href="index.html" class="nav__link">Accueil</a></li>
+        <li><a href="entrainements.html" class="nav__link is-active">Entraînements</a></li>
+        <li><a href="evenements.html" class="nav__link">Événements</a></li><li><a href="blog.html" class="nav__link">Blog</a></li>
+        <li><a href="adhesion.html" class="nav__link">Adhésion</a></li>
+        <li><a href="contact.html" class="nav__link">Contact</a></li>
+        <li class="nav__cta"><a href="adhesion.html" class="btn btn--shoot">Nous rejoindre <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+      </ul>
+    </div>
+  </header>
+
+  <section class="page-hero">
+    <svg class="hero__topo" viewBox="0 0 1440 820" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path d="M-40 160 C 300 100 560 220 820 170 S 1300 100 1500 170"/>
+      <path d="M-40 270 C 320 200 580 330 860 270 S 1320 200 1500 270"/>
+      <path d="M-40 380 C 300 300 620 450 900 370 S 1340 290 1500 380"/>
+      <path d="M-40 500 C 340 410 640 570 920 490 S 1360 400 1500 490"/>
+      <path d="M-40 630 C 320 530 660 690 960 610 S 1380 510 1500 610"/>
+      <path d="M-40 760 C 360 660 680 810 980 730 S 1400 630 1500 730"/>
+    </svg>
+    <div class="container page-hero__inner">
+      <span class="eyebrow">Le programme</span>
+      <h1 class="page-hero__title">Les entraînements</h1>
+      <p class="page-hero__lead">Retrouvez le groupe chaque dimanche sur les chemins de Montagne — une sortie conviviale, ouverte à tous les niveaux.</p>
+    </div>
+    <div class="hero__trace" aria-hidden="true">
+      <svg viewBox="0 0 1200 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="trace-path trace-draw" d="M-20,118 C120,98 210,72 340,98 C470,124 540,72 660,98 C800,128 880,60 1020,90 C1120,106 1170,100 1220,100"/>
+        <g class="trace-node"><circle cx="60" cy="110" r="4.5" style="animation-delay:.5s"/></g>
+        <g class="trace-node trace-node--end"><circle cx="1150" cy="100" r="6" style="animation-delay:2.1s"/></g>
+      </svg>
+    </div>
+  
+  </section>
+
+  <!-- ============ PLANNING ============ -->
+  <section class="section surface-limestone">
+    <div class="container">
+      <div class="head reveal">
+        <span class="eyebrow">Le rendez-vous</span>
+        <h2 class="head__title">La sortie du dimanche</h2>
+        <p class="head__lead">Une sortie hebdomadaire, conviviale et ouverte à tous les niveaux. On se retrouve chaque dimanche pour courir ensemble sur les chemins de Montagne.</p>
+      </div>
+      <div class="rdv reveal">
+        <div class="rdv__item"><div class="rdv__label">Quand</div><div class="rdv__value">Tous les dimanches<small>Départ à 10h00</small></div></div>
+        <div class="rdv__item"><div class="rdv__label">Où</div><div class="rdv__value">Parking des Marronniers<small>Montagne · 33570</small></div></div>
+        <div class="rdv__item"><div class="rdv__label">Pour qui</div><div class="rdv__value">Tous niveaux<small>Débutants bienvenus</small></div></div>
+      </div>
+      <div class="callout reveal">
+        <div class="callout__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg></div>
+        <div class="callout__body">
+          <h3>Des sorties supplémentaires en semaine</h3>
+          <p>En plus du rendez-vous du dimanche, des sorties peuvent être ajoutées en semaine selon l'envie du groupe et la saison. Elles sont annoncées sur le groupe des adhérents — rejoignez-nous pour ne rien manquer.</p>
+        </div>
+      </div>
+      <p class="form__note reveal" style="margin-top:1.4rem;">* Horaires modifiables selon la saison. Confirmez votre venue sur le groupe des adhérents, ou <a href="contact.html" style="color:var(--vine);font-weight:700;">écrivez-nous</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ DÉROULÉ (séquence KM) ============ -->
+  <section class="section surface-chalk">
+    <div class="container narrow">
+      <div class="head reveal">
+        <span class="eyebrow">Une séance, pas à pas</span>
+        <h2 class="head__title">Comment se déroule une sortie</h2>
+      </div>
+      <div class="flow">
+        <div class="flow__item reveal">
+          <div class="flow__km">DÉPART<small>Rendez-vous</small></div>
+          <div><h3 class="flow__title">Accueil &amp; échauffement</h3><p class="flow__text">On se retrouve 10 minutes avant l'heure pour un échauffement collectif et former les groupes d'allure. Personne ne reste sur le bord de la route.</p></div>
+        </div>
+        <div class="flow__item reveal">
+          <div class="flow__km">ÉLAN<small>Mise en route</small></div>
+          <div><h3 class="flow__title">On s'élance, ensemble</h3><p class="flow__text">Chaque groupe part sur un parcours adapté, encadré par un membre. On règle l'allure pour que tout le monde discute encore.</p></div>
+        </div>
+        <div class="flow__item reveal">
+          <div class="flow__km">EFFORT<small>Cœur de séance</small></div>
+          <div><h3 class="flow__title">Le travail du jour</h3><p class="flow__text">Fractionné, côtes ou endurance selon le créneau. On pousse un peu, toujours à l'écoute de ses sensations.</p></div>
+        </div>
+        <div class="flow__item reveal">
+          <div class="flow__km">ARRIVÉE<small>Retour au calme</small></div>
+          <div><h3 class="flow__title">Étirements &amp; convivialité</h3><p class="flow__text">Débrief, étirements et souvent un moment partagé. Courir, c'est aussi se retrouver.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ÉQUIPEMENT ============ -->
+  <section class="section surface-limestone">
+    <div class="container about">
+      <div class="about__body reveal">
+        <span class="eyebrow">Bien s'équiper</span>
+        <h2 class="head__title">L'essentiel pour bien courir</h2>
+        <p>Pas besoin de matériel de compétition pour débuter. Voici de quoi profiter des sorties en toute sécurité :</p>
+        <ul class="about__list">
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>Une paire de running (trail conseillé pour les chemins)</span></li>
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>Une tenue adaptée à la météo et un coupe-vent</span></li>
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>De l'eau, surtout pour les sorties longues</span></li>
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>Une lampe frontale pour les séances d'hiver en soirée</span></li>
+          <li class="about__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>De la bonne humeur — le reste, on s'en occupe</span></li>
+        </ul>
+      </div>
+      <div class="about__figure reveal" style="--delay:120ms">
+        <img src="assets/photo-entrainement.jpg" alt="Séance d'entraînement du club dans les vignes" loading="lazy" decoding="async" onerror="this.remove()" />
+        <svg viewBox="0 0 480 360" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d4a2b"/><stop offset="1" stop-color="#2e6b3e"/></linearGradient></defs>
+          <rect width="480" height="360" fill="url(#sky2)"/>
+          <circle cx="96" cy="80" r="36" fill="#a9ce3c" opacity=".85"/>
+          <path d="M0 220 Q160 180 300 208 T480 200 V360 H0 Z" fill="#256b3a"/>
+          <path d="M0 262 Q140 226 280 250 T480 246 V360 H0 Z" fill="#1c4a2c"/>
+          <g stroke="#14331e" stroke-width="2" opacity=".5"><path d="M40 356l14-70M100 358l14-72M160 356l14-70M220 358l14-72M280 356l14-70M340 356l14-70M400 356l14-72"/></g>
+          <path d="M-10 300C90 278 150 322 250 296C360 268 420 300 500 284" fill="none" stroke="#a9ce3c" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <span class="about__figcaption">Sortie du jeudi · endurance vallonnée</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="section surface-chalk">
+    <div class="container">
+      <div class="cta-band reveal">
+        <h2>Première séance offerte</h2>
+        <p>Venez tester une sortie sans engagement. Prévenez-nous simplement de votre venue pour qu'on vous accueille comme il se doit.</p>
+        <div class="hero__actions">
+          <a href="contact.html" class="btn btn--shoot">Réserver ma séance d'essai <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a href="adhesion.html" class="btn btn--ghost">Voir l'adhésion</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <div class="footer__brand"><img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/logo.svg'" alt="" class="logo-coin" width="52" height="52" /><strong>Les Coureurs des Vignes</strong></div>
+          <p>Club de course à pied à Montagne. Chemin, route et coteaux, au cœur du vignoble. Association loi 1901 — créée début 2026.</p>
+          <div class="social">
+            <a href="https://www.facebook.com/profile.php?id=61583955603270" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 9h3l.5-3H14V4.5c0-.8.3-1.5 1.5-1.5H18V.2C17.5.1 16.3 0 15.2 0 12.8 0 11 1.5 11 4.2V6H8v3h3v9h3V9z"/></svg></a>
+            <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+            <a href="mailto:coureursdesvignes@gmail.com" aria-label="E-mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></a>
+          </div>
+        </div>
+        <nav class="footer__col">
+          <h4>Navigation</h4>
+          <a href="index.html">Accueil</a>
+          <a href="entrainements.html">Entraînements</a>
+          <a href="evenements.html">Événements</a><a href="blog.html">Blog</a>
+          <a href="adhesion.html">Adhésion</a>
+          <a href="contact.html">Contact</a>
+        </nav>
+        <div class="footer__col">
+          <h4>Contact</h4>
+          <a href="mailto:coureursdesvignes@gmail.com">coureursdesvignes@gmail.com</a>
+          <a href="tel:+33635484392">06 35 48 43 92</a>
+          <a href="#">Montagne · 33570</a>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© <span data-year>2026</span> Les Coureurs des Vignes</span>
+        <span>Mentions légales · Confidentialité · Photos vignes © Pascal Moulin &amp; Lauchantoiseau (CC BY-SA 4.0)</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

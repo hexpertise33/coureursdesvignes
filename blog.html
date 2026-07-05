@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>document.documentElement.classList.add('js')</script>
+  <title>Blog — Les Coureurs des Vignes</title>
+  <meta name="description" content="Le journal du club Les Coureurs des Vignes : récits de sorties, actualités, conseils et coulisses de nos événements à Montagne." />
+  <meta name="theme-color" content="#14331e" />
+  <link rel="icon" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="scroll-progress" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container masthead">
+      <a href="index.html" class="brand">
+        <img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/logo.svg'" alt="" class="brand__badge logo-coin" width="46" height="46" />
+        <span class="brand__name"><strong>Les Coureurs des Vignes</strong><span>Montagne</span></span>
+        <svg class="brand__grape" viewBox="0 0 44 50" width="38" height="43" aria-hidden="true">
+          <path d="M22 20 C20.5 14 22 9 26 5" fill="none" stroke="#5f9a2e" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M26 5 C31 1.5 39 3 41 8 C37.5 9.5 35 13 30 12.5 C26.5 11.5 25 8.5 26 5 Z" fill="#7fb63f"/>
+          <path d="M28 6.5 C31.5 8 35 9 38.5 8.2" fill="none" stroke="#4e8526" stroke-width="1" opacity=".7"/>
+          <g fill="#b0496b">
+            <circle cx="16.5" cy="22" r="5.6"/>
+            <circle cx="27.5" cy="22" r="5.6"/>
+            <circle cx="11" cy="30" r="5.6"/>
+            <circle cx="22" cy="29.5" r="5.6"/>
+            <circle cx="33" cy="30" r="5.6"/>
+            <circle cx="16.5" cy="37.5" r="5.6"/>
+            <circle cx="27.5" cy="37.5" r="5.6"/>
+            <circle cx="22" cy="44.5" r="5.6"/>
+          </g>
+        </svg>
+      </a>
+      <button class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul class="nav__list">
+        <li><a href="index.html" class="nav__link">Accueil</a></li>
+        <li><a href="entrainements.html" class="nav__link">Entraînements</a></li>
+        <li><a href="evenements.html" class="nav__link">Événements</a></li>
+        <li><a href="blog.html" class="nav__link is-active">Blog</a></li>
+        <li><a href="adhesion.html" class="nav__link">Adhésion</a></li>
+        <li><a href="contact.html" class="nav__link">Contact</a></li>
+        <li class="nav__cta"><a href="adhesion.html" class="btn btn--shoot">Nous rejoindre <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+      </ul>
+    </div>
+  </header>
+
+  <section class="page-hero">
+    <svg class="hero__topo" viewBox="0 0 1440 820" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path d="M-40 160 C 300 100 560 220 820 170 S 1300 100 1500 170"/>
+      <path d="M-40 270 C 320 200 580 330 860 270 S 1320 200 1500 270"/>
+      <path d="M-40 380 C 300 300 620 450 900 370 S 1340 290 1500 380"/>
+      <path d="M-40 500 C 340 410 640 570 920 490 S 1360 400 1500 490"/>
+      <path d="M-40 630 C 320 530 660 690 960 610 S 1380 510 1500 610"/>
+      <path d="M-40 760 C 360 660 680 810 980 730 S 1400 630 1500 730"/>
+    </svg>
+    <div class="container page-hero__inner">
+      <span class="eyebrow">Le journal du club</span>
+      <h1 class="page-hero__title">Le blog</h1>
+      <p class="page-hero__lead">Récits de sorties, actualités, conseils et coulisses de nos événements. La vie du club, en mots et en images.</p>
+    </div>
+    <div class="hero__trace" aria-hidden="true">
+      <svg viewBox="0 0 1200 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="trace-path trace-draw" d="M-20,118 C120,98 210,72 340,98 C470,124 540,72 660,98 C800,128 880,60 1020,90 C1120,106 1170,100 1220,100"/>
+        <g class="trace-node"><circle cx="60" cy="110" r="4.5" style="animation-delay:.5s"/></g>
+        <g class="trace-node trace-node--end"><circle cx="1150" cy="100" r="6" style="animation-delay:2.1s"/></g>
+      </svg>
+    </div>
+  
+  </section>
+
+  <section class="section surface-limestone">
+    <div class="container">
+      <div class="articles">
+
+        <article class="article-card reveal">
+          <a href="article-trail-des-vignes.html" class="article-card__media">
+            <span class="article-card__tag">Événement</span>
+            <img src="assets/event-1.jpg" alt="Vignes de Montagne au petit matin" loading="lazy" decoding="async" onerror="this.remove()" />
+          </a>
+          <div class="article-card__body">
+            <span class="article-card__date">Septembre 2026</span>
+            <h2 class="article-card__title"><a href="article-trail-des-vignes.html">Le Trail des Vignes : rendez-vous le 4 octobre</a></h2>
+            <p class="article-card__excerpt">Le club organise sa toute première course. Trail, marche, course enfant et repas sur place : on vous dit tout sur cette journée solidaire au cœur du vignoble.</p>
+            <a href="article-trail-des-vignes.html" class="article-card__link">Lire l'article <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+        </article>
+
+        <article class="article-card reveal" style="--delay:90ms">
+          <a href="article-bienvenue.html" class="article-card__media">
+            <span class="article-card__tag">Le club</span>
+            <img src="assets/photo-groupe.jpg" alt="Le groupe des Coureurs des Vignes" loading="lazy" decoding="async" onerror="this.remove()" />
+          </a>
+          <div class="article-card__body">
+            <span class="article-card__date">Février 2026</span>
+            <h2 class="article-card__title"><a href="article-bienvenue.html">Bienvenue chez Les Coureurs des Vignes</a></h2>
+            <p class="article-card__excerpt">Un nouveau club de course à pied est né à Montagne. Qui sommes-nous, comment courir avec nous, et pourquoi nous rejoindre dès aujourd'hui.</p>
+            <a href="article-bienvenue.html" class="article-card__link">Lire l'article <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+        </article>
+
+        <article class="article-card reveal" style="--delay:180ms">
+          <a href="article-sortie-dimanche.html" class="article-card__media">
+            <span class="article-card__tag">Conseils</span>
+            <img src="assets/event-2.jpg" alt="Chemin dans les vignes" loading="lazy" decoding="async" onerror="this.remove()" />
+          </a>
+          <div class="article-card__body">
+            <span class="article-card__date">Mars 2026</span>
+            <h2 class="article-card__title"><a href="article-sortie-dimanche.html">La sortie du dimanche, mode d'emploi</a></h2>
+            <p class="article-card__excerpt">Première fois avec nous ? Voici comment se passe une sortie, quoi prévoir et pourquoi le niveau n'a aucune importance pour venir courir.</p>
+            <a href="article-sortie-dimanche.html" class="article-card__link">Lire l'article <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+        </article>
+
+        <article class="article-card reveal">
+          <a href="article-debuter-course.html" class="article-card__media">
+            <span class="article-card__tag">Conseils</span>
+            <img src="assets/run-debuter.jpg" alt="Coureur laçant ses chaussures de running avant de partir" loading="lazy" decoding="async" onerror="this.remove()" />
+          </a>
+          <div class="article-card__body">
+            <span class="article-card__date">Avril 2026</span>
+            <h2 class="article-card__title"><a href="article-debuter-course.html">Débuter la course à pied : le guide du premier kilomètre</a></h2>
+            <p class="article-card__excerpt">Envie de vous mettre à courir ? Alternance marche-course, bonne allure, équipement minimal et régularité : tout pour bien démarrer sans se décourager.</p>
+            <a href="article-debuter-course.html" class="article-card__link">Lire l'article <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+        </article>
+
+        <article class="article-card reveal" style="--delay:90ms">
+          <a href="article-progresser-course.html" class="article-card__media">
+            <span class="article-card__tag">Conseils</span>
+            <img src="assets/run-progresser.jpg" alt="Coureur montant des marches à l'entraînement" loading="lazy" decoding="async" onerror="this.remove()" />
+          </a>
+          <div class="article-card__body">
+            <span class="article-card__date">Mai 2026</span>
+            <h2 class="article-card__title"><a href="article-progresser-course.html">Progresser sans se blesser : les bases de l'entraînement</a></h2>
+            <p class="article-card__excerpt">La règle des 10 %, varier les allures, l'importance du repos et l'écoute de son corps : les grands principes pour avancer sereinement.</p>
+            <a href="article-progresser-course.html" class="article-card__link">Lire l'article <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+        </article>
+
+        <article class="article-card reveal" style="--delay:180ms">
+          <a href="article-nutrition-recuperation.html" class="article-card__media">
+            <span class="article-card__tag">Conseils</span>
+            <img src="assets/run-nutrition.jpg" alt="Coureur qui s'hydrate pendant une pause" loading="lazy" decoding="async" onerror="this.remove()" />
+          </a>
+          <div class="article-card__body">
+            <span class="article-card__date">Juin 2026</span>
+            <h2 class="article-card__title"><a href="article-nutrition-recuperation.html">Bien manger et récupérer autour de la course</a></h2>
+            <p class="article-card__excerpt">Hydratation, alimentation avant et après l'effort, sommeil et récupération : les bons réflexes pour mieux courir et progresser durablement.</p>
+            <a href="article-nutrition-recuperation.html" class="article-card__link">Lire l'article <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <div class="footer__brand"><img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/logo.svg'" alt="" class="logo-coin" width="52" height="52" /><strong>Les Coureurs des Vignes</strong></div>
+          <p>Club de course à pied à Montagne. Chemin, route et coteaux, au cœur du vignoble. Association loi 1901 — créée début 2026.</p>
+          <div class="social">
+            <a href="https://www.facebook.com/profile.php?id=61583955603270" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 9h3l.5-3H14V4.5c0-.8.3-1.5 1.5-1.5H18V.2C17.5.1 16.3 0 15.2 0 12.8 0 11 1.5 11 4.2V6H8v3h3v9h3V9z"/></svg></a>
+            <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+            <a href="mailto:coureursdesvignes@gmail.com" aria-label="E-mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></a>
+          </div>
+        </div>
+        <nav class="footer__col">
+          <h4>Navigation</h4>
+          <a href="index.html">Accueil</a>
+          <a href="entrainements.html">Entraînements</a>
+          <a href="evenements.html">Événements</a>
+          <a href="blog.html">Blog</a>
+          <a href="adhesion.html">Adhésion</a>
+          <a href="contact.html">Contact</a>
+        </nav>
+        <div class="footer__col">
+          <h4>Contact</h4>
+          <a href="mailto:coureursdesvignes@gmail.com">coureursdesvignes@gmail.com</a>
+          <a href="tel:+33635484392">06 35 48 43 92</a>
+          <a href="#">Montagne · 33570</a>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© <span data-year>2026</span> Les Coureurs des Vignes</span>
+        <span>Mentions légales · Confidentialité · Photos vignes © Pascal Moulin &amp; Lauchantoiseau (CC BY-SA 4.0)</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
