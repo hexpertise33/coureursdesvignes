@@ -247,7 +247,7 @@ p { margin: 0 0 1rem; }
 .about__item span { color: var(--ink-soft); }
 
 /* ---------- MÉTRIQUES ---------- */
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .metric { border-left: 2px solid var(--line-light); padding-left: 20px; }
 .metric__value { font-family: var(--f-mono); font-size: clamp(2.2rem, 4vw, 3rem); font-weight: 700; color: var(--shoot); line-height: 1; }
 .metric__label { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: rgba(250, 248, 241, .62); margin-top: .6rem; }
