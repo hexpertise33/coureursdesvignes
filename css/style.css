@@ -125,48 +125,58 @@ p { margin: 0 0 1rem; }
 .btn--outline-vine:hover { --bg: var(--vine); --fg: var(--chalk); }
 
 /* ---------- En-tête / navigation ---------- */
-/* ============ Encart Trail des Vignes (accueil) ============ */
-.trail-banner {
-  background: linear-gradient(105deg, var(--wine-2), var(--wine) 55%, #8a2436);
-  color: var(--chalk);
-  border-bottom: 3px solid var(--shoot);
+/* ============ Affiche flottante du Trail des Vignes (héros, accueil) ============ */
+.hero-trail {
+  position: absolute; z-index: 3;
+  right: clamp(14px, 5vw, 60px);
+  bottom: clamp(3.5rem, 11vw, 7.5rem);
+  width: clamp(140px, 17vw, 200px);
+  display: block; text-decoration: none;
+  animation: hero-trail-in .8s var(--ease) both;
+  transition: transform .3s var(--ease);
 }
-.trail-banner__inner {
-  display: flex; align-items: center; gap: 22px;
-  padding: 16px 20px;
+.hero-trail:hover { transform: scale(1.05); }
+.hero-trail:hover .hero-trail__card { animation-play-state: paused; }
+.hero-trail__card {
+  display: block; position: relative;
+  transform: rotate(-3deg);
+  animation: hero-trail-float 4.5s ease-in-out 1s infinite;
+  filter: drop-shadow(0 16px 30px rgba(10, 20, 12, .45));
 }
-.trail-banner__poster {
-  flex-shrink: 0; width: 82px; height: 104px;
-  border-radius: 12px; overflow: hidden;
-  border: 2px solid rgba(250, 248, 241, .28);
-  box-shadow: var(--sh-sm);
+.hero-trail__poster {
+  width: 100%; height: auto; display: block;
+  border-radius: 10px; border: 3px solid var(--chalk);
 }
-.trail-banner__poster img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
-.trail-banner__body { flex: 1; min-width: 0; }
-.trail-banner__eyebrow {
-  font-family: var(--f-mono); font-size: .68rem; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--shoot);
-}
-.trail-banner__title {
-  font-family: var(--f-display); font-weight: 800; line-height: 1.04;
-  font-size: clamp(1.2rem, 2.6vw, 1.75rem); margin: 5px 0 4px;
-}
-.trail-banner__title sup { font-size: .5em; vertical-align: super; }
-.trail-banner__meta { font-size: .9rem; opacity: .92; margin: 0 0 11px; }
-.trail-banner__actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.trail-banner__cd {
-  display: inline-flex; align-items: baseline; gap: 7px;
+.hero-trail__badge {
+  position: absolute; top: -16px; left: -16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 62px; height: 62px; border-radius: 50%;
   background: var(--shoot); color: var(--vine-deep);
-  padding: 6px 15px; border-radius: var(--r-pill);
+  text-align: center; line-height: 1.05;
+  box-shadow: 0 6px 16px rgba(10, 20, 12, .35);
+  animation: hero-trail-pulse 2.2s ease-in-out infinite;
 }
-.trail-banner__cd strong { font-family: var(--f-mono); font-weight: 700; font-size: 1.2rem; line-height: 1; }
-.trail-banner__cd span { font-size: .72rem; font-weight: 600; }
-@media (max-width: 640px) {
-  .trail-banner__inner { gap: 14px; padding: 14px; }
-  .trail-banner__poster { width: 62px; height: 80px; }
-  .trail-banner__title { margin-top: 2px; }
-  .trail-banner__meta { font-size: .82rem; margin-bottom: 10px; }
-  .trail-banner__actions { gap: 10px; }
+.hero-trail__badge strong { font-family: var(--f-mono); font-weight: 700; font-size: 1.02rem; }
+.hero-trail__badge span { font-size: .48rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+
+@keyframes hero-trail-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hero-trail-float {
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  50%      { transform: rotate(-2deg) translateY(-9px); }
+}
+@keyframes hero-trail-pulse {
+  0%, 100% { box-shadow: 0 6px 16px rgba(10,20,12,.35), 0 0 0 0 rgba(169,206,60,.55); }
+  50%      { box-shadow: 0 6px 16px rgba(10,20,12,.35), 0 0 0 12px rgba(169,206,60,0); }
+}
+@media (max-width: 700px) {
+  .hero-trail { right: 10px; bottom: .9rem; width: clamp(88px, 25vw, 114px); }
+  .hero-trail__badge { width: 46px; height: 46px; top: -11px; left: -11px; }
+  .hero-trail__badge strong { font-size: .78rem; }
+  .hero-trail__badge span { font-size: .4rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-trail, .hero-trail__badge { animation: none; }
+  .hero-trail__card { animation: none; transform: rotate(-3deg); }
 }
 
 .site-header {

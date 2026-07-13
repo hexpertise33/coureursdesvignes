@@ -53,24 +53,6 @@
     </div>
   </header>
 
-  <!-- ============ ENCART TRAIL DES VIGNES ============ -->
-  <section class="trail-banner" aria-label="Événement à venir : le Trail des Vignes">
-    <div class="container trail-banner__inner">
-      <a class="trail-banner__poster" href="evenements.html" tabindex="-1" aria-hidden="true">
-        <img src="assets/trail-des-vignes.jpg" alt="" loading="eager" decoding="async" onerror="this.closest('.trail-banner__poster').remove()" />
-      </a>
-      <div class="trail-banner__body">
-        <span class="trail-banner__eyebrow">🏃 L'événement du club · à ne pas manquer</span>
-        <h2 class="trail-banner__title">1<sup>re</sup> édition du Trail des Vignes</h2>
-        <p class="trail-banner__meta">Dimanche 4 octobre 2026 · Montagne — trail, marche, course enfant &amp; repas sur place</p>
-        <div class="trail-banner__actions">
-          <span class="trail-banner__cd"><strong data-trail-countdown data-trail-date="2026-10-04">J-83</strong><span>avant le départ</span></span>
-          <a href="evenements.html" class="btn btn--shoot">Voir l'événement <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- ============ HÉROS ============ -->
   <section class="hero">
     <div class="hero__media" aria-hidden="true"><img src="assets/hero.jpg" alt="" fetchpriority="high" decoding="async" /></div>
@@ -83,6 +65,18 @@
         <a href="entrainements.html" class="btn btn--ghost">Voir les entraînements</a>
       </div>
     </div>
+
+    <!-- Affiche flottante du Trail des Vignes (cliquable) -->
+    <a class="hero-trail" href="evenements.html" aria-label="Trail des Vignes, dimanche 4 octobre 2026 — voir l'événement">
+      <span class="hero-trail__card">
+        <img class="hero-trail__poster" src="assets/trail-des-vignes.jpg" alt="Affiche du Trail des Vignes, dimanche 4 octobre 2026" loading="eager" decoding="async" onerror="this.closest('.hero-trail').remove()" />
+        <span class="hero-trail__badge">
+          <strong data-trail-countdown data-trail-date="2026-10-04">J-83</strong>
+          <span>avant le&nbsp;Trail</span>
+        </span>
+      </span>
+    </a>
+
     <!-- Signature : tracé du parcours -->
     <div class="hero__trace" aria-hidden="true">
       <svg viewBox="0 0 1200 240" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">

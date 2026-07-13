@@ -165,7 +165,7 @@
     } else if (days === 0) {
       trailCd.textContent = "C'est aujourd'hui !";
     } else {
-      var trailBar = trailCd.closest(".trail-banner");
+      var trailBar = trailCd.closest(".hero-trail");
       if (trailBar) trailBar.remove();
     }
   }
