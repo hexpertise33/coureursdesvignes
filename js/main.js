@@ -153,6 +153,23 @@
     });
   });
 
+  /* --- Compte à rebours du Trail des Vignes (bandeau accueil) --- */
+  var trailCd = document.querySelector("[data-trail-countdown]");
+  if (trailCd) {
+    var td = new Date(trailCd.getAttribute("data-trail-date") + "T00:00:00");
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var days = Math.round((td - today) / 86400000);
+    if (days > 0) {
+      trailCd.textContent = "J-" + days;
+    } else if (days === 0) {
+      trailCd.textContent = "C'est aujourd'hui !";
+    } else {
+      var trailBar = trailCd.closest(".trail-banner");
+      if (trailBar) trailBar.remove();
+    }
+  }
+
   /* --- Année automatique --- */
   document.querySelectorAll("[data-year]").forEach(function (el) {
     el.textContent = new Date().getFullYear();
