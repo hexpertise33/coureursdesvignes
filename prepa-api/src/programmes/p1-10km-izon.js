@@ -19,6 +19,12 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  * S5 et S6 Z4 (allure de course), S7 Z5 (vitesse pure), S8 et S9 rappel
  * de Z4 raccourci. Une seule séance dure par semaine, toujours encadrée
  * par deux séances faciles.
+ *
+ * Convention de calcul des séances à intervalles (tempo, seuil, vma) : pour N
+ * répétitions, la description ne compte que N-1 récupérations, celles qui
+ * tombent entre deux répétitions. La somme échauffement + répétitions +
+ * récupérations + retour au calme doit toujours être strictement égale à la
+ * durée déclarée en premier argument de la séance.
  */
 export const P1 = {
   code: 'P1',
@@ -214,7 +220,7 @@ export const P1 = {
         ),
         vma(
           45,
-          "15 min en Z2, puis 12 fois 30 s en Z5 avec 1 min de marche ou de trottinement en Z1 entre chaque, puis 12 min en Z2. Les efforts sont très courts par choix : concentre-toi sur des appuis rapides plutôt que sur de grandes foulées.",
+          "15 min en Z2, puis 12 fois 30 s en Z5 avec 1 min de marche ou de trottinement en Z1 entre chaque, puis 13 min en Z2. Les efforts sont très courts par choix : concentre-toi sur des appuis rapides plutôt que sur de grandes foulées.",
           "Ajouter de la vitesse pure une fois la base construite et le seuil assimilé, pour que l'allure de course paraisse plus confortable les trois dernières semaines.",
         ),
         sl(
@@ -272,7 +278,7 @@ export const P1 = {
         ),
         seuil(
           28,
-          "10 min en Z2, puis 5 fois 1 min en Z4 avec 1 min de trottinement en Z1 entre chaque, puis 8 min en Z2. À placer au plus tard le mercredi.",
+          "10 min en Z2, puis 5 fois 1 min en Z4 avec 1 min de trottinement en Z1 entre chaque, puis 9 min en Z2. À placer au plus tard le mercredi.",
           "Rappeler aux jambes l'allure exacte de dimanche, sans creuser le moindre déficit de récupération.",
         ),
         course(
