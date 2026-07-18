@@ -28,13 +28,19 @@ const INTENSITE_INTERDITE_RECUP_ACTIVE = new Set(['VMA', 'SEUIL']);
 const HAUSSE_MAX = 1.1001;
 const BAISSE_ALLEGEE = 0.85; // une semaine allegee/recuperation active doit tomber a 85 % ou moins.
 const PLAFOND_AFFUTAGE = 0.65; // la derniere semaine d'affutage plafonne a 65 % du pic de charge.
+// Tolerance flottante pure (imprecision de calcul en virgule flottante), a ne
+// pas confondre avec HAUSSE_MAX qui autorise une vraie marge de progression
+// de 10 %. Utilisee pour le plafond global des semaines hors bloc, qui ne
+// doivent jamais depasser le pic sauf arrondi.
+const TOLERANCE_ARRONDI = 1.0001;
 
 /**
  * Verifie mecaniquement qu'un programme d'entrainement est sain :
  * - phases reconnues uniquement (liste blanche) ;
  * - derniere semaine de recuperation, sans intensite ;
  * - numerotation continue ;
- * - aucune semaine, quelle que soit sa phase, ne depasse le pic de charge + 10 % ;
+ * - aucune semaine ne depasse le pic de charge (marge de +10 % reservee aux
+ *   semaines de bloc, les autres phases sont plafonnees au pic lui-meme) ;
  * - progression de volume plafonnee entre semaines de bloc (+10 %) ;
  * - semaines allegees/recuperation active reellement allegees (-15 % min) ;
  * - semaine de recuperation active sans VMA ni SEUIL ;
@@ -105,18 +111,28 @@ export function verifierProgramme(prog) {
   const pic = Math.max(...blocs.map(volume));
 
   // Plafond global : aucune semaine, quelle que soit sa phase, ne peut
-  // dépasser le pic de charge + 10 %. Ce contrôle attrape en particulier les
+  // dépasser le pic de charge. Ce contrôle attrape en particulier les
   // semaines d'affûtage et de récupération, qui ne passent par aucune autre
   // comparaison de charge dans la boucle de progression ci-dessous (sans lui,
   // une semaine d'affûtage pourrait par exemple quadrupler le pic sans être
-  // détectée).
+  // détectée). Seules les semaines de bloc bénéficient de la marge de +10 % :
+  // c'est la seule phase où une vraie progression de charge est attendue
+  // d'une semaine à l'autre (et elle est de toute façon plafonnée par la
+  // pic lui-même, puisque `pic` est le maximum des volumes de bloc). Pour
+  // toute autre phase (affûtage, allégée, récupération active, récupération),
+  // le plafond est le pic lui-même, avec une simple tolérance flottante :
+  // sans cette distinction, une semaine d'affûtage pourrait dépasser le pic
+  // d'entraînement de 10 % et devenir, de fait, la semaine la plus chargée du
+  // programme.
   sems.forEach((s) => {
     const v = volume(s);
-    const plafond = pic * HAUSSE_MAX;
+    const estBloc = s.phase.startsWith('bloc');
+    const plafond = estBloc ? pic * HAUSSE_MAX : pic * TOLERANCE_ARRONDI;
     if (v > plafond) {
+      const libelleMarge = estBloc ? "pic d'entraînement + 10 %" : "pic d'entraînement";
       throw new Error(
-        `${prog.code} S${s.numero} : volume de ${v} min supérieur au pic d'entraînement + 10 % ` +
-          `(pic = ${pic} min, plafond = ${Math.round(plafond)} min).`,
+        `${prog.code} S${s.numero} : volume de ${v} min supérieur au ${libelleMarge} ` +
+          `(pic = ${pic} min, plafond = ${Math.round(plafond * 100) / 100} min).`,
       );
     }
   });
@@ -137,12 +153,28 @@ export function verifierProgramme(prog) {
       // comparer : le contrôle des -15 % ne peut alors pas s'appliquer (cas
       // sans conséquence pratique, un programme commence normalement par un
       // bloc, mais rendu explicite ici plutôt que de passer inaperçu).
-      if (precedente && v > volume(precedente) * BAISSE_ALLEGEE) {
-        const libelle = s.phase === 'allegee' ? 'allégée' : 'de récupération active';
-        throw new Error(
-          `${prog.code} S${s.numero} : semaine ${libelle}, baisse d'au moins 15 % attendue ` +
-            `(S${precedente.numero} = ${volume(precedente)} min, S${s.numero} = ${v} min).`,
-        );
+      if (precedente) {
+        // Quand la semaine précédente contient la course objectif (une
+        // course-test, par exemple le 10 km d'Izon), son volume hors course
+        // mesuré par `volume` est très inférieur à sa charge réelle : la
+        // course elle-même en est exclue (voir l'en-tête du fichier). La
+        // comparer telle quelle imposerait un plancher absurde à la semaine
+        // suivante. On se rabat alors sur le pic de charge des semaines de
+        // bloc atteint jusqu'ici (picBloc), la même référence que celle déjà
+        // utilisée par la progression des semaines de bloc plus bas quand la
+        // semaine précédente n'est elle-même pas un bloc.
+        const precedenteContientCourse = precedente.seances.some((se) => se.code === 'COURSE');
+        const reference = precedenteContientCourse ? picBloc : volume(precedente);
+        if (reference && v > reference * BAISSE_ALLEGEE) {
+          const libelle = s.phase === 'allegee' ? 'allégée' : 'de récupération active';
+          const libelleReference = precedenteContientCourse
+            ? `pic = ${reference} min`
+            : `S${precedente.numero} = ${reference} min`;
+          throw new Error(
+            `${prog.code} S${s.numero} : semaine ${libelle}, baisse d'au moins 15 % attendue ` +
+              `(${libelleReference}, S${s.numero} = ${v} min).`,
+          );
+        }
       }
       if (s.phase === 'recuperation-active') {
         // Décision de conception : une semaine de récupération active (par
