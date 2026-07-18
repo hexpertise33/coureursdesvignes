@@ -10,6 +10,16 @@ import { P5 } from '../src/programmes/p5-10km-paris.js';
 // contrôles transverses, eux, passent par le registre découvert plus bas : les
 // imports de modules un par un ont disparu avec lui.
 
+// Registre servi par le Worker (src/programmes/index.js). PROGRAMMES est
+// aliasé : ce fichier déclare déjà plus bas sa propre constante PROGRAMMES,
+// construite par découverte du dossier pour les contrôles transverses, et les
+// deux ne doivent pas entrer en collision de nom.
+import {
+  PROGRAMMES as REGISTRE_PROGRAMMES,
+  programme,
+  semaineDuProgramme,
+} from '../src/programmes/index.js';
+
 describe('zones', () => {
   it('couvre Z1 à Z5 avec des fourchettes croissantes et jointives', () => {
     const codes = Object.keys(ZONES);
@@ -1699,4 +1709,103 @@ it('P5 est la plus longue préparation du projet et reste au format 10 km de P2'
   // grandeur de pic que P2, malgré une semaine de préparation de plus.
   expect(longue(P5)).toBe(longue(P2));
   expect(Math.abs(pic(P5) - pic(P2))).toBeLessThanOrEqual(15);
+});
+
+// ---------------------------------------------------------------------------
+// Registre des programmes, prepa-api/src/programmes/index.js. C'est la pièce
+// que le Worker interroge pour servir une semaine à un coureur : PROGRAMMES,
+// programme(code) et semaineDuProgramme(code, numero, { faitIzon }).
+// ---------------------------------------------------------------------------
+describe('registre (src/programmes/index.js)', () => {
+  it('expose les cinq programmes, dans l\'ordre P1 à P5', () => {
+    expect(Object.keys(REGISTRE_PROGRAMMES)).toEqual(['P1', 'P2', 'P3', 'P4', 'P5']);
+    expect(REGISTRE_PROGRAMMES).toEqual({ P1, P2, P3, P4, P5 });
+  });
+
+  it('programme() lève une erreur en français sur un code inconnu', () => {
+    expect(() => programme('P9')).toThrow(/Programme inconnu/);
+    expect(() => programme('P9')).toThrow(/P9/);
+  });
+
+  it('résout la variante avecIzon avec une séance COURSE, et sansIzon sans', () => {
+    const avec = semaineDuProgramme('P3', 9, { faitIzon: true });
+    const sans = semaineDuProgramme('P3', 9, { faitIzon: false });
+    expect(avec.seances.some((s) => s.code === 'COURSE')).toBe(true);
+    expect(sans.seances.some((s) => s.code === 'COURSE')).toBe(false);
+  });
+
+  // Verrou de la correction demandée par le brief. Chaque variante de S9 porte
+  // sa propre phase : sansIzon est une semaine de bloc normale (bloc3),
+  // avecIzon est une semaine allégée puisque le coureur court le dimanche
+  // (allegee). La semaine porteuse, elle, n'expose par défaut que la phase de
+  // sansIzon dans son propre champ `phase`. Une résolution qui recopierait ce
+  // champ-là au lieu de celui de la variante réellement choisie renverrait,
+  // pour faitIzon: true, une semaine allégée étiquetée comme une semaine de
+  // bloc. C'est précisément le bug du code de départ du brief, qui ne
+  // recopiait que seances, titre et intention.
+  it('retourne la phase de la variante choisie, pas celle de la semaine porteuse', () => {
+    const s9Brute = P3.semainesContenu.find((s) => s.numero === 9);
+    expect(s9Brute.phase).toBe('bloc3'); // phase par défaut de la semaine porteuse
+    expect(s9Brute.variantes.sansIzon.phase).toBe('bloc3');
+    expect(s9Brute.variantes.avecIzon.phase).toBe('allegee');
+
+    const avec = semaineDuProgramme('P3', 9, { faitIzon: true });
+    const sans = semaineDuProgramme('P3', 9, { faitIzon: false });
+
+    expect(avec.phase).toBe('allegee');
+    expect(sans.phase).toBe('bloc3');
+
+    // Preuve par mutation : si semaineDuProgramme reprenait la phase de la
+    // semaine porteuse (s.phase) au lieu de celle de la variante (v.phase),
+    // avec.phase vaudrait 'bloc3' comme s9Brute.phase, et cette assertion
+    // échouerait alors qu'elle passe avec le code corrigé.
+    expect(avec.phase).not.toBe(s9Brute.phase);
+  });
+
+  it('ne réexpose plus le champ variantes sur la semaine résolue', () => {
+    const avec = semaineDuProgramme('P3', 9, { faitIzon: true });
+    const sans = semaineDuProgramme('P3', 9, { faitIzon: false });
+    expect(avec).not.toHaveProperty('variantes');
+    expect(sans).not.toHaveProperty('variantes');
+  });
+
+  // Un objet semaine() ne porte que cinq champs : numero, phase, titre,
+  // intention, seances (voir semaine() dans seances.js). Ce test énumère les
+  // quatre qui viennent de la variante et vérifie qu'aucun n'est perdu ; le
+  // cinquième, numero, est partagé par construction entre la semaine porteuse
+  // et ses deux variantes, donc indifférent à la source.
+  it('ne perd aucun champ de la variante à la résolution (numero, phase, titre, intention, seances)', () => {
+    const s9Brute = P4.semainesContenu.find((s) => s.numero === 9);
+    const avec = semaineDuProgramme('P4', 9, { faitIzon: true });
+    expect(avec).toEqual({
+      numero: s9Brute.numero,
+      phase: s9Brute.variantes.avecIzon.phase,
+      titre: s9Brute.variantes.avecIzon.titre,
+      intention: s9Brute.variantes.avecIzon.intention,
+      seances: s9Brute.variantes.avecIzon.seances,
+    });
+    expect(Object.keys(avec).sort()).toEqual(['intention', 'numero', 'phase', 'seances', 'titre']);
+  });
+
+  it("sur un programme sans variante (P1 ou P5), l'option faitIzon est sans effet", () => {
+    const p1Avec = semaineDuProgramme('P1', 1, { faitIzon: true });
+    const p1Sans = semaineDuProgramme('P1', 1, { faitIzon: false });
+    expect(p1Avec).toEqual(p1Sans);
+    expect(p1Avec.numero).toBe(1);
+    expect(p1Avec).not.toHaveProperty('variantes');
+
+    // P5 court Izon à l'objectif directement en S9, sans aucune variante : la
+    // séance COURSE est déjà présente que faitIzon vaille true ou false.
+    const p5Avec = semaineDuProgramme('P5', 9, { faitIzon: true });
+    const p5Sans = semaineDuProgramme('P5', 9, { faitIzon: false });
+    expect(p5Avec).toEqual(p5Sans);
+    expect(p5Avec.seances.some((s) => s.code === 'COURSE')).toBe(true);
+  });
+
+  it('retourne null pour un numéro de semaine hors bornes', () => {
+    expect(semaineDuProgramme('P1', 0)).toBeNull();
+    expect(semaineDuProgramme('P1', 11)).toBeNull(); // P1 s'arrête à S10
+    expect(semaineDuProgramme('P3', 17)).toBeNull(); // P3 s'arrête à S16
+    expect(semaineDuProgramme('P5', 18)).toBeNull(); // P5 s'arrête à S17
+  });
 });
