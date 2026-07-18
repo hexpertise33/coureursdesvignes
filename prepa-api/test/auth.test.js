@@ -1,8 +1,30 @@
 import { env } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
-import { creerJeton, verifierJeton, roleDepuisRequete, debitDepasse } from '../src/auth.js';
+import { creerJeton, verifierJeton, roleDepuisRequete, debitDepasse, cookieJeton } from '../src/auth.js';
 
 const S = 'secret-de-test';
+
+// Fabrique un jeton "role.expiration.signature" signé exactement comme
+// creerJeton l'aurait fait, mais avec une expiration écrite à la main : sert
+// à injecter des représentations d'expiration que creerJeton ne produit
+// jamais lui-même (non numérique, hexadécimale, avec espace, etc.), pour
+// vérifier que verifierJeton les rejette bien plutôt que de les accepter
+// via Number().
+async function jetonBrut(secret, role, expiration) {
+  const charge = `${role}.${expiration}`;
+  const cle = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signatureBrute = await crypto.subtle.sign('HMAC', cle, new TextEncoder().encode(charge));
+  let s = '';
+  for (const o of new Uint8Array(signatureBrute)) s += String.fromCharCode(o);
+  const signature = btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${charge}.${signature}`;
+}
 
 describe('jetons', () => {
   it('accepte un jeton valide', async () => {
@@ -35,20 +57,53 @@ describe('jetons', () => {
     // On fabrique un jeton avec un rôle arbitraire, signé exactement comme
     // creerJeton l'aurait fait, pour vérifier que la liste de rôles autorisés
     // est bien fermée à 'coureur' et 'admin' et ne dépend pas que de la signature.
-    const charge = `super-admin.${Date.now() + 60000}`;
-    const cle = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(S),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    const signatureBrute = await crypto.subtle.sign('HMAC', cle, new TextEncoder().encode(charge));
-    let s = '';
-    for (const o of new Uint8Array(signatureBrute)) s += String.fromCharCode(o);
-    const signature = btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    const jeton = `${charge}.${signature}`;
+    const jeton = await jetonBrut(S, 'super-admin', Date.now() + 60000);
     expect(await verifierJeton(S, jeton)).toBeNull();
+  });
+
+  it('creerJeton refuse de signer un rôle hors liste', async () => {
+    await expect(creerJeton(S, 'super-admin', 60000)).rejects.toThrow();
+  });
+
+  describe('canonicalisation de l\'expiration', () => {
+    // Number('pasunnombre') vaut NaN, et NaN < Date.now() est toujours faux :
+    // sans garde-fou, ces jetons seraient acceptés indéfiniment (jeton
+    // perpétuel). Chacun est signé correctement avec jetonBrut, donc seule
+    // la validation de l'expiration est en cause.
+    it.each([
+      ['non numérique', 'pasunnombre'],
+      ['Infinity', 'Infinity'],
+      ['notation hexadécimale', '0x7fffffffffff'],
+      ['espace en tête', ' 99999999999999'],
+      ['suffixe non numérique', '99999999999999abc'],
+    ])('rejette une expiration %s', async (_libelle, expiration) => {
+      const jeton = await jetonBrut(S, 'admin', expiration);
+      expect(await verifierJeton(S, jeton)).toBeNull();
+    });
+
+    it('rejette un jeton créé avec une durée non numérique (NaN)', async () => {
+      // Date.now() + NaN vaut NaN : creerJeton ne valide que le rôle, pas la
+      // durée, donc c'est verifierJeton qui doit intercepter ce cas.
+      const j = await creerJeton(S, 'admin', NaN);
+      expect(await verifierJeton(S, j)).toBeNull();
+    });
+
+    it('accepte toujours une expiration canonique valide', async () => {
+      const j = await creerJeton(S, 'admin', 60000);
+      expect(await verifierJeton(S, j)).toEqual({ role: 'admin' });
+    });
+  });
+});
+
+describe('cookie du jeton', () => {
+  it('pose HttpOnly, Secure, SameSite=Lax, Path=/ et le Max-Age calculé', () => {
+    const cookie = cookieJeton('role.exp.sig', 3600000);
+    expect(cookie).toContain('prepa=role.exp.sig');
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('Secure');
+    expect(cookie).toContain('SameSite=Lax');
+    expect(cookie).toContain('Path=/');
+    expect(cookie).toContain('Max-Age=3600');
   });
 });
 
@@ -62,6 +117,16 @@ describe('rôle depuis la requête', () => {
   it('renvoie null sans cookie', async () => {
     expect(await roleDepuisRequete(new Request('https://x.test/'), env)).toBeNull();
   });
+
+  it('ignore un cookie "prepa" invalide injecté avant le vrai (cookie tossing)', async () => {
+    const j = await creerJeton(env.SECRET_JETON, 'admin', 60000);
+    // Un attaquant maîtrisant un sous-domaine peut poser un second cookie
+    // "prepa" qui arrive en tête ; il ne doit pas neutraliser la session.
+    const r = new Request('https://x.test/', {
+      headers: { cookie: `prepa=jeton-invalide; prepa=${j}` },
+    });
+    expect(await roleDepuisRequete(r, env)).toBe('admin');
+  });
 });
 
 describe('limitation de débit', () => {
@@ -74,5 +139,18 @@ describe('limitation de débit', () => {
 
   it('compte les IP séparément', async () => {
     expect(await debitDepasse(env.DB, '9.9.9.9')).toBe(false);
+  });
+
+  it('20 appels concurrents sur la même IP produisent exactement 10 false et 10 true', async () => {
+    // Sans requête atomique, l'incrément et la lecture sont deux
+    // allers-retours D1 distincts : des appels concurrents peuvent lire le
+    // même compteur avant qu'aucun n'ait écrit, et laisser passer plus de
+    // 10 tentatives (ou, entrelacement inverse, en bloquer à tort moins de
+    // 10). L'ordre des résultats est indifférent, seul le compte importe.
+    const resultats = await Promise.all(
+      Array.from({ length: 20 }, () => debitDepasse(env.DB, '7.7.7.7'))
+    );
+    expect(resultats.filter((r) => r === false)).toHaveLength(10);
+    expect(resultats.filter((r) => r === true)).toHaveLength(10);
   });
 });

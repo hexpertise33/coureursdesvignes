@@ -1,13 +1,14 @@
 import { defineWorkersConfig, readD1Migrations } from '@cloudflare/vitest-pool-workers/config';
-import path from 'node:path';
 
 export default defineWorkersConfig(async () => {
   // Les migrations de la base D1 simulee ne sont pas appliquees
   // automatiquement par vitest-pool-workers : on les lit ici et on les
   // rejoue via test/appliquer-migrations.js (setupFiles), sinon les tables
   // (ex. "tentatives") n'existent pas dans les tests.
-  const migrationsPath = path.join(__dirname, 'migrations');
-  const migrations = await readD1Migrations(migrationsPath);
+  // Chemin relatif a la racine du paquet (d'ou vitest s'execute) : pas de
+  // __dirname disponible en ES modules natifs, inutile d'en depenser un
+  // avec import.meta.dirname pour un chemin aussi simple.
+  const migrations = await readD1Migrations('./migrations');
 
   return {
     test: {

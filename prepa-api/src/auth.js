@@ -37,8 +37,14 @@ function egalConstant(a, b) {
 // Crée un jeton signé "role.expiration.signature". La signature couvre le
 // rôle et l'expiration ensemble : toute modification de l'un ou l'autre
 // invalide la signature, ce qui empêche un coureur de se faire passer pour
-// un admin en substituant simplement le rôle dans son cookie.
+// un admin en substituant simplement le rôle dans son cookie. Le rôle est
+// validé ici aussi, pas seulement à la vérification : sans ce garde-fou
+// symétrique, on pourrait signer un jeton "super-admin" que verifierJeton
+// rejettera plus tard, un échec silencieux et tardif au lieu d'immédiat.
 export async function creerJeton(secret, role, dureeMs = DUREE_JETON) {
+  if (!ROLES_VALIDES.has(role)) {
+    throw new Error(`rôle invalide : ${role}`);
+  }
   const charge = `${role}.${Date.now() + dureeMs}`;
   return `${charge}.${await signer(secret, charge)}`;
 }
@@ -53,7 +59,15 @@ export async function verifierJeton(secret, jeton) {
     if (!ROLES_VALIDES.has(role)) return null;
     const attendue = await signer(secret, `${role}.${expiration}`);
     if (!egalConstant(signature, attendue)) return null;
-    if (Number(expiration) < Date.now()) return null;
+    // Number('pasunnombre') vaut NaN, et NaN < x est toujours faux : sans le
+    // garde-fou Number.isSafeInteger, un jeton à l'expiration non numérique
+    // passerait pour toujours valide (jeton perpétuel). La comparaison
+    // String(exp) !== expiration rejette en plus les représentations
+    // exotiques d'un même nombre (hexadécimal, espace en tête, suffixe
+    // parasite) qui survivraient à Number() sans être l'écriture canonique
+    // produite par creerJeton.
+    const exp = Number(expiration);
+    if (!Number.isSafeInteger(exp) || String(exp) !== expiration || exp < Date.now()) return null;
     return { role };
   } catch {
     return null;
@@ -62,13 +76,19 @@ export async function verifierJeton(secret, jeton) {
 
 // Extrait le rôle du cookie "prepa" porté par la requête, en vérifiant le
 // jeton avec le secret de l'environnement. Renvoie null en l'absence de
-// cookie ou si le jeton est invalide.
+// cookie ou si aucun jeton "prepa" n'est valide. Un attaquant maîtrisant un
+// sous-domaine peut injecter un second cookie "prepa" (cookie tossing) : on
+// ne s'arrête donc pas au premier candidat, on cherche le premier qui
+// vérifie réellement, pour ne pas laisser un cookie invalide neutraliser la
+// session de l'encadrant.
 export async function roleDepuisRequete(request, env) {
   const brut = request.headers.get('cookie') || '';
-  const trouve = brut.split(';').map((c) => c.trim()).find((c) => c.startsWith('prepa='));
-  if (!trouve) return null;
-  const resultat = await verifierJeton(env.SECRET_JETON, trouve.slice('prepa='.length));
-  return resultat ? resultat.role : null;
+  const candidats = brut.split(';').map((c) => c.trim()).filter((c) => c.startsWith('prepa='));
+  for (const candidat of candidats) {
+    const resultat = await verifierJeton(env.SECRET_JETON, candidat.slice('prepa='.length));
+    if (resultat) return resultat.role;
+  }
+  return null;
 }
 
 // Construit l'en-tête Set-Cookie du jeton. HttpOnly et Secure empêchent tout
@@ -82,13 +102,27 @@ export function cookieJeton(jeton, dureeMs = DUREE_JETON) {
 // adresse IP et par heure, pour empêcher de deviner le code admin par force
 // brute. S'appuie sur la table "tentatives" (ip, heure, compte) créée par la
 // migration 0001_init.sql.
+//
+// À appeler avant la comparaison du code, dans l'endpoint de connexion à
+// écrire ensuite. Pour l'instant elle incrémente à chaque appel sans
+// distinguer succès et échec ; idéalement il faudra ne comptabiliser que les
+// échecs, faute de quoi un adhérent qui enchaîne dix connexions réussies se
+// bloquerait lui-même.
 export async function debitDepasse(db, ip) {
   const heure = new Date().toISOString().slice(0, 13);
-  await db.prepare(
+  // Purge des heures révolues à chaque appel : pas de tâche de purge séparée
+  // à orchestrer, et la table ne conserve jamais plus que l'heure courante
+  // (et l'heure qu'elle est en train de remplacer).
+  await db.prepare('DELETE FROM tentatives WHERE heure < ?').bind(heure).run();
+  // Requête atomique unique (INSERT ... ON CONFLICT ... RETURNING) : lire
+  // puis incrémenter en deux allers-retours séparés laisse une fenêtre où
+  // des appels concurrents pour la même IP lisent tous le même compteur
+  // avant qu'aucun n'ait écrit, ce qui laisse passer plus de 10 tentatives
+  // (ou, entrelacement inverse, en rejette à tort en dessous de la limite).
+  const ligne = await db.prepare(
     `INSERT INTO tentatives (ip, heure, compte) VALUES (?, ?, 1)
-     ON CONFLICT(ip, heure) DO UPDATE SET compte = compte + 1`
-  ).bind(ip, heure).run();
-  const ligne = await db.prepare('SELECT compte FROM tentatives WHERE ip = ? AND heure = ?')
-    .bind(ip, heure).first();
+     ON CONFLICT(ip, heure) DO UPDATE SET compte = compte + 1
+     RETURNING compte`
+  ).bind(ip, heure).first();
   return (ligne?.compte ?? 0) > 10;
 }
