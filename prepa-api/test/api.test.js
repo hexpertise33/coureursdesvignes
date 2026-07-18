@@ -1,7 +1,8 @@
 import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
 
-import { creerJeton } from '../src/auth.js';
+import worker from '../src/index.js';
+import { creerJeton, egalConstant, DUREE_JETON, LIMITE_TENTATIVES } from '../src/auth.js';
 import { estPubliee, instantPublication, semaineCourante } from '../src/calendrier.js';
 import { PROGRAMMES, semaineDuProgramme } from '../src/programmes/index.js';
 import { ZONES } from '../src/programmes/seances.js';
@@ -28,6 +29,73 @@ async function creerCoureur(c, corps) {
 }
 
 const CODES_PROGRAMMES = Object.keys(PROGRAMMES);
+
+// ---------------------------------------------------------------------------
+// Horloge maîtrisée
+// ---------------------------------------------------------------------------
+//
+// Le produit tout entier repose sur une date : chaque dimanche à 19 h une
+// semaine s'ouvre, et pas avant. Une suite qui interroge l'API à l'heure où
+// on la joue ne mesure donc pas le produit, elle mesure le calendrier. En
+// juillet 2026 aucune semaine n'est encore parue, `publiee` vaut faux
+// partout, et l'expression `publiee || estAdmin` se réduit à `estAdmin` :
+// on peut supprimer la moitié de la règle sans qu'un seul test bronche.
+// En décembre 2026 c'est l'inverse, tout est paru, et des assertions
+// écrites pour l'été virent au rouge sans le moindre défaut de code.
+//
+// D'où l'outillage ci-dessous : « exécute cette requête comme si nous
+// étions à tel instant ». Le Worker est appelé directement (worker.fetch)
+// plutôt que par SELF.fetch, parce que c'est ce qui le fait tourner dans le
+// même isolat que le test, donc sous le même Date.now.
+
+const SECONDE = 1000;
+const JOUR = 86400000;
+
+/** Exécute une action en faisant croire au code appelé qu'il est `instant`. */
+async function commeSi(instant, action) {
+  const horlogeReelle = Date.now;
+  Date.now = () => instant;
+  try {
+    return await action();
+  } finally {
+    Date.now = horlogeReelle;
+  }
+}
+
+/**
+ * Exécute une requête HTTP comme si nous étions à `instant`.
+ *
+ * Le cookie de session est fabriqué sous la même horloge que la requête :
+ * un jeton daté de l'heure réelle serait déjà expiré, ou pas encore émis,
+ * selon la frontière visée.
+ */
+async function requeteA(instant, chemin, options = {}) {
+  const { role = null, ip = '203.0.113.9', headers = {}, ...reste } = options;
+  return commeSi(instant, async () => {
+    const entetesFinaux = { 'cf-connecting-ip': ip, ...headers };
+    if (role) {
+      entetesFinaux.cookie = `prepa=${await creerJeton(env.SECRET_JETON, role, DUREE_JETON)}`;
+    }
+    const requete = new Request(`https://p.test${chemin}`, { ...reste, headers: entetesFinaux });
+    return worker.fetch(requete, env);
+  });
+}
+
+/** Idem, en décodant la charge JSON. */
+async function jsonA(instant, chemin, options = {}) {
+  const reponse = await requeteA(instant, chemin, options);
+  return { statut: reponse.status, donnees: await reponse.json(), reponse };
+}
+
+// Instants de référence de la suite. Tout test dont le résultat dépend de la
+// date s'accroche à l'un d'eux, jamais à Date.now().
+//
+//   AVANT_TOUT   une seconde avant l'ouverture de la semaine 1, rien n'est paru
+//   MI_PARCOURS  à l'ouverture de la semaine 8, les 1 à 8 sont parues, pas la 9
+//   APRES_TOUT   un jour après l'ouverture de la dernière semaine, tout est paru
+const AVANT_TOUT = instantPublication(1) - SECONDE;
+const MI_PARCOURS = instantPublication(8);
+const APRES_TOUT = instantPublication(17) + JOUR;
 
 describe('Worker', () => {
   it('répond sur /api/sante', async () => {
@@ -240,15 +308,16 @@ describe('programme', () => {
   });
 
   it('décrit toutes les semaines, avec leur date de disponibilité', async () => {
-    const c = await cookie('coureur');
-    const r = await SELF.fetch('https://p.test/api/programme?programme=P3', { headers: entetes(c) });
-    expect(r.status).toBe(200);
-    const donnees = await r.json();
+    const { statut, donnees } = await jsonA(MI_PARCOURS, '/api/programme?programme=P3', {
+      role: 'coureur',
+    });
+    expect(statut).toBe(200);
     expect(donnees.programme.code).toBe('P3');
     expect(donnees.semaines).toHaveLength(PROGRAMMES.P3.semainesContenu.length);
-    expect(donnees.semaineCourante).toBe(
-      semaineCourante(Date.now(), PROGRAMMES.P3.semainesContenu.length),
-    );
+    // Valeur en dur, et non semaineCourante(Date.now(), ...) : une assertion
+    // qui recalcule l'attendu avec la même fonction que le code testé passe
+    // quoi qu'il arrive.
+    expect(donnees.semaineCourante).toBe(8);
     for (const s of donnees.semaines) {
       expect(typeof s.numero).toBe('number');
       expect(typeof s.phase).toBe('string');
@@ -289,26 +358,25 @@ describe('semaine', () => {
   });
 
   it('refuse une semaine non publiée en annonçant seulement sa date', async () => {
-    const c = await cookie('coureur');
-    const r = await SELF.fetch('https://p.test/api/semaine?programme=P3&numero=1', {
-      headers: entetes(c),
+    const { statut, donnees } = await jsonA(AVANT_TOUT, '/api/semaine?programme=P3&numero=1', {
+      role: 'coureur',
     });
-    expect(r.status).toBe(403);
-    const donnees = await r.json();
+    expect(statut).toBe(403);
     expect(Object.keys(donnees).sort()).toEqual(['disponibleLe', 'erreur', 'numero']);
     expect(donnees.disponibleLe).toBe(new Date(instantPublication(1)).toISOString());
     expect(donnees.erreur).not.toMatch(/\u2014/) // aucun tiret cadratin dans les messages;
   });
 
   it('rejette un numéro mal formé sans jamais servir de contenu', async () => {
-    const c = await cookie('coureur');
     for (const numero of ['abc', '1.5', '1e1', ' 1', '01', '-3', 'NaN', 'Infinity', '9999999999999999999']) {
-      const r = await SELF.fetch(
-        `https://p.test/api/semaine?programme=P3&numero=${encodeURIComponent(numero)}`,
-        { headers: entetes(c) },
+      // À MI_PARCOURS les semaines 1 à 8 sont bel et bien ouvertes : si une
+      // écriture exotique du numéro était acceptée, elle servirait du contenu.
+      const { statut, donnees } = await jsonA(
+        MI_PARCOURS,
+        `/api/semaine?programme=P3&numero=${encodeURIComponent(numero)}`,
+        { role: 'coureur' },
       );
-      expect([400, 404]).toContain(r.status);
-      const donnees = await r.json();
+      expect([400, 404]).toContain(statut);
       expect(donnees.semaine).toBeUndefined();
       expect(Object.keys(donnees)).toEqual(['erreur']);
     }
@@ -317,51 +385,59 @@ describe('semaine', () => {
   it('rejette un numéro hors bornes, y compris pour un admin', async () => {
     const nb = PROGRAMMES.P3.semainesContenu.length;
     for (const role of ['coureur', 'admin']) {
-      const c = await cookie(role);
       for (const numero of [0, -1, nb + 1, 999]) {
-        const r = await SELF.fetch(`https://p.test/api/semaine?programme=P3&numero=${numero}`, {
-          headers: entetes(c),
-        });
-        expect([400, 404]).toContain(r.status);
-        expect((await r.json()).semaine).toBeUndefined();
+        const { statut, donnees } = await jsonA(
+          MI_PARCOURS,
+          `/api/semaine?programme=P3&numero=${numero}`,
+          { role },
+        );
+        expect([400, 404]).toContain(statut);
+        expect(donnees.semaine).toBeUndefined();
       }
     }
   });
 
   it("sans numéro, répond que la préparation n'a pas commencé tant qu'aucune semaine n'est publiée", async () => {
-    const c = await cookie('coureur');
-    const r = await SELF.fetch('https://p.test/api/semaine?programme=P3', { headers: entetes(c) });
-    const courante = semaineCourante(Date.now(), PROGRAMMES.P3.semainesContenu.length);
-    if (courante === 0) {
-      expect(r.status).toBe(404);
-      expect((await r.json()).semaine).toBeUndefined();
-    } else {
-      expect(r.status).toBe(200);
-      expect((await r.json()).semaine.numero).toBe(courante);
-    }
+    const { statut, donnees } = await jsonA(AVANT_TOUT, '/api/semaine?programme=P3', {
+      role: 'coureur',
+    });
+    expect(statut).toBe(404);
+    expect(donnees.semaine).toBeUndefined();
+  });
+
+  it('sans numéro, sert la semaine en cours dès que la préparation a commencé', async () => {
+    const { statut, donnees } = await jsonA(MI_PARCOURS, '/api/semaine?programme=P3', {
+      role: 'coureur',
+    });
+    expect(statut).toBe(200);
+    expect(donnees.semaine.numero).toBe(8);
+    expect(donnees.semaine.titre).toBe(semaineDuProgramme('P3', 8, { faitIzon: false }).titre);
   });
 
   it("sert le contenu complet à l'encadrant, variante résolue et sans champ variantes", async () => {
-    const c = await cookie('admin');
-    const r = await SELF.fetch('https://p.test/api/semaine?programme=P3&numero=9&izon=1', {
-      headers: entetes(c),
-    });
-    expect(r.status).toBe(200);
-    const { semaine } = await r.json();
+    // AVANT_TOUT : l'encadrant relit le programme avant sa parution, c'est
+    // exactement le moment où il doit déjà tout voir.
+    const { statut, donnees } = await jsonA(
+      AVANT_TOUT,
+      '/api/semaine?programme=P3&numero=9&izon=1',
+      { role: 'admin' },
+    );
+    expect(statut).toBe(200);
+    const { semaine } = donnees;
     expect(semaine.numero).toBe(9);
     expect(Array.isArray(semaine.seances)).toBe(true);
+    expect(semaine.publiee).toBe(false);
     expect(semaine.variantes).toBeUndefined();
     expect(semaine.phase).toBe(semaineDuProgramme('P3', 9, { faitIzon: true }).phase);
   });
 
   it('applique la variante Izon demandée pour un admin', async () => {
-    const c = await cookie('admin');
-    const avec = await (
-      await SELF.fetch('https://p.test/api/semaine?programme=P3&numero=9&izon=1', { headers: entetes(c) })
-    ).json();
-    const sans = await (
-      await SELF.fetch('https://p.test/api/semaine?programme=P3&numero=9&izon=0', { headers: entetes(c) })
-    ).json();
+    const { donnees: avec } = await jsonA(
+      AVANT_TOUT, '/api/semaine?programme=P3&numero=9&izon=1', { role: 'admin' },
+    );
+    const { donnees: sans } = await jsonA(
+      AVANT_TOUT, '/api/semaine?programme=P3&numero=9&izon=0', { role: 'admin' },
+    );
     expect(avec.semaine.titre).not.toBe(sans.semaine.titre);
     expect(avec.semaine.titre).toBe(semaineDuProgramme('P3', 9, { faitIzon: true }).titre);
     expect(sans.semaine.titre).toBe(semaineDuProgramme('P3', 9, { faitIzon: false }).titre);
@@ -376,29 +452,198 @@ describe('semaine', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// La parution hebdomadaire, prise des deux côtés
+// ---------------------------------------------------------------------------
+//
+// La confidentialité des semaines à venir était déjà bien verrouillée. Le
+// versant opposé ne l'était pas : rien n'affirmait qu'une semaine parue
+// arrive réellement jusqu'au coureur. Or c'est la promesse même du produit.
+// Un Worker qui ne servirait plus jamais aucune semaine à personne (par
+// exemple `vueSemaine(resolue, publiee, estAdmin)` au lieu de
+// `publiee || estAdmin`, ou `if (!estAdmin)` au lieu de
+// `if (!publiee && !estAdmin)`) est un produit mort, et il passait la suite
+// au vert tant qu'elle était jouée avant la première parution.
+//
+// D'où ces frontières, prises à un instant fixé où la semaine N est parue et
+// la semaine N+1 ne l'est pas.
+describe('parution hebdomadaire, aux frontières', () => {
+  // Première publication, une semaine du milieu, l'avant-dernière et la
+  // dernière semaine, sur des programmes de longueurs différentes.
+  const FRONTIERES = [
+    { code: 'P3', numero: 1, quoi: 'la toute première publication' },
+    { code: 'P3', numero: 8, quoi: 'une semaine du milieu' },
+    { code: 'P3', numero: 9, quoi: 'la semaine à variante Izon' },
+    { code: 'P3', numero: 15, quoi: "l'avant-dernière semaine" },
+    { code: 'P3', numero: 16, quoi: 'la dernière semaine du programme' },
+    { code: 'P1', numero: 10, quoi: 'la dernière semaine du programme le plus court' },
+    { code: 'P5', numero: 17, quoi: 'la dernière semaine du programme le plus long' },
+  ];
+
+  for (const { code, numero, quoi } of FRONTIERES) {
+    const instant = instantPublication(numero);
+    const nb = PROGRAMMES[code].semainesContenu.length;
+    const attendue = semaineDuProgramme(code, numero, { faitIzon: false });
+
+    it(`/api/semaine sert la semaine ${numero} de ${code} dès sa parution (${quoi})`, async () => {
+      const { statut, donnees } = await jsonA(
+        instant, `/api/semaine?programme=${code}&izon=0&numero=${numero}`, { role: 'coureur' },
+      );
+      expect(statut).toBe(200);
+      expect(donnees.semaine.numero).toBe(numero);
+      expect(donnees.semaine.publiee).toBe(true);
+      expect(donnees.semaine.titre).toBe(attendue.titre);
+      expect(donnees.semaine.intention).toBe(attendue.intention);
+      expect(donnees.semaine.seances).toHaveLength(attendue.seances.length);
+      expect(donnees.semaine.seances.map((s) => s.titre)).toEqual(
+        attendue.seances.map((s) => s.titre),
+      );
+    });
+
+    it(`/api/programme divulgue la semaine ${numero} de ${code} et retient la suivante`, async () => {
+      const { statut, donnees } = await jsonA(
+        instant, `/api/programme?programme=${code}&izon=0`, { role: 'coureur' },
+      );
+      expect(statut).toBe(200);
+      expect(donnees.semaineCourante).toBe(numero);
+
+      // Le volet qui manquait : le coureur reçoit bien le contenu paru.
+      const parue = donnees.semaines.find((s) => s.numero === numero);
+      expect(parue.publiee).toBe(true);
+      expect(parue.titre).toBe(attendue.titre);
+      expect(parue.intention).toBe(attendue.intention);
+      expect(parue.seances).toHaveLength(attendue.seances.length);
+
+      // Toutes les précédentes aussi, sans exception.
+      for (const s of donnees.semaines.filter((x) => x.numero <= numero)) {
+        const ref = semaineDuProgramme(code, s.numero, { faitIzon: false });
+        expect(s.publiee).toBe(true);
+        expect(s.titre).toBe(ref.titre);
+      }
+
+      // Et le volet déjà couvert : rien de la suivante ne transparaît.
+      const suivante = donnees.semaines.find((s) => s.numero === numero + 1);
+      if (numero < nb) {
+        const refSuivante = semaineDuProgramme(code, numero + 1, { faitIzon: false });
+        expect(suivante.publiee).toBe(false);
+        expect(suivante.titre).toBeUndefined();
+        expect(suivante.intention).toBeUndefined();
+        expect(suivante.seances).toBeUndefined();
+        expect(JSON.stringify(donnees)).not.toContain(refSuivante.titre);
+        expect(JSON.stringify(donnees)).not.toContain(refSuivante.intention);
+      } else {
+        // Dernière semaine du programme : il n'y a pas de suivante, et le
+        // programme entier est alors ouvert.
+        expect(suivante).toBeUndefined();
+        expect(donnees.semaines.every((s) => s.publiee)).toBe(true);
+      }
+    });
+
+    if (numero < nb) {
+      it(`/api/semaine refuse encore la semaine ${numero + 1} de ${code} à cet instant`, async () => {
+        const { statut, donnees } = await jsonA(
+          instant, `/api/semaine?programme=${code}&izon=0&numero=${numero + 1}`, { role: 'coureur' },
+        );
+        expect(statut).toBe(403);
+        expect(donnees.semaine).toBeUndefined();
+        const refSuivante = semaineDuProgramme(code, numero + 1, { faitIzon: false });
+        expect(JSON.stringify(donnees)).not.toContain(refSuivante.titre);
+      });
+    }
+
+    it(`la semaine ${numero} de ${code} bascule à la seconde près`, async () => {
+      const avant = await jsonA(
+        instant - SECONDE, `/api/semaine?programme=${code}&izon=0&numero=${numero}`,
+        { role: 'coureur' },
+      );
+      expect(avant.statut).toBe(403);
+      expect(avant.donnees.semaine).toBeUndefined();
+      expect(JSON.stringify(avant.donnees)).not.toContain(attendue.titre);
+
+      const apres = await jsonA(
+        instant + SECONDE, `/api/semaine?programme=${code}&izon=0&numero=${numero}`,
+        { role: 'coureur' },
+      );
+      expect(apres.statut).toBe(200);
+      expect(apres.donnees.semaine.titre).toBe(attendue.titre);
+    });
+  }
+
+  it('la variante Izon de la semaine 9 est servie au coureur qui la suit, dès sa parution', async () => {
+    const instant = instantPublication(9);
+    const avec = semaineDuProgramme('P3', 9, { faitIzon: true });
+    const sans = semaineDuProgramme('P3', 9, { faitIzon: false });
+    expect(avec.titre).not.toBe(sans.titre);
+
+    const a = await jsonA(instant, '/api/semaine?programme=P3&numero=9&izon=1', { role: 'coureur' });
+    expect(a.statut).toBe(200);
+    expect(a.donnees.semaine.titre).toBe(avec.titre);
+    expect(a.donnees.semaine.phase).toBe(avec.phase);
+
+    const b = await jsonA(instant, '/api/semaine?programme=P3&numero=9&izon=0', { role: 'coureur' });
+    expect(b.donnees.semaine.titre).toBe(sans.titre);
+  });
+
+  it('une fois le programme terminé, le coureur a bien reçu chacune des semaines', async () => {
+    const { statut, donnees } = await jsonA(APRES_TOUT, '/api/programme?programme=P5', {
+      role: 'coureur',
+    });
+    expect(statut).toBe(200);
+    expect(donnees.semaines).toHaveLength(17);
+    expect(donnees.semaineCourante).toBe(17);
+    for (const s of donnees.semaines) {
+      const ref = semaineDuProgramme('P5', s.numero, { faitIzon: false });
+      expect(s.publiee).toBe(true);
+      expect(s.titre).toBe(ref.titre);
+      expect(s.intention).toBe(ref.intention);
+      expect(s.seances).toHaveLength(ref.seances.length);
+    }
+  });
+
+  it("avant la première parution, le coureur ne reçoit rien et l'encadrant reçoit tout", async () => {
+    const coureur = await jsonA(AVANT_TOUT, '/api/programme?programme=P3', { role: 'coureur' });
+    expect(coureur.donnees.semaineCourante).toBe(0);
+    expect(coureur.donnees.semaines.every((s) => s.titre === undefined)).toBe(true);
+
+    const admin = await jsonA(AVANT_TOUT, '/api/programme?programme=P3', { role: 'admin' });
+    expect(admin.donnees.semaines.every((s) => typeof s.titre === 'string')).toBe(true);
+  });
+});
+
 describe('confidentialité des semaines futures', () => {
   it("ne renvoie JAMAIS le contenu d'une semaine non publiée à un coureur", async () => {
     const c = await cookie('coureur');
     await creerCoureur(c, { prenom: 'Test', initiale: 'C', programme: 'P3', faitIzon: false });
-    const r = await SELF.fetch('https://p.test/api/programme?programme=P3', { headers: entetes(c) });
-    const donnees = await r.json();
+    // MI_PARCOURS : les semaines 9 à 16 sont encore fermées. Sans cette date
+    // fixée, la liste des futures se viderait à partir du 8 novembre 2026 et
+    // la boucle ci-dessous n'assertirait plus rien.
+    const { donnees } = await jsonA(MI_PARCOURS, '/api/programme?programme=P3', {
+      role: 'coureur',
+    });
     const futures = donnees.semaines.filter((s) => !s.publiee);
-    expect(futures.length).toBeGreaterThan(0);
+    expect(futures.map((s) => s.numero)).toEqual([9, 10, 11, 12, 13, 14, 15, 16]);
     for (const s of futures) {
       expect(s.seances).toBeUndefined();
       expect(s.intention).toBeUndefined();
       expect(s.titre).toBeUndefined();
       expect(Object.keys(s).sort()).toEqual(['disponibleLe', 'numero', 'phase', 'publiee']);
     }
-    // Aucune fuite dans la charge brute.
+    // Aucune fuite dans la charge brute. « Sortie longue » ne prouvait rien :
+    // ce libellé apparaît dans toutes les semaines, y compris les huit déjà
+    // parues, et l'assertion ne passait que parce que rien n'était publié le
+    // jour où elle a été écrite. On cherche désormais les textes réellement
+    // confidentiels à cet instant, ceux de la semaine 9.
     const brut = JSON.stringify(donnees);
-    expect(brut).not.toMatch(/Sortie longue/);
+    const secrete = semaineDuProgramme('P3', 9, { faitIzon: false });
+    expect(brut).not.toContain(secrete.titre);
+    expect(brut).not.toContain(secrete.intention);
+    for (const s of secrete.seances) expect(brut).not.toContain(s.description);
   });
 
   it('renvoie tout le contenu à un admin', async () => {
-    const c = await cookie('admin');
-    const r = await SELF.fetch('https://p.test/api/programme?programme=P3', { headers: entetes(c) });
-    const donnees = await r.json();
+    // AVANT_TOUT : aucune semaine n'est parue, et l'encadrant les voit toutes.
+    const { donnees } = await jsonA(AVANT_TOUT, '/api/programme?programme=P3', { role: 'admin' });
+    expect(donnees.semaines.every((s) => s.publiee === false)).toBe(true);
     expect(donnees.semaines.every((s) => Array.isArray(s.seances))).toBe(true);
     expect(donnees.semaines.every((s) => typeof s.titre === 'string')).toBe(true);
   });
@@ -418,17 +663,15 @@ describe('confidentialité des semaines futures', () => {
   it('applique la variante Izon sans jamais lever le voile sur la semaine 9', async () => {
     const c = await cookie('coureur');
     await creerCoureur(c, { prenom: 'Izonneur', initiale: 'I', programme: 'P2', faitIzon: true });
-    const r = await SELF.fetch('https://p.test/api/semaine?programme=P2&numero=9&izon=1', {
-      headers: entetes(c),
-    });
-    expect([200, 403]).toContain(r.status);
-    const donnees = await r.json();
-    if (r.status === 403) {
-      expect(donnees.semaine).toBeUndefined();
-      expect(JSON.stringify(donnees)).not.toMatch(/Izon/i);
-    } else {
-      expect(estPubliee(9)).toBe(true);
-    }
+    // MI_PARCOURS : la semaine 9 n'est pas encore ouverte, le refus est donc
+    // le seul comportement admissible. Plus de branche selon la date du jour,
+    // qui rendait le test muet une fois la semaine 9 parue.
+    const { statut, donnees } = await jsonA(
+      MI_PARCOURS, '/api/semaine?programme=P2&numero=9&izon=1', { role: 'coureur' },
+    );
+    expect(statut).toBe(403);
+    expect(donnees.semaine).toBeUndefined();
+    expect(JSON.stringify(donnees)).not.toMatch(/Izon/i);
   });
 
   it("ignore le paramètre coureur pour un non-admin : pas de lecture du voisin", async () => {
@@ -497,7 +740,11 @@ describe('confidentialité des semaines futures', () => {
   // apparaître dans une quelconque réponse servie à un coureur, quelle que
   // soit la route, le programme, la variante ou le numéro demandé.
   it('aucune route servie à un coureur ne laisse passer un texte non publié', async () => {
-    const maintenant = Date.now();
+    // Le filet est tendu à MI_PARCOURS : la moitié du corpus est ouverte,
+    // l'autre non. Joué à la date du jour, il se serait vidé de sa substance
+    // le 8 novembre 2026 (plus rien de confidentiel) et l'assertion sur la
+    // taille du corpus aurait viré au rouge sans le moindre défaut de code.
+    const maintenant = MI_PARCOURS;
     const publies = new Set();
     const confidentiels = new Set();
 
@@ -539,7 +786,7 @@ describe('confidentialité des semaines futures', () => {
 
     const fuites = [];
     for (const chemin of chemins) {
-      const r = await SELF.fetch(`https://p.test${chemin}`, { headers: entetes(c) });
+      const r = await requeteA(maintenant, chemin, { role: 'coureur' });
       const brut = await r.text();
       for (const texte of confidentiels) {
         if (brut.includes(texte)) fuites.push(`${chemin} : ${texte.slice(0, 60)}`);
@@ -548,14 +795,52 @@ describe('confidentialité des semaines futures', () => {
     expect(fuites).toEqual([]);
   });
 
+  // Le filet symétrique : à MI_PARCOURS, ce qui est paru doit bel et bien
+  // arriver jusqu'au coureur. Sans lui, un Worker qui ne servirait plus
+  // jamais aucune semaine passerait la batterie précédente sans broncher.
+  it('toutes les routes servent bien au coureur les textes déjà parus', async () => {
+    const attendus = [];
+    for (const code of CODES_PROGRAMMES) {
+      const nb = PROGRAMMES[code].semainesContenu.length;
+      for (let n = 1; n <= nb; n++) {
+        if (!estPubliee(n, MI_PARCOURS)) continue;
+        const s = semaineDuProgramme(code, n, { faitIzon: false });
+        attendus.push({ code, numero: n, titre: s.titre, intention: s.intention });
+      }
+    }
+    expect(attendus.length).toBeGreaterThan(0);
+
+    const manquants = [];
+    for (const { code, numero, titre, intention } of attendus) {
+      const parSemaine = await requeteA(
+        MI_PARCOURS, `/api/semaine?programme=${code}&izon=0&numero=${numero}`, { role: 'coureur' },
+      );
+      const brutSemaine = await parSemaine.text();
+      if (parSemaine.status !== 200) manquants.push(`${code}/${numero} : statut ${parSemaine.status}`);
+      if (!brutSemaine.includes(titre)) manquants.push(`${code}/${numero} : titre absent de /api/semaine`);
+      if (!brutSemaine.includes(intention)) manquants.push(`${code}/${numero} : intention absente de /api/semaine`);
+
+      const parProgramme = await requeteA(
+        MI_PARCOURS, `/api/programme?programme=${code}&izon=0`, { role: 'coureur' },
+      );
+      const brutProgramme = await parProgramme.text();
+      if (!brutProgramme.includes(titre)) manquants.push(`${code}/${numero} : titre absent de /api/programme`);
+      if (!brutProgramme.includes(intention)) manquants.push(`${code}/${numero} : intention absente de /api/programme`);
+    }
+    expect(manquants).toEqual([]);
+  });
+
   it('aucun message d\'erreur ne cite un titre ou une séance à venir', async () => {
-    const c = await cookie('coureur');
     const titres = new Set();
     for (const code of CODES_PROGRAMMES) {
       for (const s of PROGRAMMES[code].semainesContenu) {
-        if (!estPubliee(s.numero)) titres.add(s.titre);
+        if (!estPubliee(s.numero, AVANT_TOUT)) titres.add(s.titre);
       }
     }
+    // AVANT_TOUT : aucune semaine n'est parue, donc tous les titres sont
+    // confidentiels. Joué à la date du jour, l'ensemble se serait vidé après
+    // le 8 novembre 2026 et la boucle n'aurait plus rien vérifié du tout.
+    expect(titres.size).toBeGreaterThan(50);
     for (const chemin of [
       '/api/programme?programme=P42',
       '/api/semaine?programme=P42&numero=1',
@@ -563,8 +848,258 @@ describe('confidentialité des semaines futures', () => {
       '/api/semaine?programme=P3&numero=999',
       '/api/semaine?programme=P3&numero=1',
     ]) {
-      const brut = await (await SELF.fetch(`https://p.test${chemin}`, { headers: entetes(c) })).text();
+      const brut = await (await requeteA(AVANT_TOUT, chemin, { role: 'coureur' })).text();
       for (const titre of titres) expect(brut).not.toContain(titre);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Correctifs de sécurité du commit 1d03167
+// ---------------------------------------------------------------------------
+
+// Clés héritées d'Object.prototype. PROGRAMMES[code] les résout en fonctions,
+// donc en valeurs truthy : un simple garde de nullité les laissait passer, et
+// la suite appelait .semainesContenu.map sur une fonction, soit un 500. Pire,
+// "__proto__" pouvait être enregistré durablement sur une fiche de coureur, et
+// toute lecture ultérieure de cette fiche par l'encadrant plantait.
+const CLES_HERITEES = ['__proto__', 'constructor', 'toString', 'valueOf', 'hasOwnProperty'];
+
+describe('clés héritées du prototype', () => {
+  for (const cle of CLES_HERITEES) {
+    it(`/api/programme?programme=${cle} répond 400 et non 500`, async () => {
+      const { statut, donnees } = await jsonA(
+        MI_PARCOURS, `/api/programme?programme=${encodeURIComponent(cle)}`, { role: 'coureur' },
+      );
+      expect(statut).toBe(400);
+      expect(Object.keys(donnees)).toEqual(['erreur']);
+      expect(donnees.semaines).toBeUndefined();
+    });
+
+    it(`/api/semaine?programme=${cle} répond 400 et non 500`, async () => {
+      const { statut, donnees } = await jsonA(
+        MI_PARCOURS, `/api/semaine?programme=${encodeURIComponent(cle)}&numero=1`, { role: 'coureur' },
+      );
+      expect(statut).toBe(400);
+      expect(Object.keys(donnees)).toEqual(['erreur']);
+      expect(donnees.semaine).toBeUndefined();
+    });
+
+    it(`POST /api/coureur refuse programme=${cle}`, async () => {
+      const c = await cookie('coureur');
+      const { statut, donnees } = await creerCoureur(c, {
+        prenom: 'Proto', initiale: 'P', programme: cle,
+      });
+      expect(statut).toBe(400);
+      expect(donnees.coureur).toBeUndefined();
+      expect(typeof donnees.erreur).toBe('string');
+    });
+  }
+
+  it("aucune fiche empoisonnée n'a pu s'installer en base", async () => {
+    // Le vrai dégât de la clé héritée n'était pas le 500 du moment mais la
+    // donnée durable : si une seule fiche avait pu être créée avec
+    // programme = "__proto__", l'encadrant la relirait en 500 pour toujours.
+    const admin = await cookie('admin');
+    const { donnees } = await creerCoureur(admin, {
+      prenom: 'Proto', initiale: 'P', programme: 'P3',
+    });
+    const r = await requeteA(MI_PARCOURS, `/api/programme?coureur=${donnees.coureur.id}`, {
+      role: 'admin',
+    });
+    expect(r.status).toBe(200);
+  });
+});
+
+describe('en-têtes de cache', () => {
+  const ROUTES_PRIVEES = [
+    '/api/sante',
+    '/api/programme?programme=P3',
+    '/api/semaine?programme=P3&numero=1',
+    '/api/programme?programme=P42',
+    '/api/semaine?programme=P3&numero=16',
+  ];
+
+  for (const chemin of ROUTES_PRIVEES) {
+    it(`${chemin} interdit toute mise en cache`, async () => {
+      const r = await requeteA(MI_PARCOURS, chemin, { role: 'coureur' });
+      expect(r.headers.get('cache-control')).toBe('no-store');
+      expect(r.headers.get('vary')).toBe('Cookie');
+    });
+  }
+
+  it('une réponse refusée porte aussi les en-têtes privés', async () => {
+    for (const r of [
+      await requeteA(MI_PARCOURS, '/api/programme?programme=P3'), // 401, pas de cookie
+      await requeteA(MI_PARCOURS, '/api/semaine?programme=P3&numero=16', { role: 'coureur' }), // 403
+      await requeteA(MI_PARCOURS, '/api/inconnue', { role: 'coureur' }), // 404
+    ]) {
+      expect(r.headers.get('cache-control')).toBe('no-store');
+      expect(r.headers.get('vary')).toBe('Cookie');
+    }
+  });
+
+  it('POST /api/coureur et POST /api/session ne sont pas cachables', async () => {
+    const c = await cookie('coureur');
+    const r = await SELF.fetch('https://p.test/api/coureur', {
+      method: 'POST',
+      headers: entetes(c, '203.0.113.30'),
+      body: JSON.stringify({ prenom: 'Cache', initiale: 'C', programme: 'P3' }),
+    });
+    expect(r.headers.get('cache-control')).toBe('no-store');
+
+    const s = await SELF.fetch('https://p.test/api/session', {
+      method: 'POST',
+      headers: { 'cf-connecting-ip': '203.0.113.31' },
+      body: JSON.stringify({ code: 'coureur-test' }),
+    });
+    expect(s.headers.get('cache-control')).toBe('no-store');
+    expect(s.headers.get('vary')).toBe('Cookie');
+  });
+
+  it('les zones, seule ressource publique, restent cachables sans varier sur le cookie', async () => {
+    const r = await SELF.fetch('https://p.test/api/zones');
+    expect(r.headers.get('cache-control')).toBe('public, max-age=3600');
+    expect(r.headers.get('vary')).toBe('Accept-Encoding');
+  });
+
+  it("la même URL ne sert pas la réponse de l'encadrant au coureur", async () => {
+    // La démonstration de l'utilité de Vary: Cookie. Même URL, deux charges
+    // radicalement différentes selon le seul cookie.
+    const chemin = '/api/programme?programme=P3';
+    const coureur = await (await requeteA(MI_PARCOURS, chemin, { role: 'coureur' })).text();
+    const admin = await (await requeteA(MI_PARCOURS, chemin, { role: 'admin' })).text();
+    expect(admin.length).toBeGreaterThan(coureur.length);
+    const secrete = semaineDuProgramme('P3', 16, { faitIzon: false }).titre;
+    expect(admin).toContain(secrete);
+    expect(coureur).not.toContain(secrete);
+  });
+});
+
+describe('limitation de débit atomique', () => {
+  it('50 requêtes simultanées de la même IP ne produisent pas plus de 10 évaluations', async () => {
+    const ip = '198.51.100.50';
+    // Lancées ensemble, sans await intermédiaire : c'est l'entrelacement que
+    // le INSERT ... ON CONFLICT ... RETURNING doit encaisser. Un compteur lu
+    // puis incrémenté en deux allers-retours laisserait ici les 50 requêtes
+    // lire la même valeur et faire toutes évaluer leur code.
+    const reponses = await Promise.all(
+      Array.from({ length: 50 }, (_, i) =>
+        SELF.fetch('https://p.test/api/session', {
+          method: 'POST',
+          headers: { 'cf-connecting-ip': ip },
+          body: JSON.stringify({ code: `faux-${i}` }),
+        }),
+      ),
+    );
+    const statuts = reponses.map((r) => r.status);
+    // Un 401 signifie que le code a réellement été comparé : c'est ce qu'une
+    // force brute cherche à obtenir en masse.
+    const evaluations = statuts.filter((s) => s === 401).length;
+    const bloquees = statuts.filter((s) => s === 429).length;
+
+    expect(evaluations).toBeLessThanOrEqual(LIMITE_TENTATIVES);
+    expect(evaluations + bloquees).toBe(50);
+    expect(bloquees).toBeGreaterThan(0);
+    // Aucune session ouverte, évidemment.
+    expect(reponses.some((r) => r.headers.get('set-cookie'))).toBe(false);
+  });
+
+  it('un adhérent qui tape le bon code ne se bloque jamais, même en concurrence', async () => {
+    const ip = '198.51.100.51';
+    const reponses = await Promise.all(
+      Array.from({ length: 12 }, () =>
+        SELF.fetch('https://p.test/api/session', {
+          method: 'POST',
+          headers: { 'cf-connecting-ip': ip },
+          body: JSON.stringify({ code: 'coureur-test' }),
+        }),
+      ),
+    );
+    expect(reponses.map((r) => r.status)).toEqual(Array(12).fill(200));
+  });
+
+  it('douze connexions réussies de suite laissent le compteur à zéro', async () => {
+    const ip = '198.51.100.52';
+    const ouvrir = (code) =>
+      SELF.fetch('https://p.test/api/session', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': ip },
+        body: JSON.stringify({ code }),
+      });
+
+    for (let i = 0; i < 12; i++) {
+      expect((await ouvrir('coureur-test')).status).toBe(200);
+    }
+    // Le compteur ayant été décompté à chaque succès, il reste dix échecs
+    // disponibles avant blocage : les connexions réussies n'ont rien coûté.
+    for (let i = 0; i < 10; i++) {
+      expect((await ouvrir(`faux-${i}`)).status).toBe(401);
+    }
+    expect((await ouvrir('faux-11')).status).toBe(429);
+  });
+});
+
+describe('comparaison à temps constant', () => {
+  it('egalConstant ne se laisse pas abuser par une longueur ni par un préfixe', () => {
+    expect(egalConstant('coureur-test', 'coureur-test')).toBe(true);
+    expect(egalConstant('coureur-test', 'coureur-tesT')).toBe(false);
+    expect(egalConstant('coureur-test', 'coureur')).toBe(false);
+    expect(egalConstant('coureur-test', 'coureur-test ')).toBe(false);
+    expect(egalConstant('', '')).toBe(true);
+  });
+
+  it('un préfixe ou une variante de casse du bon code est refusé', async () => {
+    let ip = 60;
+    for (const code of ['coureur-tes', 'coureur-testx', 'Coureur-Test', 'admin-tes', 'ADMIN-TEST']) {
+      const r = await SELF.fetch('https://p.test/api/session', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': `198.51.100.${ip++}` },
+        body: JSON.stringify({ code }),
+      });
+      expect(r.status).toBe(401);
+      expect(r.headers.get('set-cookie')).toBeNull();
+    }
+  });
+});
+
+describe('méthode HEAD', () => {
+  const LECTURES = [
+    { chemin: '/api/sante', role: null },
+    { chemin: '/api/zones', role: null },
+    { chemin: '/api/programme?programme=P3', role: 'coureur' },
+    { chemin: '/api/semaine?programme=P3&numero=1', role: 'coureur' },
+    { chemin: '/api/semaine?programme=P3&numero=16', role: 'coureur' }, // 403
+    { chemin: '/api/programme?programme=P42', role: 'coureur' }, // 400
+    { chemin: '/api/inconnue', role: 'coureur' }, // 404
+    { chemin: '/api/programme?programme=P3', role: null }, // 401
+  ];
+
+  for (const { chemin, role } of LECTURES) {
+    it(`HEAD ${chemin} répond comme GET (rôle ${role ?? 'anonyme'})`, async () => {
+      const options = role ? { role } : {};
+      const parGet = await requeteA(MI_PARCOURS, chemin, options);
+      const parHead = await requeteA(MI_PARCOURS, chemin, { ...options, method: 'HEAD' });
+
+      expect(parHead.status).toBe(parGet.status);
+      expect(parHead.headers.get('content-type')).toBe(parGet.headers.get('content-type'));
+      expect(parHead.headers.get('cache-control')).toBe(parGet.headers.get('cache-control'));
+      // Même statut et mêmes en-têtes, mais jamais de corps.
+      expect(await parHead.text()).toBe('');
+      expect((await parGet.text()).length).toBeGreaterThan(0);
+    });
+  }
+
+  it("HEAD n'ouvre pas de porte dérobée sur une semaine non publiée", async () => {
+    const r = await requeteA(MI_PARCOURS, '/api/semaine?programme=P3&numero=16', {
+      role: 'coureur', method: 'HEAD',
+    });
+    expect(r.status).toBe(403);
+    expect(await r.text()).toBe('');
+  });
+
+  it('HEAD reste refusé là où GET est refusé', async () => {
+    const r = await requeteA(MI_PARCOURS, '/api/session', { method: 'HEAD' });
+    expect(r.status).toBe(405);
   });
 });
