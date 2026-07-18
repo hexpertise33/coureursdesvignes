@@ -113,9 +113,19 @@ P5  (16 sem)  S1-S4 bloc 1 · S5-S8 bloc 2 (S8 pré-allégée avant Izon)
 
 ### La semaine 9 et Izon
 
-Pour `P2`, `P3` et `P5` : allègement la veille, course, puis reprise douce. Pour `P4`
-(marathon), Izon **se substitue à la sortie longue** de la semaine et se court en
-effort-test, sans affûtage réel, afin de ne pas casser le bloc de construction en cours.
+Pour `P2`, `P3` et `P5` : allègement la veille, course courue à l'objectif, puis reprise
+douce.
+
+Pour `P4` (marathon), Izon **se substitue à la sortie longue** de la semaine, sans
+affûtage réel, afin de ne pas casser le bloc de construction en cours. **Et surtout, elle
+se court en allure contenue, en Z3, pas à fond.** L'objectif est de prendre un repère et
+de goûter l'ambiance d'un dossard, pas de faire un chrono : un 10 km couru à fond à
+6 semaines du marathon coûte plusieurs jours de récupération et abîme le bloc suivant.
+
+Cette consigne doit apparaître **explicitement dans le texte de la séance**, en toutes
+lettres, parce que la tentation de se laisser emporter par le peloton est la règle, pas
+l'exception. Formulation retenue : « Cours-le en Z3, comme une sortie longue rythmée. Tu
+dois finir en te disant que tu aurais pu aller plus vite. C'est exactement le but. »
 
 Le coureur de `P2`, `P3` ou `P4` qui ne fait pas Izon reçoit la variante normale de la
 semaine 9. Une seule semaine, deux variantes, sélectionnées par la case « je fais Izon ».

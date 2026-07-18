@@ -7,3 +7,7 @@
 # Artefacts de build / déploiement Cloudflare
 dist/
 .wrangler/
+
+# Secrets locaux (codes d'acces, cles) — jamais versionnes
+.dev.vars
+node_modules/
