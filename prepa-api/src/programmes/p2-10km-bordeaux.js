@@ -91,6 +91,20 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  * 15 s avec 1 min de marche entre chaque font 4 min, 6 lignes de 20 s avec
  * 1 min de marche entre chaque font 7 min.
  *
+ * Échauffement progressif, décision de l'encadrant. Le standard visé est
+ * 20 min d'échauffement et 10 min de retour au calme, mais on n'impose pas
+ * 20 min d'échauffement pour 5 min de travail : l'échauffement grandit avec la
+ * séance, donc avec le coureur. Barème appliqué aux séances TEMPO, SEUIL et
+ * VMA, selon leur durée déclarée :
+ *   40 min et moins   12 min d'échauffement,  7 min de retour au calme ;
+ *   41 à 50 min       15 min d'échauffement,  8 min de retour au calme ;
+ *   plus de 50 min    20 min d'échauffement, 10 min de retour au calme.
+ * Les durées déclarées ne bougent pas, donc le barème de volumes ci-dessus est
+ * inchangé : c'est le corps de séance qui absorbe la différence. Les séances
+ * EF, SL, RECUP et RENFO n'ont pas d'échauffement séparé et ne sont pas
+ * concernées, pas plus que le rappel d'allure de la semaine de course,
+ * volontairement court.
+ *
  * Sortie longue plafonnée à 1 h 15, atteinte une seule fois en S13. Au-delà,
  * un coureur de 10 km accumule de la fatigue sans rien gagner sur sa course.
  *
@@ -114,7 +128,7 @@ const s9SansIzon = semaine(
     ),
     seuil(
       45,
-      "13 min d'échauffement en Z2, puis 3 fois 7 min en Z4 avec 3 min de trottinement en Z1 entre chaque, puis 5 min de retour au calme en Z2. Les blocs du bloc 2 duraient 6 min, ceux-ci en durent 7 : la minute supplémentaire paraît dérisoire sur le papier, elle ne l'est pas dans les jambes.",
+      "15 min d'échauffement en Z2, puis 2 fois 9 min en Z4 avec 4 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. Le bloc 2 prenait sa Z4 en trois fois six minutes, celle-ci la prend en deux fois neuf : même temps total, mais tenu d'une traite, ce qui n'est pas du tout la même chose dans les jambes.",
       "Reprendre le travail au seuil exactement là où le bloc 2 l'avait laissé, en allongeant la répétition plutôt qu'en en ajoutant une.",
     ),
     sl(
@@ -211,7 +225,7 @@ export const P2 = {
         ),
         tempo(
           36,
-          "12 min d'échauffement en Z2, puis 3 fois 4 min en Z3 avec 2 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. En Z3, tu parles encore, mais par phrases courtes et on entend ton souffle.",
+          "12 min d'échauffement en Z2, puis 2 fois 7 min en Z3 avec 3 min de trottinement en Z1 entre les deux, puis 7 min de retour au calme en Z2. En Z3, tu parles encore, mais par phrases courtes et on entend ton souffle.",
           "Découvrir une intensité tenable et apprendre à la quitter au bon moment, avant que la sensation ne devienne pénible.",
         ),
         sl(
@@ -241,7 +255,7 @@ export const P2 = {
         ),
         tempo(
           39,
-          "12 min en Z2, puis 3 fois 5 min en Z3 avec 2 min en Z1 entre chaque, puis 8 min en Z2. Les trois blocs doivent se ressembler : si le dernier est nettement plus dur, tu as lancé le premier trop vite.",
+          "12 min d'échauffement en Z2, puis 2 fois 8 min en Z3 avec 4 min de trottinement en Z1 entre les deux, puis 7 min de retour au calme en Z2. Les deux blocs doivent se ressembler : si le second est nettement plus dur, tu as lancé le premier trop vite.",
           "Apprendre à répartir un effort sur plusieurs blocs, exactement ce qu'il faudra faire sur les kilomètres du 10 km.",
         ),
         sl(
@@ -300,7 +314,7 @@ export const P2 = {
         ),
         seuil(
           42,
-          "15 min d'échauffement en Z2, puis 2 fois 6 min en Z4 avec 3 min de trottinement en Z1 entre les deux, puis 12 min de retour au calme en Z2. En Z4 tu ne places plus que trois ou quatre mots à la fois, c'est nettement au-dessus des blocs en Z3 des semaines 2 et 3.",
+          "15 min d'échauffement en Z2, puis 2 fois 8 min en Z4 avec 3 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. En Z4 tu ne places plus que trois ou quatre mots à la fois, c'est nettement au-dessus des blocs en Z3 des semaines 2 et 3.",
           "Faire connaissance avec l'allure qui décidera de ton chrono, en quantité assez faible pour que la séance reste réussie.",
         ),
         sl(
@@ -330,7 +344,7 @@ export const P2 = {
         ),
         seuil(
           45,
-          "14 min en Z2, puis 3 fois 6 min en Z4 avec 3 min en Z1 entre chaque bloc, puis 7 min en Z2. Le troisième bloc doit être aussi rapide que le premier, sinon tu es parti trop fort.",
+          "15 min d'échauffement en Z2, puis 3 fois 6 min en Z4 avec 2 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Le troisième bloc doit être aussi rapide que le premier, sinon tu es parti trop fort.",
           "Augmenter le temps total passé à l'allure de course sans toucher à l'intensité, c'est ce dosage qui construit la tenue.",
         ),
         sl(
@@ -359,7 +373,7 @@ export const P2 = {
         ),
         vma(
           44,
-          "15 min en Z2, puis 8 fois 1 min en Z5 avec 1 min de trottinement en Z1 entre chaque, puis 14 min de retour au calme en Z2. Concentre-toi sur des appuis rapides et légers plutôt que sur de grandes foulées.",
+          "15 min d'échauffement en Z2, puis 11 fois 1 min en Z5 avec 1 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Concentre-toi sur des appuis rapides et légers plutôt que sur de grandes foulées.",
           "Élargir le plafond de vitesse une fois la base construite, pour que l'allure du 10 km paraisse plus confortable dans le bloc suivant.",
         ),
         sl(
@@ -435,7 +449,7 @@ export const P2 = {
         ),
         seuil(
           45,
-          "10 min en Z2, puis 2 fois 12 min en Z4 avec 4 min de trottinement en Z1 entre les deux, puis 7 min en Z2. La difficulté n'est plus l'intensité, c'est la durée pendant laquelle tu la tiens : le vrai test est de finir le deuxième bloc aussi propre que le premier.",
+          "15 min d'échauffement en Z2, puis 2 fois 10 min en Z4 avec 2 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. La difficulté n'est plus l'intensité, c'est la durée pendant laquelle tu la tiens : le vrai test est de finir le deuxième bloc aussi propre que le premier.",
           "Apprendre à ne pas céder au milieu d'un effort long, ce qui se joue dans la tête bien plus que dans les jambes.",
         ),
         sl(
@@ -465,7 +479,7 @@ export const P2 = {
         ),
         seuil(
           47,
-          "12 min en Z2, puis 4 fois 6 min en Z4 avec seulement 2 min en Z1 entre chaque, puis 5 min en Z2. Même temps total en Z4 que la semaine passée, mais bien moins de repos pour l'encaisser : le quatrième bloc doit rester propre.",
+          "15 min d'échauffement en Z2, puis 2 fois 11 min en Z4 avec 2 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. Onze minutes d'affilée en Z4, deux fois, avec deux minutes à peine pour souffler : c'est le format le plus exigeant du programme, et le second bloc doit rester aussi propre que le premier.",
           "Réduire le temps de récupération plutôt que d'augmenter l'intensité, ce qui rapproche la séance des conditions réelles de la course.",
         ),
         sl(
@@ -523,7 +537,7 @@ export const P2 = {
         ),
         vma(
           49,
-          "14 min en Z2, puis 10 fois 1 min en Z5 avec 1 min de trottinement en Z1 entre chaque, puis 16 min de retour au calme en Z2. Deux répétitions de plus qu'en semaine 7, à la même intensité exactement.",
+          "15 min d'échauffement en Z2, puis 7 fois 2 min en Z5 avec 2 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Des répétitions deux fois plus longues qu'en semaine 7, à la même intensité exactement : le temps passé vite monte de onze à quatorze minutes.",
           "Amener la vitesse maximale à son point haut du programme, assez tôt pour que ce travail ait le temps de se transformer en aisance le jour de la course.",
         ),
         sl(
@@ -551,9 +565,20 @@ export const P2 = {
           "Rappeler la vitesse aux jambes en quantité volontairement réduite, quatre lignes droites suffisent largement en période d'affûtage.",
           { zonesSecondaires: ['Z5'] },
         ),
+        // Exception au barème d'échauffement progressif, assumée. À 45 min,
+        // cette séance tombe dans la tranche 41 à 50 min, donc au palier
+        // 15 et 8. Mais le format de référence du programme, 3 fois 8 min en
+        // Z4, occupe déjà 24 min : avec 15 min d'échauffement et 8 min de
+        // retour au calme il ne resterait rien pour les deux récupérations, la
+        // somme des segments dépasserait la durée déclarée et le format de
+        // référence devrait être amputé. On reste donc au palier inférieur,
+        // 12 et 7, seul palier où la séance se réconcilie. Les récupérations
+        // tombent à 1 min, ce qui reste un format de seuil connu et cohérent
+        // avec l'intention de la semaine : rendre l'allure de course
+        // continue, dix jours avant Bordeaux.
         seuil(
           45,
-          "10 min en Z2, puis 3 fois 8 min en Z4 avec 3 min en Z1 entre chaque, puis 5 min en Z2. C'est la séance la plus spécifique du programme : 24 min passées à l'allure exacte que tu chercheras à Bordeaux. Si les trois blocs se ressemblent, tu es prêt.",
+          "12 min d'échauffement en Z2, puis 3 fois 8 min en Z4 avec 1 min de trottinement en Z1 entre chaque, puis 7 min de retour au calme en Z2. C'est la séance la plus spécifique du programme : 24 min passées à l'allure exacte que tu chercheras à Bordeaux, coupées d'une minute à peine. Si les trois blocs se ressemblent, tu es prêt.",
           "Valider l'allure de course sur un volume proche de celui du 10 km, dix jours avant, quand il reste le temps de récupérer mais plus celui de progresser.",
         ),
         sl(

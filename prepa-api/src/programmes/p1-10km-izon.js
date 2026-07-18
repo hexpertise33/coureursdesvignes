@@ -38,6 +38,20 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  * récupérations + retour au calme doit toujours être strictement égale à la
  * durée déclarée en premier argument de la séance.
  *
+ * Échauffement progressif, décision de l'encadrant. Son standard est de 20 min
+ * d'échauffement et 10 min de retour au calme, mais on n'impose pas 20 min
+ * d'échauffement à un débutant pour 5 min de travail : l'échauffement grandit
+ * avec la séance, donc avec le coureur. Barème appliqué à toutes les séances à
+ * intensité (TEMPO, SEUIL, VMA), en fonction de la durée déclarée :
+ *   40 min et moins   12 min d'échauffement,  7 min de retour au calme ;
+ *   41 à 50 min       15 min d'échauffement,  8 min de retour au calme ;
+ *   plus de 50 min    20 min d'échauffement, 10 min de retour au calme.
+ * Les durées déclarées ne changent pas, donc le barème de volumes ci-dessus
+ * est inchangé : c'est le corps de séance qui absorbe la différence. Les
+ * séances EF, SL, RECUP et RENFO n'ont pas d'échauffement séparé (une sortie
+ * en Z2 est son propre échauffement) et ne sont pas concernées, pas plus que
+ * la séance de rappel de la semaine de course, volontairement courte.
+ *
  * Cette convention vaut aussi pour les lignes droites, qui se logent à
  * l'intérieur de la durée déjà déclarée de l'endurance : elles remplacent du
  * footing facile, elles ne s'y ajoutent pas, et le barème de volumes est donc
@@ -189,7 +203,7 @@ export const P1 = {
         ),
         seuil(
           40,
-          "15 min d'échauffement en Z2, puis 2 fois 6 min en Z4 avec 3 min de trottinement en Z1 entre les deux, puis 10 min en Z2. En Z4, tu ne dis plus que trois ou quatre mots à la fois, c'est un cran au-dessus des blocs en Z3 des semaines 2 et 3.",
+          "12 min d'échauffement en Z2, puis 3 fois 5 min en Z4 avec 3 min de trottinement en Z1 entre chaque, puis 7 min de retour au calme en Z2. En Z4, tu ne dis plus que trois ou quatre mots à la fois, c'est un cran au-dessus des blocs en Z3 des semaines 2 et 3.",
           "Découvrir l'allure soutenue mais tenable, celle qui déterminera ton chrono à Izon.",
         ),
         sl(
@@ -219,7 +233,7 @@ export const P1 = {
         ),
         seuil(
           45,
-          "13 min en Z2, puis 3 fois 6 min en Z4 avec 3 min en Z1 entre chaque bloc, puis 8 min en Z2. Le troisième bloc doit être aussi rapide que le premier.",
+          "15 min d'échauffement en Z2, puis 4 fois 4 min en Z4 avec 2 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Le quatrième bloc doit être aussi rapide que le premier.",
           "Augmenter le temps passé à l'allure de course, sans toucher à l'intensité elle-même.",
         ),
         sl(
@@ -248,7 +262,7 @@ export const P1 = {
         ),
         vma(
           45,
-          "15 min en Z2, puis 12 fois 30 s en Z5 avec 1 min de marche ou de trottinement en Z1 entre chaque, puis 13 min en Z2. Les efforts sont très courts par choix : concentre-toi sur des appuis rapides plutôt que sur de grandes foulées.",
+          "15 min d'échauffement en Z2, puis 8 fois 1 min en Z5 avec 2 min de marche ou de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Une minute paraît courte sur le papier, beaucoup moins à la huitième : concentre-toi sur des appuis rapides plutôt que sur de grandes foulées.",
           "Ajouter de la vitesse pure une fois la base construite et le seuil assimilé, pour que l'allure de course paraisse plus confortable les trois dernières semaines.",
         ),
         sl(
@@ -278,7 +292,7 @@ export const P1 = {
         ),
         seuil(
           38,
-          "12 min en Z2, puis 2 fois 6 min en Z4 avec 3 min en Z1 entre les deux, puis 11 min en Z2. Tu retrouves la séance de la semaine 5 : elle doit te paraître plus facile.",
+          "12 min d'échauffement en Z2, puis 3 fois 5 min en Z4 avec 2 min de trottinement en Z1 entre chaque, puis 7 min de retour au calme en Z2. Tu retrouves les blocs de la semaine 5 avec une minute de récupération en moins : à ce stade, c'est la fraîcheur qui doit faire la différence, pas le volume.",
           "Rappeler l'allure de course aux jambes en réduisant le volume de travail.",
         ),
         sl(

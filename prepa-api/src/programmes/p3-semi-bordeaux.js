@@ -103,6 +103,21 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  * avec 1 min de marche entre chaque font 4 min, 6 lignes de 20 s avec 1 min de
  * marche entre chaque font 7 min.
  *
+ * Échauffement progressif, décision de l'encadrant. Le standard visé est
+ * 20 min d'échauffement et 10 min de retour au calme, mais on n'impose pas
+ * 20 min d'échauffement pour 5 min de travail : l'échauffement grandit avec la
+ * séance, donc avec le coureur. Barème appliqué aux séances TEMPO, SEUIL et
+ * VMA, selon leur durée déclarée :
+ *   40 min et moins   12 min d'échauffement,  7 min de retour au calme ;
+ *   41 à 50 min       15 min d'échauffement,  8 min de retour au calme ;
+ *   plus de 50 min    20 min d'échauffement, 10 min de retour au calme.
+ * Les durées déclarées ne bougent pas, donc le barème de volumes ci-dessus est
+ * inchangé : c'est le corps de séance qui absorbe la différence. Les séances
+ * EF, SL, RECUP et RENFO n'ont pas d'échauffement séparé et ne sont pas
+ * concernées, pas plus que le rappel d'allure de la semaine de course,
+ * volontairement court. Une seule séance échappe au barème, la séance
+ * spécifique de S14 : voir le commentaire posé sur elle.
+ *
  * Sortie longue : elle monte par paliers jusqu'à 1 h 50 en S13, ce qui
  * représente à peu près la durée de course visée par la majorité du groupe.
  * On ne va pas au-delà : le semi se prépare en temps passé, pas en kilomètres
@@ -128,7 +143,7 @@ const s9SansIzon = semaine(
     ),
     seuil(
       48,
-      "13 min d'échauffement en Z2, puis 2 fois 10 min en Z4 avec 4 min de trottinement en Z1 entre les deux, puis 11 min de retour au calme en Z2. Dix minutes d'affilée au seuil, c'est le format le plus long du programme dans cette zone.",
+      "15 min d'échauffement en Z2, puis 2 fois 11 min en Z4 avec 3 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. Onze minutes d'affilée au seuil, c'est le format le plus long du programme dans cette zone.",
       "Repousser le plafond une dernière fois avant que tout le travail de qualité ne bascule sur l'allure du semi elle-même.",
     ),
     sl(
@@ -225,7 +240,7 @@ export const P3 = {
         ),
         tempo(
           40,
-          "14 min d'échauffement en Z2, puis 3 fois 5 min en Z3 avec 3 min de trottinement en Z1 entre chaque, puis 5 min de retour au calme en Z2. En Z3 tu parles par phrases courtes et on entend ton souffle, c'est tout.",
+          "12 min d'échauffement en Z2, puis 3 fois 5 min en Z3 avec 3 min de trottinement en Z1 entre chaque, puis 7 min de retour au calme en Z2. En Z3 tu parles par phrases courtes et on entend ton souffle, c'est tout.",
           "Repérer précisément la sensation de la Z3, qui sera l'allure visée le jour du semi et donc la plus utile à connaître par cœur.",
         ),
         sl(
@@ -255,7 +270,7 @@ export const P3 = {
         ),
         tempo(
           44,
-          "14 min en Z2, puis 3 fois 6 min en Z3 avec 3 min en Z1 entre chaque, puis 6 min en Z2. Les trois blocs doivent se ressembler : si le troisième est laborieux, tu as lancé le premier trop vite.",
+          "15 min d'échauffement en Z2, puis 2 fois 9 min en Z3 avec 3 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. Les deux blocs doivent se ressembler : si le second est laborieux, tu as lancé le premier trop vite.",
           "Apprendre à répartir un effort identique sur plusieurs blocs, ce qui est exactement le problème posé par les 21 km.",
         ),
         sl(
@@ -314,7 +329,7 @@ export const P3 = {
         ),
         seuil(
           47,
-          "15 min d'échauffement en Z2, puis 2 fois 8 min en Z4 avec 4 min de trottinement en Z1 entre les deux, puis 12 min de retour au calme en Z2. En Z4 tu ne places plus que trois ou quatre mots à la fois, nettement au-dessus des blocs en Z3 des semaines 2 et 3.",
+          "15 min d'échauffement en Z2, puis 3 fois 6 min en Z4 avec 3 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. En Z4 tu ne places plus que trois ou quatre mots à la fois, nettement au-dessus des blocs en Z3 des semaines 2 et 3.",
           "Repousser le plafond au-dessus de l'allure du semi, ce qui fait mécaniquement descendre le coût de cette allure.",
         ),
         sl(
@@ -343,7 +358,7 @@ export const P3 = {
         ),
         vma(
           48,
-          "15 min d'échauffement en Z2, puis 8 fois 1 min en Z5 avec 2 min de trottinement en Z1 entre chaque, puis 11 min de retour au calme en Z2. Récupération volontairement longue pour une première : cherche des appuis rapides et légers plutôt que de grandes foulées.",
+          "15 min d'échauffement en Z2, puis 9 fois 1 min en Z5 avec 2 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Récupération volontairement longue pour une première : cherche des appuis rapides et légers plutôt que de grandes foulées.",
           "Réveiller le haut de la palette après cinq semaines passées entre Z2 et Z4, ce qui rend ensuite l'allure du semi mécaniquement moins coûteuse.",
         ),
         sl(
@@ -372,7 +387,7 @@ export const P3 = {
         ),
         vma(
           53,
-          "15 min en Z2, puis 6 fois 2 min en Z5 avec 3 min de trottinement en Z1 entre chaque, puis 11 min en Z2. Les répétitions doublent de durée par rapport à la semaine passée : la dernière doit ressembler à la première, sinon tu es parti trop fort.",
+          "20 min d'échauffement en Z2, puis 5 fois 3 min en Z5 avec 2 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Les répétitions triplent de durée par rapport à la semaine passée : la dernière doit ressembler à la première, sinon tu es parti trop fort.",
           "Allonger l'effort rapide pour travailler la tolérance à l'essoufflement, dernière brique générale avant de tout réorienter vers le spécifique.",
         ),
         sl(
@@ -448,7 +463,7 @@ export const P3 = {
         ),
         tempo(
           50,
-          "14 min en Z2, puis 2 fois 12 min en Z3 avec 4 min de trottinement en Z1 entre les deux, puis 8 min en Z2. Douze minutes d'affilée : la difficulté n'est plus l'intensité, c'est de ne pas dériver vers le haut sans t'en apercevoir.",
+          "15 min d'échauffement en Z2, puis 2 fois 12 min en Z3 avec 3 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. Douze minutes d'affilée : la difficulté n'est plus l'intensité, c'est de ne pas dériver vers le haut sans t'en apercevoir.",
           "Installer l'allure de course sur des durées qui commencent à ressembler à la réalité du semi, où elle devra tenir près de deux heures.",
         ),
         sl(
@@ -478,7 +493,7 @@ export const P3 = {
         ),
         tempo(
           54,
-          "14 min en Z2, puis 2 fois 15 min en Z3 avec 5 min de trottinement en Z1 entre les deux, puis 5 min en Z2. Trente minutes en Z3 sur la séance : c'est le quart de ta course, à l'allure de ta course.",
+          "20 min d'échauffement en Z2, puis 2 fois 11 min en Z3 avec 2 min de trottinement en Z1 entre les deux, puis 10 min de retour au calme en Z2. Vingt minutes d'échauffement pour vingt-deux minutes d'allure de course : à ce stade, c'est la qualité des deux blocs qui compte, pas leur longueur.",
           "Vérifier concrètement que l'allure visée est tenable sur des durées longues, ce qu'aucun calcul théorique ne peut remplacer.",
         ),
         sl(
@@ -565,6 +580,18 @@ export const P3 = {
           "Rappeler la vitesse aux jambes en quantité volontairement réduite, quatre lignes droites suffisent en période d'affûtage.",
           { zonesSecondaires: ['Z5'] },
         ),
+        // Seule séance des cinq programmes qui n'entre dans aucun palier du
+        // barème d'échauffement progressif, et c'est assumé. Son format de
+        // référence, 2 fois 20 min en Z3, occupe 40 min à lui seul, plus la
+        // récupération entre les deux blocs. Sur les 58 min déclarées il reste
+        // donc au mieux 17 min à partager entre échauffement et retour au
+        // calme, quand le palier le plus bas en réclame déjà 19 (12 et 7). Ni
+        // le palier de sa tranche (20 et 10), ni aucun palier inférieur ne se
+        // réconcilie. Allonger la séance est exclu, le barème de volumes ne
+        // bouge pas, et amputer la répétition générale de l'allure de course à
+        // dix jours du semi desservirait le coureur : on garde donc le
+        // découpage d'origine, 8 min d'échauffement et 5 min de retour au
+        // calme, autour d'un bloc de travail volontairement dominant.
         tempo(
           58,
           "8 min en Z2, puis 2 fois 20 min en Z3 avec 5 min de trottinement en Z1 entre les deux, puis 5 min en Z2. Quarante minutes à l'allure de course, soit un bon tiers du semi. Si les deux blocs se ressemblent, ton allure de dimanche est la bonne.",

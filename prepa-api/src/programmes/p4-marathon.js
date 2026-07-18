@@ -82,7 +82,7 @@ import { ef, sl, tempo, seuil, recup, renfo, course, semaine } from './seances.j
  * seuil, ou la course-test. S10 et S11 en Z3 sur des blocs de plus en plus
  * longs. S12 rien. S13 ne porte aucune séance de qualité au sens strict :
  * c'est la sortie longue de 2 h 30 avec ses trois blocs en Z3 qui fait toute
- * la semaine. S14 la séance de référence du programme, 2 fois 22 min en Z3.
+ * la semaine. S14 la séance de référence du programme, 2 fois 16 min en Z3.
  * S15 un rappel très court en Z3 avant le départ. Jamais deux séances dures
  * dans la même semaine, et à partir de S9 jamais plus d'une par semaine : sur
  * marathon c'est le volume qui construit la performance, l'intensité n'est
@@ -116,6 +116,22 @@ import { ef, sl, tempo, seuil, recup, renfo, course, semaine } from './seances.j
  * deux séances de course, Izon et le marathon, échappent seules à ce calcul :
  * leur durée est une estimation de temps passé, elle dépend du coureur.
  *
+ * Échauffement progressif, décision de l'encadrant. Le standard visé est
+ * 20 min d'échauffement et 10 min de retour au calme, mais on n'impose pas
+ * 20 min d'échauffement pour 5 min de travail : l'échauffement grandit avec la
+ * séance, donc avec le coureur. Barème appliqué aux séances TEMPO, SEUIL et
+ * VMA, selon leur durée déclarée :
+ *   40 min et moins   12 min d'échauffement,  7 min de retour au calme ;
+ *   41 à 50 min       15 min d'échauffement,  8 min de retour au calme ;
+ *   plus de 50 min    20 min d'échauffement, 10 min de retour au calme.
+ * Toutes les séances de qualité de P4 dépassent 50 min : elles sont donc au
+ * palier haut, 20 et 10, ce qui est exactement l'intention de l'encadrant pour
+ * un coureur de marathon. Les durées déclarées ne bougent pas, donc le barème
+ * de volumes ci-dessus est inchangé : c'est le corps de séance qui absorbe la
+ * différence. Les séances EF, SL, RECUP et RENFO n'ont pas d'échauffement
+ * séparé et ne sont pas concernées, pas plus que le rappel d'allure de la
+ * semaine de course, volontairement court.
+ *
  * Sortie longue. Elle monte par paliers jusqu'à 2 h 30 en S13 et ne va jamais
  * au-delà, quelle que soit l'envie du moment. Au-dessus de deux heures et
  * demie, le coût en récupération augmente beaucoup plus vite que le bénéfice,
@@ -140,7 +156,7 @@ const s9SansIzon = semaine(
     ),
     seuil(
       65,
-      "16 min d'échauffement en Z2, puis 3 fois 10 min en Z4 avec 5 min de trottinement en Z1 entre chaque, puis 9 min de retour au calme en Z2. Trente minutes au seuil sur une seule séance, c'est le format le plus lourd du programme dans cette zone.",
+      "20 min d'échauffement en Z2, puis 2 fois 15 min en Z4 avec 5 min de trottinement en Z1 entre les deux, puis 10 min de retour au calme en Z2. Trente minutes au seuil sur une seule séance, et tenues en deux blocs seulement : c'est le format le plus lourd du programme dans cette zone.",
       "Relever une dernière fois le plafond avant que tout le travail de qualité ne descende définitivement sur l'allure du marathon, qui se situe bien en dessous.",
     ),
     sl(
@@ -243,7 +259,7 @@ export const P4 = {
         ),
         tempo(
           52,
-          "16 min d'échauffement en Z2, puis 3 fois 6 min en Z3 avec 4 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. En Z3 tu parles par phrases courtes et on entend ton souffle : rien de plus, tu es très loin du seuil.",
+          "20 min d'échauffement en Z2, puis 3 fois 6 min en Z3 avec 2 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. En Z3 tu parles par phrases courtes et on entend ton souffle : rien de plus, tu es très loin du seuil.",
           "Repérer précisément la sensation de la Z3, seule zone que tu auras à tenir pendant plusieurs heures le 8 novembre, et donc la plus rentable à connaître par cœur.",
         ),
         sl(
@@ -273,7 +289,7 @@ export const P4 = {
         ),
         tempo(
           54,
-          '14 min en Z2, puis 3 fois 8 min en Z3 avec 4 min de trottinement en Z1 entre chaque, puis 8 min en Z2. Les trois blocs doivent se ressembler comme trois gouttes d\'eau. Si le dernier est laborieux, le premier est parti trop vite.',
+          '20 min d\'échauffement en Z2, puis 2 fois 10 min en Z3 avec 4 min de trottinement en Z1 entre les deux, puis 10 min de retour au calme en Z2. Les deux blocs doivent se ressembler comme deux gouttes d\'eau. Si le second est laborieux, le premier est parti trop vite.',
           "Apprendre à distribuer un effort rigoureusement identique sur plusieurs blocs, ce qui est le problème central du marathon posé en miniature.",
         ),
         sl(
@@ -331,7 +347,7 @@ export const P4 = {
         ),
         seuil(
           55,
-          "16 min d'échauffement en Z2, puis 3 fois 8 min en Z4 avec 4 min de trottinement en Z1 entre chaque, puis 7 min de retour au calme en Z2. En Z4 tu ne places plus que trois ou quatre mots à la fois, c'est nettement au-dessus des blocs en Z3 des semaines 2 et 3.",
+          "20 min d'échauffement en Z2, puis 3 fois 7 min en Z4 avec 2 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. En Z4 tu ne places plus que trois ou quatre mots à la fois, c'est nettement au-dessus des blocs en Z3 des semaines 2 et 3.",
           "Relever le plafond au-dessus de l'allure du marathon, ce qui fait mécaniquement descendre le coût énergétique de cette allure sans avoir eu à la travailler directement.",
         ),
         sl(
@@ -360,7 +376,7 @@ export const P4 = {
         ),
         seuil(
           58,
-          "15 min d'échauffement en Z2, puis 2 fois 12 min en Z4 avec 5 min de trottinement en Z1 entre les deux, puis 14 min de retour au calme en Z2. Douze minutes d'affilée au seuil, c'est long : découpe mentalement en trois fois quatre minutes.",
+          "20 min d'échauffement en Z2, puis 2 fois 12 min en Z4 avec 4 min de trottinement en Z1 entre les deux, puis 10 min de retour au calme en Z2. Douze minutes d'affilée au seuil, c'est long : découpe mentalement en trois fois quatre minutes.",
           "Allonger l'effort au seuil pour travailler la tolérance à l'essoufflement, dernière brique générale avant que tout ne se recentre sur le spécifique.",
         ),
         sl(
@@ -390,7 +406,7 @@ export const P4 = {
         ),
         tempo(
           68,
-          "16 min en Z2, puis 3 fois 12 min en Z3 avec 5 min de trottinement en Z1 entre chaque, puis 6 min en Z2. Trente-six minutes en Z3 sur une séance : c'est ta première vraie dose d'allure marathon.",
+          "20 min d'échauffement en Z2, puis 3 fois 10 min en Z3 avec 4 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Trente minutes en Z3 sur une séance : c'est ta première vraie dose d'allure marathon.",
           "Installer l'allure de course sur un volume qui commence à compter, à un moment de la préparation où il reste largement le temps de s'y habituer.",
         ),
         sl(
@@ -466,7 +482,7 @@ export const P4 = {
         ),
         tempo(
           68,
-          "16 min en Z2, puis 2 fois 20 min en Z3 avec 6 min de trottinement en Z1 entre les deux, puis 6 min en Z2. Vingt minutes d'affilée : la difficulté n'est plus l'intensité, c'est de ne pas dériver vers le haut sans t'en apercevoir.",
+          "20 min d'échauffement en Z2, puis 2 fois 17 min en Z3 avec 4 min de trottinement en Z1 entre les deux, puis 10 min de retour au calme en Z2. Dix-sept minutes d'affilée : la difficulté n'est plus l'intensité, c'est de ne pas dériver vers le haut sans t'en apercevoir.",
           "Tenir l'allure de course sur des blocs assez longs pour que la dérive devienne visible, seul défaut qui transforme un marathon réussi en marche forcée.",
         ),
         sl(
@@ -496,7 +512,7 @@ export const P4 = {
         ),
         tempo(
           78,
-          "14 min en Z2, puis 3 fois 15 min en Z3 avec 5 min de trottinement en Z1 entre chaque, puis 9 min en Z2. Quarante-cinq minutes à l'allure de course, sur des jambes qui portent déjà dix semaines de préparation.",
+          "20 min d'échauffement en Z2, puis 3 fois 14 min en Z3 avec 3 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Quarante-deux minutes à l'allure de course, sur des jambes qui portent déjà dix semaines de préparation.",
           "Vérifier concrètement que l'allure visée tient sur une durée qui commence à compter, ce qu'aucune table de correspondance ne remplacera jamais.",
         ),
         sl(
@@ -575,7 +591,7 @@ export const P4 = {
       14,
       'affutage',
       'La séance de référence',
-      "L'affûtage commence. Le volume recule de 29 % d'un coup, mais la séance spécifique atteint son format le plus abouti, 2 fois 22 min en Z3. C'est la répétition générale de ton allure, et la dernière occasion de la valider.",
+      "L'affûtage commence. Le volume recule de 29 % d'un coup, et la séance spécifique se resserre autour de son échauffement complet, 2 fois 16 min en Z3. C'est la répétition générale de ton allure, et la dernière occasion de la valider.",
       [
         ef(
           42,
@@ -585,7 +601,7 @@ export const P4 = {
         ),
         tempo(
           68,
-          "12 min en Z2, puis 2 fois 22 min en Z3 avec 6 min de trottinement en Z1 entre les deux, puis 6 min en Z2. Quarante-quatre minutes à l'allure de course. Si les deux blocs se ressemblent et que tu finis sans forcer, ton allure du 8 novembre est la bonne.",
+          "20 min d'échauffement en Z2, puis 2 fois 16 min en Z3 avec 6 min de trottinement en Z1 entre les deux, puis 10 min de retour au calme en Z2. Trente-deux minutes à l'allure de course. Si les deux blocs se ressemblent et que tu finis sans forcer, ton allure du 8 novembre est la bonne.",
           "Valider l'allure de course sur un volume représentatif, à un moment où il reste le temps de récupérer mais où il est trop tard pour progresser.",
         ),
         sl(
