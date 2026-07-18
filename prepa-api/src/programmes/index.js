@@ -16,9 +16,16 @@ export const PROGRAMMES = { P1, P2, P3, P4, P5 };
  * réponse HTTP lue par le coureur ou l'équipe d'encadrement.
  */
 export function programme(code) {
-  const p = PROGRAMMES[code];
-  if (!p) throw new Error(`Programme inconnu : ${code}`);
-  return p;
+  // Object.hasOwn et non PROGRAMMES[code] : les clés héritées
+  // d'Object.prototype ("constructor", "__proto__", "toString", "valueOf",
+  // "hasOwnProperty") renvoient une fonction, donc une valeur truthy, et
+  // passeraient ce garde. Un adhérent pouvait ainsi faire enregistrer
+  // programme = "__proto__" sur sa fiche, puis toute lecture de cette fiche
+  // par l'encadrant plantait en 500 : une donnée empoisonnée, durable.
+  if (typeof code !== 'string' || !Object.hasOwn(PROGRAMMES, code)) {
+    throw new Error(`Programme inconnu : ${code}`);
+  }
+  return PROGRAMMES[code];
 }
 
 /**

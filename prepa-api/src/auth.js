@@ -25,9 +25,12 @@ async function signer(secret, charge) {
   return base64url(await crypto.subtle.sign('HMAC', cle, encodeur.encode(charge)));
 }
 
-// Comparaison à temps constant des signatures, pour ne pas laisser fuiter
-// d'information sur la validité par la durée de l'opération.
-function egalConstant(a, b) {
+// Comparaison à temps constant, pour ne pas laisser fuiter d'information sur
+// la validité par la durée de l'opération. Sert aux signatures de jeton comme
+// aux codes d'accès : le code d'accès est le vrai secret visé par une force
+// brute, il n'y avait aucune raison de le comparer avec === pendant qu'on
+// prenait ce soin pour les signatures.
+export function egalConstant(a, b) {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
@@ -98,18 +101,32 @@ export function cookieJeton(jeton, dureeMs = DUREE_JETON) {
   return `prepa=${jeton}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${Math.floor(dureeMs / 1000)}`;
 }
 
-// Limitation de débit sur la saisie du code : au plus 10 tentatives par
-// adresse IP et par heure, pour empêcher de deviner le code admin par force
-// brute. S'appuie sur la table "tentatives" (ip, heure, compte) créée par la
-// migration 0001_init.sql.
+// Nombre de tentatives tolérées par adresse IP et par heure sur la saisie du
+// code. Seuil unique du projet : index.js et les tests l'importent d'ici au
+// lieu d'en garder une copie, deux copies finissant tôt ou tard par diverger.
+export const LIMITE_TENTATIVES = 10;
+
+/** Clé de compteur : l'heure UTC en cours, au format "AAAA-MM-JJTHH". */
+function heureCourante() {
+  return new Date().toISOString().slice(0, 13);
+}
+
+// Limitation de débit sur la saisie du code : au plus LIMITE_TENTATIVES
+// tentatives par adresse IP et par heure, pour empêcher de deviner le code
+// admin par force brute. S'appuie sur la table "tentatives" (ip, heure,
+// compte) créée par la migration 0001_init.sql.
 //
-// À appeler avant la comparaison du code, dans l'endpoint de connexion à
-// écrire ensuite. Pour l'instant elle incrémente à chaque appel sans
-// distinguer succès et échec ; idéalement il faudra ne comptabiliser que les
-// échecs, faute de quoi un adhérent qui enchaîne dix connexions réussies se
-// bloquerait lui-même.
+// À appeler AVANT la comparaison du code, et sans lecture préalable : cette
+// fonction compte et décide en une seule requête atomique. C'est tout l'objet
+// du INSERT ... ON CONFLICT ... RETURNING ci-dessous, et c'est ce qui interdit
+// de la remplacer par un « je lis le compteur, je compare, j'écris plus loin ».
+//
+// Elle compte donc tous les appels, réussis comme ratés. Pour qu'un adhérent
+// qui tape le bon code ne se bloque pas lui-même, c'est le succès qui se
+// décompte après coup, via oublierTentative() : voir routeSession dans
+// index.js.
 export async function debitDepasse(db, ip) {
-  const heure = new Date().toISOString().slice(0, 13);
+  const heure = heureCourante();
   // Purge des heures révolues à chaque appel : pas de tâche de purge séparée
   // à orchestrer, et la table ne conserve jamais plus que l'heure courante
   // (et l'heure qu'elle est en train de remplacer).
@@ -124,5 +141,20 @@ export async function debitDepasse(db, ip) {
      ON CONFLICT(ip, heure) DO UPDATE SET compte = compte + 1
      RETURNING compte`
   ).bind(ip, heure).first();
-  return (ligne?.compte ?? 0) > 10;
+  return (ligne?.compte ?? 0) > LIMITE_TENTATIVES;
+}
+
+/**
+ * Retire du compteur la tentative qui vient d'aboutir. Une connexion réussie
+ * ne doit rien coûter à l'adhérent : sans ce décompte, dix visites légitimes
+ * dans l'heure le bloqueraient comme une force brute.
+ *
+ * Une seule requête, elle aussi : le décrément est calculé par la base, jamais
+ * par une lecture suivie d'une écriture.
+ */
+export async function oublierTentative(db, ip) {
+  await db
+    .prepare('UPDATE tentatives SET compte = compte - 1 WHERE ip = ? AND heure = ? AND compte > 0')
+    .bind(ip, heureCourante())
+    .run();
 }

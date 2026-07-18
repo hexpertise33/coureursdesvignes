@@ -20,7 +20,15 @@
 //      se retrouver dans une réponse par simple oubli : il faudra l'ajouter
 //      ici explicitement.
 
-import { creerJeton, cookieJeton, roleDepuisRequete, debitDepasse, DUREE_JETON } from './auth.js';
+import {
+  creerJeton,
+  cookieJeton,
+  roleDepuisRequete,
+  debitDepasse,
+  oublierTentative,
+  egalConstant,
+  DUREE_JETON,
+} from './auth.js';
 import { estPubliee, instantPublication, semaineCourante } from './calendrier.js';
 import { creerOuTrouver, parId, nomAffiche } from './coureurs.js';
 import { PROGRAMMES, semaineDuProgramme } from './programmes/index.js';
@@ -28,10 +36,19 @@ import { ZONES, zonesSecondairesDe } from './programmes/seances.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 
-// Nombre de codes erronés tolérés par adresse IP et par heure. La limite est
-// décidée ici plutôt que dans auth.js parce que c'est cette route qui sait
-// distinguer un échec d'un succès.
-const LIMITE_TENTATIVES = 10;
+// En-têtes de cache par défaut. La charge d'une route authentifiée dépend du
+// rôle porté par le cookie : la même URL renvoie seize semaines complètes à
+// l'encadrant et le seul calendrier de parution à un coureur. Sans le dire
+// explicitement, un cache mutualisé en amont, ou une règle de cache Cloudflare
+// posée un jour sur /api/*, pourrait resservir la réponse de l'encadrant au
+// premier coureur venu. Le fichier _headers du site ne couvre pas ce Worker,
+// c'est donc ici que ça se joue. no-store plutôt que private : rien de ce que
+// sert cette API ne gagne à être conservé, ni en amont ni dans le navigateur.
+const ENTETES_PRIVES = { 'cache-control': 'no-store', vary: 'Cookie' };
+
+// Seule exception, la ressource publique : les zones d'intensité sont les
+// mêmes pour tout le monde et ne dépendent d'aucun cookie.
+const ENTETES_PUBLICS = { 'cache-control': 'public, max-age=3600', vary: 'Accept-Encoding' };
 
 // Routes qui exigent une session. Elles sont listées pour que le contrôle du
 // cookie n'intercepte pas les chemins inconnus : une URL qui n'existe pas
@@ -41,7 +58,7 @@ const ROUTES_PROTEGEES = new Set(['/api/coureur', '/api/programme', '/api/semain
 export function json(donnees, statut = 200, entetes = {}) {
   return new Response(JSON.stringify(donnees), {
     status: statut,
-    headers: { ...JSON_HEADERS, ...entetes },
+    headers: { ...JSON_HEADERS, ...ENTETES_PRIVES, ...entetes },
   });
 }
 
@@ -148,54 +165,51 @@ function vueCoureur(c) {
 // Session
 // ---------------------------------------------------------------------------
 
-/**
- * Compte les tentatives déjà enregistrées pour cette IP dans l'heure en
- * cours, sans rien incrémenter.
- *
- * debitDepasse() compte tous les appels, réussis comme ratés (voir son
- * commentaire dans auth.js) : l'appeler d'emblée à chaque connexion
- * bloquerait au bout de dix visites un adhérent qui tape pourtant le bon
- * code. On sépare donc les deux gestes : cette lecture décide si l'IP est
- * déjà bloquée, et debitDepasse() n'est appelée qu'après un échec avéré.
- *
- * L'ordre compte. La lecture précède la comparaison du code, sinon une IP
- * bloquée continuerait à faire évaluer ses codes et la limite ne freinerait
- * plus la force brute.
- */
-async function tentativesRecentes(db, ip) {
-  const heure = new Date().toISOString().slice(0, 13);
-  const ligne = await db
-    .prepare('SELECT compte FROM tentatives WHERE ip = ? AND heure = ?')
-    .bind(ip, heure)
-    .first();
-  return ligne?.compte ?? 0;
-}
-
 function roleDuCode(code, env) {
   // Le test de type n'est pas décoratif : sans lui, une requête sans champ
   // "code" comparerait undefined à une variable d'environnement absente et
   // les deux seraient égales, ce qui ouvrirait une session à qui n'a rien
   // fourni si un binding venait à manquer en production.
   if (typeof code !== 'string' || code.length === 0) return null;
-  if (env.CODE_ADMIN && code === env.CODE_ADMIN) return 'admin';
-  if (env.CODE_COUREUR && code === env.CODE_COUREUR) return 'coureur';
+  // Comparaison à temps constant, comme pour les signatures de jeton : c'est
+  // le code d'accès que cherche une force brute.
+  if (env.CODE_ADMIN && egalConstant(code, env.CODE_ADMIN)) return 'admin';
+  if (env.CODE_COUREUR && egalConstant(code, env.CODE_COUREUR)) return 'coureur';
   return null;
 }
 
+/**
+ * Ouvre une session contre un code d'accès.
+ *
+ * Le contrôle de débit tient en une seule requête atomique, posée avant toute
+ * comparaison de code. Deux propriétés en dépendent, dans cet ordre :
+ *
+ *   1. Atomicité. debitDepasse() compte et décide d'un seul coup. Lire le
+ *      compteur ici puis l'incrémenter quelques instructions plus loin
+ *      ouvrirait entre les deux une fenêtre où N requêtes concurrentes de la
+ *      même IP liraient toutes le même compteur et feraient toutes évaluer
+ *      leur code. Le D1 local sérialise et masque cette fenêtre ; le D1 de
+ *      production, réparti sur plusieurs isolats, ne la masquera pas.
+ *   2. Antériorité. Le comptage précède la comparaison du code, sinon une IP
+ *      déjà bloquée continuerait à faire évaluer ses codes et la limite ne
+ *      freinerait plus rien.
+ *
+ * Un adhérent légitime n'est pour autant jamais bloqué : sa tentative est bien
+ * comptée comme les autres, puis décomptée dès qu'elle aboutit. C'est le
+ * succès qui ne coûte rien, pas la tentative qui échappe au compteur.
+ */
 async function routeSession(request, env) {
   const ip = request.headers.get('cf-connecting-ip') || 'inconnue';
-  const trop = json({ erreur: 'Trop de tentatives. Réessaie dans une heure.' }, 429);
 
-  if ((await tentativesRecentes(env.DB, ip)) >= LIMITE_TENTATIVES) return trop;
+  if (await debitDepasse(env.DB, ip)) {
+    return json({ erreur: 'Trop de tentatives. Réessaie dans une heure.' }, 429);
+  }
 
   const { code } = await corps(request);
   const role = roleDuCode(code, env);
-  if (!role) {
-    // Seuls les échecs alimentent le compteur.
-    const bloque = await debitDepasse(env.DB, ip);
-    return bloque ? trop : json({ erreur: "Code d'accès incorrect." }, 401);
-  }
+  if (!role) return json({ erreur: "Code d'accès incorrect." }, 401);
 
+  await oublierTentative(env.DB, ip);
   const jeton = await creerJeton(env.SECRET_JETON, role, DUREE_JETON);
   return json({ role }, 200, { 'set-cookie': cookieJeton(jeton, DUREE_JETON) });
 }
@@ -229,7 +243,12 @@ async function contexteLecture(url, env, estAdmin) {
   }
 
   const code = url.searchParams.get('programme') || coureur?.programme || null;
-  const p = code ? PROGRAMMES[code] : null;
+  // Object.hasOwn et non PROGRAMMES[code] : "constructor", "__proto__",
+  // "toString", "valueOf" ou "hasOwnProperty" remontent une fonction héritée
+  // d'Object.prototype, que le garde de nullité laisserait passer. La suite
+  // appellerait alors .semainesContenu.map sur elle et répondrait 500 au lieu
+  // du 400 attendu.
+  const p = code && Object.hasOwn(PROGRAMMES, code) ? PROGRAMMES[code] : null;
   if (!p) return { erreur: 'Programme inconnu.' };
 
   const faitIzon = coureur ? coureur.fait_izon === 1 : paramVrai(url.searchParams.get('izon'));
@@ -342,42 +361,56 @@ async function routeCoureur(request, env) {
   }
 }
 
+/**
+ * Aiguillage des routes. `methode` vaut déjà GET pour une requête HEAD (voir
+ * fetch ci-dessous), une route de lecture n'a donc pas à connaître HEAD.
+ */
+async function router(request, env, methode) {
+  const url = new URL(request.url);
+  const chemin = url.pathname;
+
+  if (chemin === '/api/sante') return json({ ok: true });
+
+  // Les zones d'intensité sont la seule ressource publique : la page qui
+  // les explique doit rester consultable avant la saisie du code, et elles
+  // ne disent rien du programme de qui que ce soit. C'est aussi leur unique
+  // source, le front ne les redéfinit jamais de son côté.
+  if (chemin === '/api/zones') {
+    if (methode !== 'GET') return methodeRefusee();
+    return json({ zones: ZONES }, 200, ENTETES_PUBLICS);
+  }
+
+  if (chemin === '/api/session') {
+    if (methode !== 'POST') return methodeRefusee();
+    return routeSession(request, env);
+  }
+
+  if (!ROUTES_PROTEGEES.has(chemin)) return json({ erreur: 'route inconnue' }, 404);
+
+  const role = await roleDepuisRequete(request, env);
+  if (!role) return json({ erreur: 'Accès refusé.' }, 401);
+  const estAdmin = role === 'admin';
+
+  if (chemin === '/api/coureur') {
+    if (methode !== 'POST') return methodeRefusee();
+    return routeCoureur(request, env);
+  }
+
+  if (methode !== 'GET') return methodeRefusee();
+  if (chemin === '/api/programme') return routeProgramme(url, env, estAdmin);
+  return routeSemaine(url, env, estAdmin);
+}
+
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-    const chemin = url.pathname;
-    const methode = request.method;
-
-    if (chemin === '/api/sante') return json({ ok: true });
-
-    // Les zones d'intensité sont la seule ressource publique : la page qui
-    // les explique doit rester consultable avant la saisie du code, et elles
-    // ne disent rien du programme de qui que ce soit. C'est aussi leur unique
-    // source, le front ne les redéfinit jamais de son côté.
-    if (chemin === '/api/zones') {
-      if (methode !== 'GET') return methodeRefusee();
-      return json({ zones: ZONES });
-    }
-
-    if (chemin === '/api/session') {
-      if (methode !== 'POST') return methodeRefusee();
-      return routeSession(request, env);
-    }
-
-    if (!ROUTES_PROTEGEES.has(chemin)) return json({ erreur: 'route inconnue' }, 404);
-
-    const role = await roleDepuisRequete(request, env);
-    if (!role) return json({ erreur: 'Accès refusé.' }, 401);
-    const estAdmin = role === 'admin';
-
-    if (chemin === '/api/coureur') {
-      if (methode !== 'POST') return methodeRefusee();
-      return routeCoureur(request, env);
-    }
-
-    if (methode !== 'GET') return methodeRefusee();
-    if (chemin === '/api/programme') return routeProgramme(url, env, estAdmin);
-    return routeSemaine(url, env, estAdmin);
+    // HTTP demande que HEAD soit accepté partout où GET l'est, avec les mêmes
+    // en-têtes et sans corps. La requête est donc traitée comme un GET, puis
+    // le corps est retiré de la réponse. Sans cela une sonde de supervision,
+    // qui interroge volontiers en HEAD, signalerait l'API comme cassée.
+    const estHead = request.method === 'HEAD';
+    const reponse = await router(request, env, estHead ? 'GET' : request.method);
+    if (!estHead) return reponse;
+    return new Response(null, { status: reponse.status, headers: reponse.headers });
   },
 
   async scheduled(event, env, ctx) {
