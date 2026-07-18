@@ -6,7 +6,9 @@ export const ZONES = Object.freeze({
   Z5: { nom: 'VMA', fcMin: 92, fcMax: 100, sensation: 'Aucun mot possible.' },
 });
 
-const COURSE_CODES = new Set(['EF', 'SL', 'TEMPO', 'SEUIL', 'VMA', 'RECUP', 'COURSE']);
+// Toutes les seances de course a pied, renfo exclu. Ne pas confondre avec le
+// code 'COURSE', qui designe la seule course objectif et n'est qu'un membre.
+const CODES_HORS_RENFO = new Set(['EF', 'SL', 'TEMPO', 'SEUIL', 'VMA', 'RECUP', 'COURSE']);
 
 function verifierTexte(...textes) {
   for (const t of textes) {
@@ -39,7 +41,7 @@ export function course(nom, distance, duree, description, objectif) {
 
 export function semaine(numero, phase, titre, intention, seances) {
   verifierTexte(titre, intention);
-  const courses = seances.filter((s) => COURSE_CODES.has(s.code));
+  const courses = seances.filter((s) => CODES_HORS_RENFO.has(s.code));
   const renfos = seances.filter((s) => s.code === 'RENFO');
   if (courses.length !== 3) {
     throw new Error(`Semaine ${numero} : 3 séances de course attendues, ${courses.length} trouvées.`);
