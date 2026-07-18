@@ -4,9 +4,9 @@ import { verifierProgramme } from '../src/programmes/regles.js';
 import { P1 } from '../src/programmes/p1-10km-izon.js';
 import { P2 } from '../src/programmes/p2-10km-bordeaux.js';
 import { P3 } from '../src/programmes/p3-semi-bordeaux.js';
-import * as programmesIzon from '../src/programmes/p1-10km-izon.js';
-import * as programmes10kmBordeaux from '../src/programmes/p2-10km-bordeaux.js';
-import * as programmesSemiBordeaux from '../src/programmes/p3-semi-bordeaux.js';
+// P1 à P3 restent importés nommément pour les tests qui leur sont propres. Les
+// contrôles transverses, eux, passent par le registre découvert plus bas : les
+// imports de modules un par un ont disparu avec lui.
 
 describe('zones', () => {
   it('couvre Z1 à Z5 avec des fourchettes croissantes et jointives', () => {
@@ -469,6 +469,147 @@ describe("P1, 10 km d'Izon", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Registre des programmes, découvert automatiquement.
+// ---------------------------------------------------------------------------
+// Les contrôles transverses (cohérence de zone, non-recopie d'un programme à
+// l'autre) doivent couvrir tout programme du projet, P4 et P5 compris quand ils
+// seront écrits, sans que personne ait à penser à les inscrire quelque part.
+// Le registre est donc construit par découverte des modules du dossier et non
+// par énumération : déposer un fichier p4-*.js suffit à le soumettre à ces
+// tests. C'est exactement ce qui a manqué au filet précédent, une liste écrite
+// à la main qui ne regardait que P1.
+const MODULES_PROGRAMMES = import.meta.glob('../src/programmes/p*.js', { eager: true });
+
+const PROGRAMMES = Object.values(MODULES_PROGRAMMES)
+  .flatMap((m) => Object.values(m))
+  .filter((p) => p && Array.isArray(p.semainesContenu))
+  .sort((a, b) => a.code.localeCompare(b.code));
+
+// Les semaines à variantes n'exposent par défaut que la variante sansIzon dans
+// leur champ `seances` : la variante avecIzon échapperait donc aux contrôles.
+// On la présente comme un contenu supplémentaire d'une seule semaine, pour que
+// ses séances soient vérifiées comme les autres. `origine` retient le
+// programme dont elle provient : deux variantes d'une même semaine d'un même
+// programme ne sont pas deux programmes distincts.
+const VARIANTES_AVEC_IZON = PROGRAMMES.flatMap((p) =>
+  p.semainesContenu
+    .filter((s) => s.variantes)
+    .map((s) => ({
+      code: `${p.code} (variante avecIzon)`,
+      origine: p.code,
+      semainesContenu: [s.variantes.avecIzon],
+    })),
+);
+
+const TOUS_LES_CONTENUS = [...PROGRAMMES, ...VARIANTES_AVEC_IZON];
+
+describe('registre des programmes', () => {
+  it('se construit par découverte du dossier, sans liste écrite en dur', () => {
+    // Un module de programme = un programme exporté. Si la découverte ramenait
+    // moins de programmes que de fichiers, les contrôles transverses
+    // passeraient en ne vérifiant rien, ce qui est le pire des cas.
+    expect(PROGRAMMES.length).toBe(Object.keys(MODULES_PROGRAMMES).length);
+    expect(PROGRAMMES.length).toBeGreaterThanOrEqual(3);
+
+    // Les programmes importés nommément en tête de fichier doivent être
+    // exactement les objets que la découverte trouve.
+    for (const p of [P1, P2, P3]) expect(PROGRAMMES).toContain(p);
+    expect(VARIANTES_AVEC_IZON.map((v) => v.code)).toEqual([
+      'P2 (variante avecIzon)',
+      'P3 (variante avecIzon)',
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Filet anti-recopie d'un programme à l'autre.
+// ---------------------------------------------------------------------------
+// La recopie verbatim est le défaut récurrent de ce chantier : commise une
+// première fois de P1 vers P2 et attrapée, puis une seconde fois de P2 vers P3
+// et passée à travers. Le filet précédent avait trois angles morts qui
+// expliquent exactement ce qui est passé : il ne comparait que les
+// descriptions, uniquement contre P1, et jamais le champ `objectif`. Or c'est
+// l'objectif, le « pourquoi » de la séance, qui fait la valeur de ces textes et
+// qui est le plus tentant à recopier puisqu'il est le plus court.
+//
+// Ce filet-ci compare tous les programmes deux à deux, sur la description ET
+// sur l'objectif, et s'appuie sur le registre découvert automatiquement : P4 et
+// P5 seront couverts sans qu'on ait à toucher ce test.
+//
+// Pas de seuil de similarité. Deux textes ne sont en collision que s'ils sont
+// rigoureusement identiques une fois la casse et les espaces normalisés. C'est
+// le critère le plus étroit possible, et c'est délibéré : il ne peut pas crier
+// au loup sur deux formulations seulement voisines, et il ne peut pas non plus
+// laisser repasser une séance entière recopiée. Un seuil flou aurait ces deux
+// défauts à la fois. La normalisation n'est pas une tolérance mais un
+// durcissement : elle empêche de faire taire le test en changeant une majuscule
+// ou en doublant une espace.
+//
+// Aucune exception n'est accordée aujourd'hui : les trois programmes écrits ne
+// partagent légitimement aucun texte. Si un programme ultérieur avait un besoin
+// réel de répéter une formulation très courte et purement fonctionnelle, la
+// dérogation doit être nommée ici, emplacement par emplacement, et justifiée.
+describe("non-recopie des textes d'un programme à l'autre", () => {
+  const normaliser = (texte) => texte.replace(/\s+/g, ' ').trim().toLowerCase();
+  const extrait = (texte) => (texte.length > 90 ? `${texte.slice(0, 90)}...` : texte);
+
+  // Chaque texte affiché au coureur, repéré par son emplacement exact.
+  // `programme` est le programme d'appartenance : les deux variantes de la S9
+  // d'un même programme partagent ce champ, elles ne sont pas deux programmes.
+  const emplacements = TOUS_LES_CONTENUS.flatMap((prg) =>
+    prg.semainesContenu.flatMap((sem) =>
+      sem.seances.flatMap((seance) =>
+        ['description', 'objectif'].map((champ) => ({
+          programme: prg.origine ?? prg.code,
+          ou: `${prg.code} S${sem.numero} ${seance.code}`,
+          champ,
+          brut: seance[champ],
+          texte: normaliser(seance[champ]),
+        })),
+      ),
+    ),
+  );
+
+  it('ne partage aucune description ni aucun objectif entre deux programmes', () => {
+    // Ancre de sécurité : si l'extraction se cassait, la comparaison serait
+    // vide et le test passerait en ne vérifiant rien.
+    expect(emplacements.length).toBeGreaterThan(200);
+    expect(emplacements.some((e) => e.champ === 'objectif')).toBe(true);
+
+    // Regroupement par couple (champ, texte normalisé). Comparer les groupes
+    // revient à comparer tous les programmes deux à deux, en une seule passe.
+    const parTexte = new Map();
+    for (const e of emplacements) {
+      const cle = `${e.champ} ${e.texte}`;
+      if (!parTexte.has(cle)) parTexte.set(cle, []);
+      parTexte.get(cle).push(e);
+    }
+
+    const collisions = [];
+    for (const groupe of parTexte.values()) {
+      if (groupe.length < 2) continue;
+      for (let i = 0; i < groupe.length; i++) {
+        for (let j = i + 1; j < groupe.length; j++) {
+          const [a, b] = [groupe[i], groupe[j]];
+          if (a.programme === b.programme) continue;
+          collisions.push(
+            `${a.ou} et ${b.ou} ont le même ${a.champ} : « ${extrait(a.brut)} »`,
+          );
+        }
+      }
+    }
+
+    expect(
+      collisions,
+      collisions.length === 0
+        ? ''
+        : `Textes recopiés d'un programme à l'autre :\n  ${collisions.join('\n  ')}\n` +
+          `Chaque séance doit expliquer sa propre charge et son propre enjeu : une fin de préparation de semi n'a ni la charge accumulée ni la fatigue d'une fin de préparation de 10 km.`,
+    ).toEqual([]);
+  });
+});
+
 // Verrou général contre l'incohérence de zone. Le bug d'origine : une séance
 // construite avec vma(), donc estampillée Z5 par la fabrique, dont la
 // description rédigée décrivait du 5 fois 1 min en Z4. L'application affiche la
@@ -487,33 +628,15 @@ describe('cohérence entre la zone portée par la séance et les zones citées d
   // séance en avait besoin ; la sortie longue de S8 déclare désormais Z3 et
   // toutes les autres sont contrôlées normalement. Le plancher, lui, n'a
   // jamais de dérogation : une séance cite toujours sa propre zone.
-  // Registre des programmes soumis au contrôle. Tout module de programme
-  // ajouté au projet doit être listé ici, sans quoi son contenu échapperait
-  // silencieusement au test.
-  const modules = [programmesIzon, programmes10kmBordeaux, programmesSemiBordeaux];
-  const exportes = modules
-    .flatMap((m) => Object.values(m))
-    .filter((p) => p && Array.isArray(p.semainesContenu));
+  // Le registre est partagé et découvert automatiquement (voir plus haut).
+  const programmes = TOUS_LES_CONTENUS;
 
-  // Les semaines à variantes n'exposent par défaut que la variante sansIzon
-  // dans leur champ `seances` : la variante avecIzon serait donc invisible du
-  // contrôle. On l'ajoute au registre sous la forme d'un programme fictif
-  // d'une seule semaine, pour que ses séances soient vérifiées comme les
-  // autres.
-  const variantesAvecIzon = exportes.flatMap((p) =>
-    p.semainesContenu
-      .filter((s) => s.variantes)
-      .map((s) => ({ code: `${p.code} (variante avecIzon)`, semainesContenu: [s.variantes.avecIzon] })),
-  );
-
-  const programmes = [...exportes, ...variantesAvecIzon];
-
-  it('couvre les trois programmes écrits et leurs variantes de semaine 9', () => {
-    expect(exportes.map((p) => p.code)).toEqual(['P1', 'P2', 'P3']);
-    expect(variantesAvecIzon.map((p) => p.code)).toEqual([
-      'P2 (variante avecIzon)',
-      'P3 (variante avecIzon)',
-    ]);
+  it('couvre tous les programmes écrits et leurs variantes de semaine 9', () => {
+    // Volontairement sans liste de codes figée : un P4 ajouté demain doit être
+    // contrôlé sans qu'on ait à modifier ce test.
+    expect(programmes.length).toBe(PROGRAMMES.length + VARIANTES_AVEC_IZON.length);
+    for (const p of PROGRAMMES) expect(programmes).toContain(p);
+    expect(programmes.flatMap((prg) => prg.semainesContenu).length).toBeGreaterThan(0);
   });
 
   it('cite toujours la zone de la séance dans sa description', () => {
@@ -703,14 +826,6 @@ describe.each([
     expect(new Set(descriptions).size).toBe(descriptions.length);
   });
 
-  it("ne reprend aucune description telle quelle à P1", () => {
-    const deP1 = new Set(P1.semainesContenu.flatMap((s) => s.seances.map((x) => x.description)));
-    const communes = p.semainesContenu
-      .flatMap((s) => s.seances.map((x) => x.description))
-      .filter((d) => deP1.has(d));
-    expect(communes).toEqual([]);
-  });
-
   it('place la Z3 avant le premier travail en Z4', () => {
     const numeroPremiereZone = (zone) =>
       p.semainesContenu.find((s) => s.seances.some((x) => x.zone === zone))?.numero;
@@ -777,11 +892,29 @@ describe.each([
   });
 
   it("n'enchaîne jamais deux semaines plus douces et ne creuse pas la sortie longue", () => {
+    // Parcours par défaut, celui du coureur qui ne prend pas de dossard à
+    // Izon : aucune semaine allégée ne suit une semaine allégée.
     const phases = p.semainesContenu.map((s) => s.phase);
     expect(phases.filter((ph) => ph === 'allegee')).toHaveLength(3);
     phases.forEach((ph, i) => {
       if (ph === 'allegee') expect(phases[i + 1]).not.toBe('allegee');
     });
+
+    // Parcours avec substitution avecIzon : il compte une exception, et une
+    // seule. S8 est allégée et la S9 à dossard l'est aussi, puisque le coureur
+    // court le dimanche. Cette exception est sportivement défendable parce que
+    // S9 n'est pas une semaine passive : la charge n'y est pas retirée mais
+    // remplacée par une course. Le test la nomme explicitement plutôt que de
+    // relâcher la règle, pour qu'une seconde exception, elle, échoue.
+    const phasesIzon = avecVariante(p, 'avecIzon').semainesContenu.map((s) => s.phase);
+    const enchainees = phasesIzon
+      .map((ph, i) => (ph === 'allegee' && phasesIzon[i + 1] === 'allegee' ? i + 1 : null))
+      .filter((n) => n !== null);
+    expect(enchainees).toEqual([8]); // S8 puis S9, et rien d'autre.
+
+    const s9Izon = p.semainesContenu[8].variantes.avecIzon;
+    expect(s9Izon.phase).toBe('allegee');
+    expect(s9Izon.seances.some((x) => x.code === 'COURSE')).toBe(true);
 
     // La sortie longue ne retombe jamais sous son plancher entre S5 et S13 :
     // c'est le creux de l'ancienne trame (35 min en S9 pour P2, 52 min pour
@@ -917,6 +1050,31 @@ describe('P3, semi-marathon de Bordeaux', () => {
       if (!s.seances.some((x) => x.code === 'VMA')) continue;
       expect(s.seances.some((x) => /lignes droites/.test(x.description))).toBe(false);
     }
+  });
+
+  // La couverture de la VMA ne tenait qu'au décompte des séances : rendre à S7
+  // son ancien seuil ne faisait échouer qu'un seul test. Celui-ci verrouille en
+  // plus la progression entre les deux séances, qui est la raison d'être de la
+  // paire. Répétitions deux fois plus longues la seconde semaine, donc moins
+  // nombreuses, pour un volume rapide qui ne recule pas.
+  it('fait progresser le format entre les deux séances de VMA', () => {
+    const seancesVma = P3.semainesContenu
+      .filter((s) => s.seances.some((x) => x.code === 'VMA'))
+      .map((s) => ({ numero: s.numero, seance: s.seances.find((x) => x.code === 'VMA') }));
+    expect(seancesVma.map((v) => v.numero)).toEqual([6, 7]);
+
+    const format = ({ description }) => {
+      const m = description.match(/(\d+) fois (\d+) min en Z5/);
+      expect(m, `format de répétitions introuvable dans : ${description}`).not.toBeNull();
+      return { repetitions: Number(m[1]), duree: Number(m[2]) };
+    };
+    const [premiere, seconde] = seancesVma.map((v) => format(v.seance));
+
+    expect(seconde.duree).toBeGreaterThan(premiere.duree);
+    expect(seconde.repetitions).toBeLessThan(premiere.repetitions);
+    expect(seconde.repetitions * seconde.duree).toBeGreaterThanOrEqual(
+      premiere.repetitions * premiere.duree,
+    );
   });
 
   it('comporte la séance spécifique de référence, 2 fois 20 min en Z3, en fin de préparation', () => {

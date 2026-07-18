@@ -22,9 +22,16 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  *
  * Ce découpage remplace l'ancienne trame, qui enchaînait deux semaines légères
  * consécutives en S8 et S9 et creusait la charge en plein milieu de la
- * préparation, sortie longue redescendue à 35 min comprise. Le coureur ne
- * passe plus jamais plus d'une semaine d'affilée en dessous de sa charge de
- * travail.
+ * préparation, sortie longue redescendue à 35 min comprise. Sur le parcours
+ * par défaut, celui du coureur qui ne prend pas de dossard à Izon, deux
+ * semaines allégées ne se suivent plus jamais.
+ *
+ * Le parcours avec Izon fait exception, et c'est la seule : S8 est allégée, et
+ * la S9 en variante avecIzon l'est aussi, puisque le coureur court le dimanche
+ * 27 septembre. Ces deux semaines-là s'enchaînent bel et bien. La différence
+ * avec l'ancienne trame est qu'ici la charge n'est pas retirée mais remplacée :
+ * S9 est une semaine de course-test, pas une semaine passive, et un dossard de
+ * 10 km couru à fond vaut largement une séance dure.
  *
  * La liste blanche des phases ne connaît que trois étiquettes de bloc. Le
  * quatrième cycle, réduit à la seule S13, est donc étiqueté bloc3 lui aussi :
@@ -602,7 +609,7 @@ export const P2 = {
         recup(
           25,
           "25 min en Z1, deux ou trois jours après la course. Si les jambes sont encore raides, remplace par 30 min de marche, le bénéfice est le même.",
-          "Relancer la circulation pour évacuer les courbatures plus vite qu'en restant assis.",
+          "Faire circuler le sang dans des jambes qui viennent de vider leurs réserves sur un 10 km couru à fond, ce qui nettoie l'effort bien plus vite que trois jours de canapé.",
         ),
         recup(
           30,

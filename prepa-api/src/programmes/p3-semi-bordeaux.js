@@ -23,9 +23,17 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  *
  * Ce découpage remplace la trame précédente, qui posait deux semaines légères
  * l'une derrière l'autre en S8 et S9 et ouvrait un creux en plein milieu des
- * quinze semaines, sortie longue retombée à 52 min comprise. Le coureur ne
- * reste désormais jamais plus de sept jours d'affilée sous sa charge de
- * travail.
+ * quinze semaines, sortie longue retombée à 52 min comprise. Sur le parcours
+ * par défaut, celui du coureur qui ne prend pas de dossard à Izon, deux
+ * semaines allégées ne se suivent plus jamais.
+ *
+ * Le parcours avec Izon fait exception, et c'est la seule : S8 est allégée, et
+ * la S9 en variante avecIzon l'est aussi, puisque le coureur court le 10 km
+ * d'Izon le dimanche 27 septembre. Ces deux semaines-là s'enchaînent bel et
+ * bien. La différence avec l'ancienne trame est qu'ici la charge n'est pas
+ * retirée mais remplacée : S9 est une semaine de course-test, pas une semaine
+ * passive, et sur une préparation de semi un 10 km couru à fond est un
+ * excellent repère d'allure à mi-parcours.
  *
  * La liste blanche des phases ne connaît que trois étiquettes de bloc. Le
  * quatrième cycle, réduit à la seule S13, porte donc l'étiquette bloc3 lui
@@ -287,7 +295,7 @@ export const P3 = {
         renfo(
           18,
           "2 séries de : 35 s de planche, 12 squats, 10 fentes par jambe, puis 7 min d'étirements lents des mollets, des ischios et des fessiers.",
-          "Rester actif sans créer la moindre courbature pendant la semaine censée effacer la fatigue.",
+          "Garder des appuis toniques alors que la sortie longue commence déjà à peser sur les hanches, sans rien ajouter à une semaine dont le rôle est de retirer de la fatigue.",
         ),
       ],
     ),
@@ -399,7 +407,7 @@ export const P3 = {
         sl(
           80,
           "1 h 20 en Z2, dix minutes de moins qu'au sommet du cycle. Elle reste facile intégralement : si tu accélères sur la fin, tu as manqué l'objectif.",
-          "Conserver l'acquis d'endurance pendant une semaine sans intensité, le fond ne se garde qu'en le pratiquant.",
+          "Tenir le pilier du programme : sur semi, l'habitude de courir longtemps se perd bien plus vite qu'elle ne se construit, et une semaine plus douce n'est pas une raison de l'interrompre.",
         ),
         renfo(
           18,
@@ -570,7 +578,7 @@ export const P3 = {
         renfo(
           15,
           "2 séries de : 40 s de planche ventrale, 25 s de gainage latéral par côté, 12 squats lents. Puis 5 min d'étirements doux.",
-          "Entretenir la posture sans provoquer la moindre courbature à moins de deux semaines de la course.",
+          "Rappeler le gainage qui tiendra le buste droit dans la deuxième heure de course, quand la posture lâche avant les jambes, sans rien réclamer à un corps qui porte déjà treize semaines de sorties longues.",
         ),
       ],
     ),
@@ -600,8 +608,8 @@ export const P3 = {
         ),
         renfo(
           12,
-          "Une seule séance en début de semaine : 2 séries de 30 s de planche ventrale et 5 min de mobilité des hanches et des chevilles. Rien à partir du mercredi.",
-          "Garder le corps réveillé sans rien lui demander, le travail de fond est terminé depuis longtemps.",
+          "Lundi seulement : 6 min de mobilité des hanches, des chevilles et du haut du dos, puis 2 séries de 20 s de gainage ventral. Ensuite plus rien du tout jusqu'à dimanche.",
+          "Dérouiller sans le solliciter un corps qui sort de quinze semaines de sorties longues, la seule chose qui puisse encore changer d'ici dimanche est le niveau de fraîcheur.",
         ),
       ],
     ),
