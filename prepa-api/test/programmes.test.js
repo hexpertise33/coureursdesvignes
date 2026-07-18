@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ZONES, ef, sl, vma, seuil, recup, renfo, course, semaine, volume, volumeHorsCourse } from '../src/programmes/seances.js';
+import { ZONES, ef, sl, vma, seuil, recup, renfo, course, semaine, volume, volumeHorsCourse, zonesSecondairesDe } from '../src/programmes/seances.js';
 import { verifierProgramme } from '../src/programmes/regles.js';
 import { P1 } from '../src/programmes/p1-10km-izon.js';
 import * as programmesIzon from '../src/programmes/p1-10km-izon.js';
@@ -407,6 +407,40 @@ describe("P1, 10 km d'Izon", () => {
     expect(numeroPremiereZone('Z3')).toBeLessThan(numeroPremiereZone('Z4'));
   });
 
+  // Décision de l'encadrant : sans lignes droites, un coureur passe six
+  // semaines sans le moindre effort bref puis découvre la vitesse d'un coup en
+  // S7. Elles arrivent à la fin du premier bloc, soit S3 pour P1, et jamais
+  // avant. Le format est verrouillé ici pour que P2 à P5 s'alignent dessus.
+  it('introduit des lignes droites en Z5 à la fin du bloc 1, puis les entretient', () => {
+    const estLigneDroite = (x) =>
+      /lignes droites/.test(x.description) && zonesSecondairesDe(x).includes('Z5');
+    const semainesAvecLignes = P1.semainesContenu
+      .filter((s) => s.seances.some(estLigneDroite))
+      .map((s) => s.numero);
+
+    // Le bloc 1 couvre S1 à S3 : introduction en S3, jamais avant.
+    const finBloc1 = Math.max(
+      ...P1.semainesContenu.filter((s) => s.phase === 'bloc1').map((s) => s.numero),
+    );
+    expect(finBloc1).toBe(3);
+    expect(semainesAvecLignes[0]).toBe(finBloc1);
+    expect(semainesAvecLignes.every((n) => n >= finBloc1)).toBe(true);
+
+    // Entretenues ensuite, mais pas pendant la semaine de course.
+    expect(semainesAvecLignes.length).toBeGreaterThanOrEqual(3);
+    expect(semainesAvecLignes).not.toContain(9);
+
+    // Toujours en fin d'endurance fondamentale, et au format prescrit :
+    // 4 à 6 accélérations de 15 à 20 s, récupération en marchant.
+    for (const s of P1.semainesContenu) {
+      for (const seance of s.seances.filter(estLigneDroite)) {
+        expect(seance.code).toBe('EF');
+        expect(seance.description).toMatch(/[456] lignes droites de (15|20) s en Z5/);
+        expect(seance.description).toMatch(/marche/);
+      }
+    }
+  });
+
   it("n'emploie jamais de tiret cadratin dans les textes affichés", () => {
     const textes = P1.semainesContenu.flatMap((s) => [
       s.titre,
@@ -441,14 +475,14 @@ describe("P1, 10 km d'Izon", () => {
 describe('cohérence entre la zone portée par la séance et les zones citées dans sa description', () => {
   const ORDRE_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
   const zonesCitees = (texte) => [...new Set(texte.match(/Z[1-5]/g) ?? [])];
-  // La sortie longue est la seule exception au plafond de zone, et c'est une
-  // exception voulue : finir une sortie longue par quelques blocs en Z3 est une
-  // pratique classique et utile pour un 10 km. La séance reste très
-  // majoritairement en Z2, donc la fabrique sl() et sa zone Z2 restent le bon
-  // affichage. Le plancher, lui, s'applique quand même : une sortie longue doit
-  // citer sa Z2.
-  const SANS_PLAFOND = new Set(['SL']);
-
+  // La dérogation au plafond n'est plus accordée par fabrique mais séance par
+  // séance : seule une séance qui a explicitement déclaré une zone secondaire
+  // (4e argument des fabriques, voir seances.js) peut citer cette zone-là, et
+  // elle seule. L'ancienne dérogation globale accordée à sl() dispensait du
+  // contrôle toutes les sorties longues des cinq programmes alors qu'une seule
+  // séance en avait besoin ; la sortie longue de S8 déclare désormais Z3 et
+  // toutes les autres sont contrôlées normalement. Le plancher, lui, n'a
+  // jamais de dérogation : une séance cite toujours sa propre zone.
   const programmes = Object.values(programmesIzon).filter((p) => p && Array.isArray(p.semainesContenu));
 
   it('couvre au moins un programme', () => {
@@ -470,19 +504,55 @@ describe('cohérence entre la zone portée par la séance et les zones citées d
     }
   });
 
-  it("ne cite jamais une zone plus dure que celle affichée par la séance", () => {
+  it("ne cite jamais une zone plus dure que celle affichée, sauf zone secondaire déclarée", () => {
     for (const prg of programmes) {
       for (const sem of prg.semainesContenu) {
         for (const seance of sem.seances) {
-          if (seance.zone === null || SANS_PLAFOND.has(seance.code)) continue;
+          if (seance.zone === null) continue;
           const plafond = ORDRE_ZONES.indexOf(seance.zone);
-          const plusDures = zonesCitees(seance.description).filter((z) => ORDRE_ZONES.indexOf(z) > plafond);
+          const declarees = zonesSecondairesDe(seance);
+          const plusDures = zonesCitees(seance.description)
+            .filter((z) => ORDRE_ZONES.indexOf(z) > plafond)
+            .filter((z) => !declarees.includes(z));
           expect(
             plusDures,
-            `${prg.code} S${sem.numero} ${seance.code} : la séance affiche ${seance.zone} mais sa description monte jusqu'à ${plusDures.join(', ')}.`,
+            `${prg.code} S${sem.numero} ${seance.code} : la séance affiche ${seance.zone} mais sa description monte jusqu'à ${plusDures.join(', ')} sans l'avoir déclaré en zone secondaire.`,
           ).toEqual([]);
         }
       }
     }
+  });
+});
+
+// Le mécanisme de zone secondaire est la brique que réutiliseront P2 à P5. Ces
+// tests verrouillent ses garde-fous : une déclaration doit être exacte, utile
+// et honnête, sinon elle devient une dérogation globale déguisée.
+describe('déclaration de zone secondaire', () => {
+  it("expose la zone déclarée et la garde absente des séances qui n'en déclarent pas", () => {
+    const avec = ef(35, '25 min en Z2 puis 6 lignes droites de 20 s en Z5.', 'Entretenir la foulée.', {
+      zonesSecondaires: ['Z5'],
+    });
+    expect(avec.zonesSecondaires).toEqual(['Z5']);
+    expect(zonesSecondairesDe(avec)).toEqual(['Z5']);
+
+    const sans = ef(40, '40 min en Z2.', "Construire l'endurance.");
+    expect(sans).not.toHaveProperty('zonesSecondaires');
+    expect(zonesSecondairesDe(sans)).toEqual([]);
+  });
+
+  it('refuse une zone secondaire inconnue', () => {
+    expect(() => ef(35, '35 min en Z2.', 'Objectif.', { zonesSecondaires: ['Z9'] })).toThrow(/inconnue/);
+  });
+
+  it('refuse une zone secondaire identique à la zone de la séance', () => {
+    expect(() => ef(35, '35 min en Z2.', 'Objectif.', { zonesSecondaires: ['Z2'] })).toThrow(/déclaration inutile/);
+  });
+
+  it('refuse une zone secondaire déclarée mais jamais citée dans la description', () => {
+    expect(() => ef(35, '35 min en Z2.', 'Objectif.', { zonesSecondaires: ['Z5'] })).toThrow(/jamais citée/);
+  });
+
+  it('refuse une zone secondaire sur une séance qui ne porte aucune zone', () => {
+    expect(() => renfo(20, 'Gainage, puis Z5.', 'Objectif.', { zonesSecondaires: ['Z5'] })).toThrow(/sans zone/);
   });
 });

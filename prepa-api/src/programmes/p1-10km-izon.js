@@ -20,11 +20,36 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  * de Z4 raccourci. Une seule séance dure par semaine, toujours encadrée
  * par deux séances faciles.
  *
+ * Lignes droites, décision de l'encadrant. Des accélérations de 15 à 20 s en
+ * Z5 sont placées en fin d'endurance fondamentale à partir de la fin du
+ * premier bloc, donc en S3 pour ce programme, puis entretenues en S5, S6 et
+ * S8. Elles évitent qu'un coureur passe six semaines sans le moindre effort
+ * bref et découvre la vitesse d'un coup en S7. Ce ne sont pas des séances de
+ * vitesse : la récupération se fait en marchant, complète, et le volume total
+ * de travail rapide reste de quelques minutes. Elles ne sont jamais placées la
+ * veille d'une séance dure, ni en S4 (semaine allégée, sans intensité), ni en
+ * S7 (la séance de VMA couvre déjà le besoin, la semaine est au pic de
+ * charge), ni en S9 (semaine de course, on ne cherche plus qu'à arriver
+ * frais).
+ *
  * Convention de calcul des séances à intervalles (tempo, seuil, vma) : pour N
  * répétitions, la description ne compte que N-1 récupérations, celles qui
  * tombent entre deux répétitions. La somme échauffement + répétitions +
  * récupérations + retour au calme doit toujours être strictement égale à la
  * durée déclarée en premier argument de la séance.
+ *
+ * Cette convention vaut aussi pour les lignes droites, qui se logent à
+ * l'intérieur de la durée déjà déclarée de l'endurance : elles remplacent du
+ * footing facile, elles ne s'y ajoutent pas, et le barème de volumes est donc
+ * inchangé. Les deux formats retenus tombent sur des minutes entières :
+ * 4 lignes de 15 s avec 1 min de marche entre chaque font 4 min, 6 lignes de
+ * 20 s avec 1 min de marche entre chaque font 7 min.
+ *
+ * Toute séance dont la description cite une zone plus dure que celle de sa
+ * fabrique doit la déclarer explicitement via { zonesSecondaires: [...] }
+ * (voir le commentaire de seances.js). C'est le cas des quatre endurances à
+ * lignes droites, qui déclarent Z5, et de la sortie longue de S8, qui déclare
+ * Z3.
  */
 export const P1 = {
   code: 'P1',
@@ -95,12 +120,13 @@ export const P1 = {
       3,
       'bloc1',
       'Premier palier',
-      "Semaine la plus chargée du premier bloc. Tout monte un peu : la durée totale, la longueur des blocs en Z3, la sortie longue.",
+      "Semaine la plus chargée du premier bloc. Tout monte un peu : la durée totale, la longueur des blocs en Z3, la sortie longue. On y ajoute les premières lignes droites, de très courtes accélérations en fin de footing facile, pour que les jambes n'oublient pas comment aller vite.",
       [
         ef(
           35,
-          "35 min en Z2, départ très progressif sur les 10 premières minutes.",
-          "Servir de séance de fond, celle qui fait le volume sans coûter de fraîcheur.",
+          "28 min en Z2, départ très progressif sur les 10 premières minutes. Enchaîne ensuite 4 lignes droites de 15 s en Z5, avec 1 min de marche complète entre chaque pour repartir parfaitement récupéré, soit 4 min en tout, puis 3 min de retour au calme en Z2. Une ligne droite se lance progressivement sur les premiers appuis et se relâche avant la fin : tu ne dois jamais terminer en dette de souffle.",
+          "Servir de séance de fond, et y glisser les premières lignes droites : quelques secondes de vitesse suffisent à entretenir la foulée, sur des efforts trop courts pour fatiguer. Ce n'est pas une séance de vitesse, c'est un footing facile qui se termine bien.",
+          { zonesSecondaires: ['Z5'] },
         ),
         tempo(
           38,
@@ -157,8 +183,9 @@ export const P1 = {
       [
         ef(
           35,
-          "35 min en Z2, la veille ou le surlendemain de la séance de seuil, jamais juste avant.",
-          "Récupérer activement tout en gardant du volume dans la semaine.",
+          "25 min en Z2, à placer le surlendemain de la séance de seuil et jamais la veille. Termine par 6 lignes droites de 20 s en Z5, avec 1 min de marche entre chaque, soit 7 min en tout, puis 3 min de retour au calme en Z2.",
+          "Récupérer activement tout en gardant du volume, et entretenir la vitesse de foulée pendant que le bloc 2 travaille le seuil. Les lignes droites réveillent les jambes, elles ne doivent rien coûter en fraîcheur.",
+          { zonesSecondaires: ['Z5'] },
         ),
         seuil(
           40,
@@ -186,8 +213,9 @@ export const P1 = {
       [
         ef(
           35,
-          "35 min en Z2, sur un parcours que tu connais pour ne pas avoir à réfléchir à ton itinéraire.",
-          "Ajouter du volume facile sans alourdir une semaine qui apporte déjà deux nouveautés.",
+          "25 min en Z2 sur un parcours que tu connais, pour ne pas avoir à réfléchir à ton itinéraire. Enchaîne 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, puis 3 min en Z2 pour rentrer. Séance à placer après le seuil dans la semaine, jamais la veille d'une séance dure.",
+          "Ajouter du volume facile sans alourdir une semaine qui apporte déjà deux nouveautés, et garder le pied vif avec des accélérations assez brèves pour ne rien enlever à la sortie longue.",
+          { zonesSecondaires: ['Z5'] },
         ),
         seuil(
           45,
@@ -244,8 +272,9 @@ export const P1 = {
       [
         ef(
           32,
-          "32 min en Z2, sans chercher à compenser la baisse de volume.",
-          "Garder le rythme des trois sorties tout en réduisant réellement la charge.",
+          "24 min en Z2, sans chercher à compenser la baisse de volume. Puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, et 4 min de retour au calme en Z2. À placer en début de semaine, jamais la veille de la séance de seuil.",
+          "Garder le rythme des trois sorties tout en réduisant réellement la charge, et rappeler la vitesse aux jambes en quantité volontairement réduite : quatre lignes droites suffisent à entretenir la foulée pendant l'affûtage.",
+          { zonesSecondaires: ['Z5'] },
         ),
         seuil(
           38,
@@ -256,6 +285,7 @@ export const P1 = {
           45,
           "45 min en Z2. Sur les 12 dernières minutes, place 3 fois 2 min en Z3 avec 2 min en Z2 entre chaque, puis termine tranquillement. La séance reste une sortie facile, ces blocs servent seulement à délier.",
           "Conserver l'habitude de la sortie longue et rappeler la sensation d'effort soutenu, sans entamer la fraîcheur qui se construit.",
+          { zonesSecondaires: ['Z3'] },
         ),
         renfo(
           18,
