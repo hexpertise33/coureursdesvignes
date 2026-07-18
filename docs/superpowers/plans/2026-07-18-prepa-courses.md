@@ -413,7 +413,9 @@ export const ZONES = Object.freeze({
   Z5: { nom: 'VMA', fcMin: 92, fcMax: 100, sensation: 'Aucun mot possible.' },
 });
 
-const COURSE_CODES = new Set(['EF', 'SL', 'TEMPO', 'SEUIL', 'VMA', 'RECUP', 'COURSE']);
+// Toutes les seances de course a pied, renfo exclu. Ne pas confondre avec le
+// code 'COURSE', qui designe la seule course objectif et n'est qu'un membre.
+const CODES_HORS_RENFO = new Set(['EF', 'SL', 'TEMPO', 'SEUIL', 'VMA', 'RECUP', 'COURSE']);
 
 function verifierTexte(...textes) {
   for (const t of textes) {
