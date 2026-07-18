@@ -8,9 +8,28 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  * continue et qui veut, cette fois, chercher un chrono sur 10 km plutôt que
  * simplement terminer. Trois sorties par semaine, un renforcement, et toujours
  * aucune allure chiffrée : l'intensité se lit en zones 1 à 5, chacun place son
- * curseur là où sa respiration le lui dit. Quinze semaines, c'est long : la
- * trame ménage donc trois semaines allégées et une respiration complète à
- * mi-parcours, sans quoi personne ne tiendrait la distance.
+ * curseur là où sa respiration le lui dit.
+ *
+ * Trame en cycles de trois plus une, décision de l'encadrant. Trois semaines
+ * qui montent, une semaine plus douce, et on recommence :
+ *
+ *   S1 S2 S3 progressives, S4 plus douce
+ *   S5 S6 S7 progressives, S8 plus douce
+ *   S9 S10 S11 progressives, S12 plus douce
+ *   S13 progressive, pic de charge
+ *   S14 S15 affûtage, course le dernier jour de S15
+ *   S16 récupération
+ *
+ * Ce découpage remplace l'ancienne trame, qui enchaînait deux semaines légères
+ * consécutives en S8 et S9 et creusait la charge en plein milieu de la
+ * préparation, sortie longue redescendue à 35 min comprise. Le coureur ne
+ * passe plus jamais plus d'une semaine d'affilée en dessous de sa charge de
+ * travail.
+ *
+ * La liste blanche des phases ne connaît que trois étiquettes de bloc. Le
+ * quatrième cycle, réduit à la seule S13, est donc étiqueté bloc3 lui aussi :
+ * c'est le sommet du bloc spécifique, relancé après la respiration de S12, et
+ * non un quatrième bloc distinct.
  *
  * La course a lieu le dimanche 8 novembre 2026, dernier jour de la semaine 15.
  * La semaine 9 tombe exactement sur le week-end du 10 km d'Izon, le 27
@@ -18,37 +37,43 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  *
  * Barème de volumes, hors course objectif et hors renfo, en minutes :
  * S1 100, S2 108, S3 117, S4 96, S5 126, S6 136, S7 147, S8 122,
- * S9 100 sans Izon et 55 avec Izon, S10 140, S11 151, S12 162 (pic),
- * S13 132, S14 118, S15 55, S16 90.
+ * S9 132 sans Izon et 55 avec Izon, S10 140, S11 151, S12 126,
+ * S13 162 (pic), S14 118, S15 55, S16 90.
  *
- * Phase de la semaine 9. Elle est déclarée allégée, et non bloc, pour une
- * raison de fond : ses deux variantes n'ont pas du tout la même charge (100
- * min sans dossard, 55 min avec). Une semaine de bloc sert de référence à la
- * semaine de bloc suivante, ce qui plafonnerait la reprise du bloc 3 à la
- * valeur de la variante la plus légère et rendrait le programme incohérent
- * selon la case cochée par le coureur. Allégée, elle se compare à la semaine
- * précédente et laisse le bloc 3 repartir du pic du bloc 2, à l'identique dans
- * les deux variantes. Sportivement, l'étiquette est juste : avec dossard c'est
- * un mini-affûtage, sans dossard c'est une semaine de rythme volontairement
- * plus légère qui permet à tout le groupe d'attaquer le bloc spécifique dans
- * le même état de fraîcheur.
+ * Phase de la semaine 9 : propre à chaque variante. Ce sont deux semaines
+ * réellement différentes, elles n'ont aucune raison de porter la même
+ * étiquette. Sans dossard, c'est la première marche du troisième cycle
+ * progressif, donc bloc3. Avec dossard, c'est une semaine réellement allégée
+ * puisque le coureur court le dimanche, donc allegee, avec les deux jours qui
+ * précèdent la course volontairement délestés. L'entrée principale du
+ * programme porte la phase de la variante sans dossard, celle qu'elle expose
+ * par défaut dans son champ `seances` ; chaque variante porte la sienne et
+ * c'est celle-là que la vérification lit quand on substitue la variante.
+ *
+ * Les deux variantes passent le garde-fou de charge, chacune par un chemin
+ * différent. Sans Izon, S9 est un bloc qui suit une semaine plus douce : sa
+ * référence est le pic des blocs atteint jusque-là (147 min en S7), et S10 se
+ * compare ensuite à S9. Avec Izon, S9 est allégée et se compare à S8 ; S10,
+ * qui est un bloc précédé d'une semaine hors bloc, repart lui aussi du pic des
+ * blocs. La règle des 10 % ne bloque donc rien : elle ne compare jamais S10 au
+ * volume hors course d'une semaine qui contient la course-test.
  *
  * Progression des intensités. S1 rien, S2 et S3 Z3 pour apprendre l'effort
  * soutenu, S4 rien, S5 et S6 Z4 pour installer l'allure de course, S7 Z5 pour
- * la vitesse pure, S8 rien, S9 Z3 (ou la course-test), S10 et S11 Z4 sur des
- * blocs plus longs, S12 Z5 au pic de charge, S13 rien, S14 la séance de
- * référence du programme (3 fois 8 min en Z4), S15 un rappel très court avant
- * la course. Une seule séance dure par semaine, toujours entourée de facile.
- * Le dosage est volontairement orienté Z4 et Z5 : sur 10 km, c'est là que se
- * joue le chrono.
+ * la vitesse pure, S8 rien, S9 Z4 sur blocs longs (ou la course-test), S10 et
+ * S11 Z4 en resserrant le format, S12 rien, S13 Z5 au pic de charge, S14 la
+ * séance de référence du programme (3 fois 8 min en Z4), S15 un rappel très
+ * court avant la course. Une seule séance dure par semaine, toujours entourée
+ * de facile. Le dosage est volontairement orienté Z4 et Z5 : sur 10 km, c'est
+ * là que se joue le chrono.
  *
  * Lignes droites, décision de l'encadrant. Des accélérations de 15 à 20 s en
  * Z5 sont placées en fin d'endurance à partir de la fin du bloc 1, donc en S3,
- * puis entretenues en S5, S6, S10, S11 et S14. Elles sont écartées des
- * semaines allégées (S4, S8, S13), des semaines qui portent déjà une séance de
- * vitesse (S7 et S12) et de la semaine de course (S15). La variante avec Izon
- * de la semaine 9 fait exception avec quatre lignes droites la veille de la
- * course, tenues en Z4 et non en Z5 : ce sont des lignes droites de réveil,
+ * puis entretenues en S5, S6, S9, S10, S11 et S14. Elles sont écartées des
+ * semaines plus douces (S4, S8, S12), des semaines qui portent déjà une séance
+ * de vitesse (S7 et S13) et de la semaine de course (S15). La variante avec
+ * Izon de la semaine 9 fait exception avec quatre lignes droites la veille de
+ * la course, tenues en Z4 et non en Z5 : ce sont des lignes droites de réveil,
  * pas de travail.
  *
  * Convention de calcul des séances à intervalles : pour N répétitions, N-1
@@ -59,39 +84,41 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  * 15 s avec 1 min de marche entre chaque font 4 min, 6 lignes de 20 s avec
  * 1 min de marche entre chaque font 7 min.
  *
- * Sortie longue plafonnée à 1 h 15, atteinte une seule fois en S12. Au-delà,
+ * Sortie longue plafonnée à 1 h 15, atteinte une seule fois en S13. Au-delà,
  * un coureur de 10 km accumule de la fatigue sans rien gagner sur sa course.
  *
  * Toute séance dont la description cite une zone plus dure que celle de sa
  * fabrique la déclare via { zonesSecondaires: [...] } : les sept endurances à
- * lignes droites, et aucune autre.
+ * lignes droites en Z5, l'endurance de veille de course-test qui monte en Z4,
+ * et aucune autre.
  */
 
 const s9SansIzon = semaine(
   9,
-  'allegee',
-  'Semaine de rythme',
-  "Pas de dossard cette semaine, mais du travail de qualité quand même. Le volume redescend volontairement : ce creux au milieu des quinze semaines n'est pas une perte de temps, c'est ce qui rendra le bloc spécifique digeste.",
+  'bloc3',
+  'Ouverture du bloc spécifique',
+  "Pas de dossard cette semaine : le troisième cycle démarre tout de suite. Trois semaines qui montent devant toi, celle-ci en est la première marche, et le travail au seuil change de format en passant à des blocs longs.",
   [
     ef(
-      25,
-      "25 min en Z2, sans chercher à rattraper le volume des semaines précédentes. Le compteur redescend, c'est prévu.",
-      "Maintenir la mécanique de course pendant une semaine où le corps a surtout besoin de digérer huit semaines de travail.",
+      29,
+      "20 min en Z2 sur un parcours sans difficulté, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 5 min en Z2. Les lignes droites reviennent après la semaine plus douce, garde-les vives mais brèves.",
+      "Remettre de la vivacité dans une foulée qui sort d'une semaine calme, au moment précis où le bloc spécifique demande à nouveau de la fréquence d'appui.",
+      { zonesSecondaires: ['Z5'] },
     ),
-    tempo(
-      40,
-      "12 min d'échauffement en Z2, puis 2 fois 8 min en Z3 avec 3 min de trottinement en Z1 entre les deux, puis 9 min de retour au calme en Z2. Le deuxième bloc se court exactement comme le premier, pas plus vite.",
-      "Occuper la place laissée libre par la course-test et vérifier, sans dossard, que l'effort soutenu est devenu confortable.",
+    seuil(
+      45,
+      "13 min d'échauffement en Z2, puis 3 fois 7 min en Z4 avec 3 min de trottinement en Z1 entre chaque, puis 5 min de retour au calme en Z2. Les blocs du bloc 2 duraient 6 min, ceux-ci en durent 7 : la minute supplémentaire paraît dérisoire sur le papier, elle ne l'est pas dans les jambes.",
+      "Reprendre le travail au seuil exactement là où le bloc 2 l'avait laissé, en allongeant la répétition plutôt qu'en en ajoutant une.",
     ),
     sl(
-      35,
-      "35 min en Z2, nettement plus courte que d'habitude. Prends le parcours qui te fait plaisir plutôt que celui qui te fait progresser.",
-      "Raccourcir franchement la sortie longue une fois dans la préparation, pour que les jambes repartent neuves sur le bloc spécifique.",
+      58,
+      "58 min en Z2, sur un parcours roulant. Cours-la entièrement facile : elle sert de contrepoids à la séance de seuil, pas de rallonge.",
+      "Relancer la sortie longue dès l'ouverture du cycle, pour qu'elle atteigne son plafond sans à-coup quatre semaines plus tard.",
     ),
     renfo(
-      18,
-      "2 séries de : 45 s de planche ventrale, 12 fentes par jambe, 15 squats, 30 s de chaise contre un mur. 1 min de pause entre les séries.",
-      "Garder le tronc actif pendant une semaine creuse, sans installer de courbatures qui gêneraient la reprise.",
+      25,
+      "3 séries de : 45 s de planche ventrale, 30 s de gainage latéral par côté, 18 squats, 14 fentes arrière par jambe, 40 s de pont fessier. 1 min de pause entre les séries.",
+      "Remonter le renforcement au niveau du bloc spécifique, le tronc doit être prêt avant que la charge de course n'atteigne son maximum.",
     ),
   ],
 );
@@ -100,7 +127,7 @@ const s9AvecIzon = semaine(
   9,
   'allegee',
   "Course test à Izon",
-  "Tu as un dossard dimanche 27 septembre sur le 10 km d'Izon. La semaine est entièrement organisée autour de lui : deux sorties courtes, rien d'autre, et un vrai repère chronométré à la clé.",
+  "Tu as un dossard dimanche 27 septembre sur le 10 km d'Izon. La semaine est réellement allégée, et c'est logique : tu cours pour de bon le dimanche. Une sortie en début de semaine, une très courte la veille, et les deux jours qui précèdent la course volontairement délestés.",
   [
     ef(
       30,
@@ -109,8 +136,8 @@ const s9AvecIzon = semaine(
     ),
     ef(
       25,
-      "18 min en Z2 la veille de la course, puis 4 lignes droites de 15 s en Z4 avec 1 min de marche entre chaque, soit 4 min, et 3 min en Z2 pour rentrer. On reste en Z4, pas au-delà : ces lignes droites réveillent la foulée, elles ne l'entament pas.",
-      "Déverrouiller les jambes la veille, une sortie très courte laisse toujours de meilleures sensations au départ qu'un repos complet.",
+      "Vendredi, rien du tout : ni course, ni renfo, ni sortie de compensation. Samedi, la veille de la course, 18 min en Z2, puis 4 lignes droites de 15 s en Z4 avec 1 min de marche entre chaque, soit 4 min, et 3 min en Z2 pour rentrer. On reste en Z4, pas au-delà : ces lignes droites réveillent la foulée, elles ne l'entament pas.",
+      "Alléger franchement les deux jours qui précèdent le dossard, un repos la veille de la veille et une sortie minuscule la veille laissent de meilleures sensations au départ que n'importe quel entraînement de dernière minute.",
       { zonesSecondaires: ['Z4'] },
     ),
     course(
@@ -353,13 +380,13 @@ export const P2 = {
           "Laisser le système nerveux récupérer, c'est lui qui fatigue le plus vite sur les semaines à intensité.",
         ),
         ef(
-          32,
-          "32 min en Z2 sur terrain souple si tu en as un. Change de parcours par rapport à l'autre sortie de la semaine.",
+          36,
+          "36 min en Z2 sur terrain souple si tu en as un. Change de parcours par rapport à l'autre sortie de la semaine.",
           "Entretenir la routine des trois sorties en variant les appuis, ce qui répartit la contrainte sur des muscles différents.",
         ),
         sl(
-          60,
-          "1 h en Z2, la seule séance un peu longue de la semaine. Elle reste facile de bout en bout : si tu accélères sur la fin, tu as raté l'objectif.",
+          56,
+          "56 min en Z2, la seule séance un peu longue de la semaine et volontairement raccourcie. Elle reste facile de bout en bout : si tu accélères sur la fin, tu as raté l'objectif.",
           "Conserver l'acquis d'endurance pendant une semaine sans intensité, le fond ne se garde qu'en le pratiquant.",
         ),
         renfo(
@@ -372,10 +399,14 @@ export const P2 = {
 
     {
       numero: 9,
-      phase: 'allegee',
-      titre: 'Course test ou semaine de rythme',
+      // La phase suit la variante : bloc3 sans dossard, allegee avec. L'entrée
+      // principale porte celle de la variante sans dossard, la seule dont elle
+      // expose les séances par défaut. Substituer une variante, c'est donc
+      // reprendre à la fois ses séances et sa phase.
+      phase: s9SansIzon.phase,
+      titre: 'Course test ou ouverture du bloc spécifique',
       intention:
-        "Un repère à mi-parcours, avec ou sans dossard. Les coureurs inscrits au 10 km d'Izon du 27 septembre suivent la variante avec course, les autres la variante sans. Dans les deux cas la semaine est plus légère que celles qui l'encadrent, et c'est voulu.",
+        "Deux semaines franchement différentes selon ta case cochée. Les coureurs inscrits au 10 km d'Izon du 27 septembre suivent la variante avec course : elle est réellement allégée, puisqu'ils courent dimanche. Les autres attaquent directement le troisième cycle progressif, sans creux artificiel.",
       variantes: {
         avecIzon: s9AvecIzon,
         sansIzon: s9SansIzon,
@@ -386,24 +417,24 @@ export const P2 = {
     semaine(
       10,
       'bloc3',
-      'Bloc spécifique, premier jalon',
-      "Le bloc 3 est celui qui ressemble le plus à la course. Les blocs en Z4 s'allongent, la sortie longue reprend sa progression, et tout ce qui n'est pas utile au 10 km disparaît du programme.",
+      'Deuxième marche, les blocs s\'allongent',
+      "Deuxième semaine du cycle, et le travail au seuil change de forme : moins de répétitions, mais nettement plus longues. C'est le format qui ressemble le plus à ce que tu vivras le 8 novembre.",
       [
         ef(
-          35,
-          "26 min en Z2, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 5 min en Z2. Les lignes droites reviennent après deux semaines d'absence, garde-les vraiment courtes.",
-          "Relancer le volume facile après la respiration de mi-parcours, et remettre un peu de vivacité dans une foulée qui vient de passer deux semaines au ralenti.",
+          31,
+          "22 min en Z2, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 5 min en Z2. Quatre suffisent cette semaine : la séance de seuil est longue, inutile d'en rajouter.",
+          "Fournir du volume facile un jour où le corps digère encore les blocs de 12 min, tout en gardant le pied vif.",
           { zonesSecondaires: ['Z5'] },
         ),
         seuil(
           45,
-          "13 min en Z2, puis 3 fois 7 min en Z4 avec 3 min en Z1 entre chaque, puis 5 min en Z2. Les blocs passent de 6 à 7 min : la différence paraît minuscule sur le papier, elle ne l'est pas dans les jambes.",
-          "Reprendre le travail au seuil là où le bloc 2 l'avait laissé, avec une répétition allongée plutôt qu'ajoutée.",
+          "10 min en Z2, puis 2 fois 12 min en Z4 avec 4 min de trottinement en Z1 entre les deux, puis 7 min en Z2. La difficulté n'est plus l'intensité, c'est la durée pendant laquelle tu la tiens : le vrai test est de finir le deuxième bloc aussi propre que le premier.",
+          "Apprendre à ne pas céder au milieu d'un effort long, ce qui se joue dans la tête bien plus que dans les jambes.",
         ),
         sl(
-          60,
-          "1 h en Z2. Aucun bloc rapide, aucune accélération finale : la sortie longue du bloc 3 sert de contrepoids aux séances de seuil.",
-          "Remonter la sortie longue à l'heure, en gardant cette séance entièrement facile pour préserver la qualité du seuil.",
+          64,
+          "1 h 04 en Z2. Aucun bloc rapide, aucune accélération finale : la sortie longue du bloc spécifique sert de contrepoids aux séances de seuil.",
+          "Faire passer la sortie longue au-dessus de l'heure, en la gardant entièrement facile pour préserver la qualité du seuil.",
         ),
         renfo(
           25,
@@ -417,22 +448,22 @@ export const P2 = {
       11,
       'bloc3',
       'Quatre blocs au seuil',
-      "On passe de trois à quatre répétitions, avec des récupérations volontairement raccourcies. C'est la semaine où l'allure de course commence à devenir familière plutôt que menaçante.",
+      "Troisième et dernière marche du cycle, la plus chargée des trois. On quitte les blocs longs pour quatre répétitions plus courtes, avec des récupérations volontairement raccourcies. C'est la semaine où l'allure de course commence à devenir familière plutôt que menaçante.",
       [
         ef(
-          36,
-          "24 min en Z2, puis 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, puis 5 min en Z2. À placer à distance de la séance de seuil, jamais la veille.",
+          34,
+          "22 min en Z2, puis 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, puis 5 min en Z2. À placer à distance de la séance de seuil, jamais la veille.",
           "Entretenir la vitesse de foulée dans une semaine dense, sans jamais entamer la fraîcheur nécessaire aux quatre blocs de seuil.",
           { zonesSecondaires: ['Z5'] },
         ),
         seuil(
           47,
-          "12 min en Z2, puis 4 fois 6 min en Z4 avec seulement 2 min en Z1 entre chaque, puis 5 min en Z2. La récupération raccourcie est le vrai enjeu : le quatrième bloc doit rester propre.",
+          "12 min en Z2, puis 4 fois 6 min en Z4 avec seulement 2 min en Z1 entre chaque, puis 5 min en Z2. Même temps total en Z4 que la semaine passée, mais bien moins de repos pour l'encaisser : le quatrième bloc doit rester propre.",
           "Réduire le temps de récupération plutôt que d'augmenter l'intensité, ce qui rapproche la séance des conditions réelles de la course.",
         ),
         sl(
-          68,
-          "1 h 08 en Z2, en terrain varié. Mange quelque chose deux heures avant si la sortie est matinale.",
+          70,
+          "1 h 10 en Z2, en terrain varié. Mange quelque chose deux heures avant si la sortie est matinale.",
           "Rapprocher progressivement la sortie longue de son plafond, sans jamais dépasser ce dont un coureur de 10 km a besoin.",
         ),
         renfo(
@@ -445,9 +476,38 @@ export const P2 = {
 
     semaine(
       12,
+      'allegee',
+      'Respirer avant le sommet',
+      "Troisième semaine plus douce du programme, et la dernière avant le point haut. Le volume tombe d'environ 17 % et l'intensité disparaît complètement pendant sept jours. Une semaine allégée juste avant la semaine la plus lourde n'est pas une contradiction : c'est précisément ce qui la rend tenable.",
+      [
+        ef(
+          34,
+          "34 min en Z2, tranquilles. Si une douleur traîne depuis les trois semaines de seuil, c'est maintenant qu'il faut la traiter, pas dans quinze jours.",
+          "Ouvrir une fenêtre pour régler les petits pépins pendant qu'il reste du temps pour les régler.",
+        ),
+        ef(
+          36,
+          "36 min en Z2, sur un parcours plat. Aucune accélération, aucune côte, aucune ligne droite : cette semaine ne contient rien de dur, et c'est délibéré.",
+          "Réduire la sollicitation nerveuse après trois semaines qui ont toutes compté du travail en Z4.",
+        ),
+        sl(
+          56,
+          "56 min en Z2, un quart d'heure de moins que la semaine passée. Termine avec la sensation nette d'avoir de la marge, et surtout l'envie d'y retourner.",
+          "Entretenir le fond en le laissant reculer d'un cran, pour aborder la semaine sommet avec des jambes qui ont vraiment récupéré.",
+        ),
+        renfo(
+          18,
+          "2 séries de : 40 s de planche, 15 squats, 10 fentes par jambe. Puis 8 min de mobilité des hanches et des chevilles.",
+          "Passer momentanément du renforcement à l'entretien, l'objectif de la semaine n'est pas de gagner de la force mais d'arriver frais.",
+        ),
+      ],
+    ),
+
+    semaine(
+      13,
       'bloc3',
       'Le pic de charge',
-      "Semaine la plus lourde des quinze : le plus gros volume, la sortie longue plafond, et le retour de la Z5. Si tu la termines debout, le 8 novembre est déjà largement à ta portée. Ensuite, tout redescend.",
+      "Semaine la plus lourde des quinze : le plus gros volume, la sortie longue plafond, et le retour de la Z5. Elle arrive juste après une semaine douce, c'est ce qui te permet de l'encaisser. Si tu la termines debout, le 8 novembre est déjà largement à ta portée. Ensuite, tout redescend.",
       [
         ef(
           38,
@@ -457,7 +517,7 @@ export const P2 = {
         vma(
           49,
           "14 min en Z2, puis 10 fois 1 min en Z5 avec 1 min de trottinement en Z1 entre chaque, puis 16 min de retour au calme en Z2. Deux répétitions de plus qu'en semaine 7, à la même intensité exactement.",
-          "Amener la vitesse maximale à son point haut du programme, six semaines avant que ce travail ne paye sur la course.",
+          "Amener la vitesse maximale à son point haut du programme, assez tôt pour que ce travail ait le temps de se transformer en aisance le jour de la course.",
         ),
         sl(
           75,
@@ -467,36 +527,7 @@ export const P2 = {
         renfo(
           25,
           "3 séries de : 1 min de planche ventrale, 20 squats, 20 fentes marchées, 45 s de pont fessier sur une jambe alternée. Étirements complets pour terminer, sans forcer.",
-          "Boucler le renforcement à son point haut avant de le réduire pour les trois dernières semaines.",
-        ),
-      ],
-    ),
-
-    semaine(
-      13,
-      'allegee',
-      'On coupe avant la fin',
-      "Le volume tombe de près de 20 % et l'intensité disparaît complètement pendant sept jours. C'est la dernière vraie coupure avant l'affûtage, et c'est elle qui transforme le travail du bloc 3 en forme.",
-      [
-        ef(
-          34,
-          "34 min en Z2, tranquilles. Si tu ressens la moindre douleur qui traîne depuis le pic de charge, c'est cette semaine qu'il faut la traiter, pas la semaine prochaine.",
-          "Ouvrir une fenêtre pour régler les petits pépins pendant qu'il reste du temps pour les régler.",
-        ),
-        ef(
-          36,
-          "36 min en Z2, sur un parcours plat. Aucune accélération, aucune côte, aucune ligne droite.",
-          "Réduire la sollicitation nerveuse après une semaine qui a compté à la fois du fractionné et 1 h 15 de sortie longue.",
-        ),
-        sl(
-          62,
-          "1 h 02 en Z2, soit un quart d'heure de moins qu'au pic. Termine avec la sensation nette d'avoir de la marge.",
-          "Entretenir le fond sans en rajouter, la forme se construit maintenant par soustraction.",
-        ),
-        renfo(
-          18,
-          "2 séries de : 40 s de planche, 15 squats, 10 fentes par jambe. Puis 8 min de mobilité des hanches et des chevilles.",
-          "Passer du renforcement à l'entretien, l'objectif n'est plus de gagner de la force mais de la conserver.",
+          "Boucler le renforcement à son point haut avant de le réduire pour les deux dernières semaines.",
         ),
       ],
     ),
