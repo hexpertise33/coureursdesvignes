@@ -246,11 +246,10 @@ describe('règles de progression', () => {
 
   it('accepte une semaine de récupération active suivant une semaine contenant la course objectif (cas P5)', () => {
     // La semaine précédente (S3) contient la course-test : son volume hors
-    // course (55 min) est très inférieur à sa charge réelle. La référence du
-    // contrôle des -15 % doit être le pic de charge des semaines de bloc
-    // (picBloc = 150 min ici), pas le volume tronqué de S3 (qui imposerait un
-    // plancher de 46,75 min à S4, intenable pour 3 séances obligatoires) :
-    // 80 ≤ 0,85 × 150 = 127,5.
+    // course (55 min) est très inférieur à sa charge réelle, donc pas
+    // utilisable tel quel comme référence. On remonte à la dernière semaine
+    // sans course, S2 (allégée, 100 min), bornée par picBloc (150 min ici) :
+    // min(100, 150) = 100. 80 ≤ 0,85 × 100 = 85.
     const p = prog([
       sem(1, 'bloc1', 50, 50, 50),
       sem(2, 'allegee', 30, 30, 40),
@@ -261,6 +260,31 @@ describe('règles de progression', () => {
       semRecup(7),
     ]);
     expect(verifierProgramme(p)).toBe(true);
+  });
+
+  it("refuse une semaine de récupération active trop chargée quand le repli sur picBloc seul l'aurait acceptée à tort", () => {
+    // Contre-exemple de relecture : S4 contient la course-test, donc S5 (une
+    // vraie semaine de récupération active) ne peut pas se comparer à S4. Si
+    // la référence de repli était picBloc seul (150 min, le maximum des
+    // blocs S1/S2), 127 ≤ 0,85 × 150 = 127,5 accepterait S5 à tort alors
+    // qu'elle est plus chargée que S3 (100) et que la charge réelle de S4
+    // (60 + 55 de course = 115). La référence correcte est la dernière
+    // semaine sans course, S3 (100 min), bornée par picBloc : 127 > 0,85 ×
+    // 100 = 85, donc rejet attendu. S6-S8 complètent le programme (affûtage
+    // puis récupération finale) uniquement pour satisfaire les contrôles
+    // structurels antérieurs à la boucle de progression ; le rejet attendu
+    // survient dès S5, avant que ces semaines ne soient examinées.
+    const p = prog([
+      sem(1, 'bloc1', 50, 50, 50),
+      sem(2, 'bloc1', 50, 50, 50),
+      sem(3, 'allegee', 30, 30, 40),
+      semAvecCourse(4, 'allegee', 30, 30, 55),
+      sem(5, 'recuperation-active', 42, 42, 43),
+      sem(6, 'affutage', 20, 20, 30),
+      sem(7, 'affutage', 15, 15, 20),
+      semRecup(8),
+    ]);
+    expect(() => verifierProgramme(p)).toThrow(/pic = 100 min, S5 = 127 min/);
   });
 
   describe('plafond global différencié par phase (une semaine hors bloc ne peut pas devenir la plus chargée du programme)', () => {
