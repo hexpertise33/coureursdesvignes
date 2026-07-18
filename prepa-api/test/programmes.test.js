@@ -120,8 +120,34 @@ describe('règles de progression', () => {
   });
 
   it('exige deux semaines d\'affûtage terminales décroissantes', () => {
+    // Ce programme n'a qu'une seule vraie semaine d'affûtage (S2) : les 2
+    // semaines précédant la récupération sont S1 (bloc1) et S2 (affutage), ce
+    // qui viole le contrôle structurel de phase, pas le contrôle de
+    // décroissance. La regex cible donc précisément le message du contrôle
+    // structurel, pour ne pas passer pour la mauvaise raison (voir les deux
+    // tests suivants pour la décroissance et le plafond des 65 % eux-mêmes).
     const p = prog([sem(1, 'bloc1', 40, 40, 50), sem(2, 'affutage', 40, 40, 50), semRecup(3)]);
-    expect(() => verifierProgramme(p)).toThrow(/affûtage/);
+    expect(() => verifierProgramme(p)).toThrow(/doivent être en phase affûtage/);
+  });
+
+  it('refuse un affûtage croissant en dernière position', () => {
+    const p = prog([
+      sem(1, 'bloc1', 40, 40, 50),
+      sem(2, 'affutage', 20, 20, 20),
+      sem(3, 'affutage', 25, 25, 30),
+      semRecup(4),
+    ]);
+    expect(() => verifierProgramme(p)).toThrow(/doit décroître/);
+  });
+
+  it("refuse une dernière semaine d'affûtage à 70 % du pic", () => {
+    const p = prog([
+      sem(1, 'bloc1', 30, 30, 40),
+      sem(2, 'affutage', 30, 30, 30),
+      sem(3, 'affutage', 20, 20, 30),
+      semRecup(4),
+    ]);
+    expect(() => verifierProgramme(p)).toThrow(/dépasse 65 %/);
   });
 
   it('exige une semaine de récupération finale sans intensité', () => {
@@ -135,5 +161,41 @@ describe('règles de progression', () => {
     ]);
     const p = prog([sem(1, 'bloc1', 40, 40, 50), sem(2, 'affutage', 35, 30, 40), sem(3, 'affutage', 25, 20, 25), mauvaise]);
     expect(() => verifierProgramme(p)).toThrow(/intensité/);
+  });
+
+  it("refuse une semaine d'affûtage qui quadruple le pic de charge (plafond global)", () => {
+    const p = prog([
+      sem(1, 'bloc1', 30, 30, 40),
+      sem(2, 'affutage', 150, 150, 100),
+      sem(3, 'affutage', 20, 20, 24),
+      semRecup(4),
+    ]);
+    expect(() => verifierProgramme(p)).toThrow(/pic d'entraînement/);
+  });
+
+  it('refuse une phase inconnue (faute de frappe)', () => {
+    const p = prog([
+      sem(1, 'bloc1', 30, 30, 40),
+      sem(2, 'blco2', 200, 200, 100),
+      sem(3, 'affutage', 30, 30, 40),
+      sem(4, 'affutage', 20, 20, 25),
+      semRecup(5),
+    ]);
+    expect(() => verifierProgramme(p)).toThrow(/phase inconnue/);
+  });
+
+  it('refuse la VMA et le SEUIL dans une semaine de récupération active', () => {
+    const recupActiveAvecVma = semaine(2, 'recuperation-active', 'T', 'I.', [
+      recup(25, 'a.', 'b.'), vma(20, 'a.', 'b.'), recup(20, 'a.', 'b.'), renfo(15, 'a.', 'b.'),
+    ]);
+    const p = prog([
+      sem(1, 'bloc1', 30, 30, 40),
+      recupActiveAvecVma,
+      sem(3, 'bloc2', 30, 30, 40),
+      sem(4, 'affutage', 30, 30, 30),
+      sem(5, 'affutage', 20, 20, 20),
+      semRecup(6),
+    ]);
+    expect(() => verifierProgramme(p)).toThrow(/intensité interdite en semaine de récupération active/);
   });
 });
