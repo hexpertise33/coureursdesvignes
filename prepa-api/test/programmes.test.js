@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ZONES, ef, sl, vma, seuil, recup, renfo, course, semaine, volume, volumeHorsCourse } from '../src/programmes/seances.js';
 import { verifierProgramme } from '../src/programmes/regles.js';
 import { P1 } from '../src/programmes/p1-10km-izon.js';
+import * as programmesIzon from '../src/programmes/p1-10km-izon.js';
 
 describe('zones', () => {
   it('couvre Z1 à Z5 avec des fourchettes croissantes et jointives', () => {
@@ -383,7 +384,27 @@ describe("P1, 10 km d'Izon", () => {
   });
 
   it('respecte le barème de volumes hors course et hors renfo', () => {
-    expect(P1.semainesContenu.map(volumeHorsCourse)).toEqual([110, 115, 125, 100, 130, 143, 147, 115, 53, 90]);
+    // S6 est passée de 143 à 140 min sur décision de l'encadrant : à 143 la
+    // hausse depuis S5 valait exactement +10,0 %, soit la limite du garde-fou,
+    // et elle tombait sur la semaine qui introduit à la fois la 3e répétition
+    // de seuil et la première heure de sortie longue. À 140, la marche vaut
+    // +7,7 % et ne dépend plus d'une tolérance de virgule flottante.
+    expect(P1.semainesContenu.map(volumeHorsCourse)).toEqual([110, 115, 125, 100, 130, 140, 147, 115, 53, 90]);
+  });
+
+  // Décision de l'encadrant : la Z3 est la marche intermédiaire entre
+  // l'endurance en Z2 et le seuil en Z4. Ce test existe pour qu'une évolution
+  // ultérieure ne la fasse pas disparaître silencieusement du programme.
+  it('comporte au moins deux séances dédiées en Z3', () => {
+    const seancesZ3 = P1.semainesContenu.flatMap((s) => s.seances).filter((x) => x.zone === 'Z3');
+    expect(seancesZ3.length).toBeGreaterThanOrEqual(2);
+    expect(seancesZ3.every((x) => x.code === 'TEMPO')).toBe(true);
+  });
+
+  it('place la Z3 avant le premier travail en Z4', () => {
+    const numeroPremiereZone = (zone) =>
+      P1.semainesContenu.find((s) => s.seances.some((x) => x.zone === zone))?.numero;
+    expect(numeroPremiereZone('Z3')).toBeLessThan(numeroPremiereZone('Z4'));
   });
 
   it("n'emploie jamais de tiret cadratin dans les textes affichés", () => {
@@ -407,5 +428,61 @@ describe("P1, 10 km d'Izon", () => {
   it('varie les textes, aucune description n\'est copiée d\'une semaine à l\'autre', () => {
     const descriptions = P1.semainesContenu.flatMap((s) => s.seances.map((x) => x.description));
     expect(new Set(descriptions).size).toBe(descriptions.length);
+  });
+});
+
+// Verrou général contre l'incohérence de zone. Le bug d'origine : une séance
+// construite avec vma(), donc estampillée Z5 par la fabrique, dont la
+// description rédigée décrivait du 5 fois 1 min en Z4. L'application affiche la
+// zone de l'objet à côté de la description : le coureur lisait deux intensités
+// contradictoires pour une même séance. Ce test parcourt toutes les séances de
+// tous les programmes exportés par le fichier, pour que le contrôle couvre
+// aussi les programmes ajoutés plus tard.
+describe('cohérence entre la zone portée par la séance et les zones citées dans sa description', () => {
+  const ORDRE_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
+  const zonesCitees = (texte) => [...new Set(texte.match(/Z[1-5]/g) ?? [])];
+  // La sortie longue est la seule exception au plafond de zone, et c'est une
+  // exception voulue : finir une sortie longue par quelques blocs en Z3 est une
+  // pratique classique et utile pour un 10 km. La séance reste très
+  // majoritairement en Z2, donc la fabrique sl() et sa zone Z2 restent le bon
+  // affichage. Le plancher, lui, s'applique quand même : une sortie longue doit
+  // citer sa Z2.
+  const SANS_PLAFOND = new Set(['SL']);
+
+  const programmes = Object.values(programmesIzon).filter((p) => p && Array.isArray(p.semainesContenu));
+
+  it('couvre au moins un programme', () => {
+    expect(programmes.length).toBeGreaterThan(0);
+  });
+
+  it('cite toujours la zone de la séance dans sa description', () => {
+    for (const prg of programmes) {
+      for (const sem of prg.semainesContenu) {
+        for (const seance of sem.seances) {
+          if (seance.zone === null) continue; // RENFO et COURSE ne portent pas de zone.
+          const citees = zonesCitees(seance.description);
+          expect(
+            citees,
+            `${prg.code} S${sem.numero} ${seance.code} : la séance affiche ${seance.zone} mais sa description cite ${citees.join(', ') || 'aucune zone'}.`,
+          ).toContain(seance.zone);
+        }
+      }
+    }
+  });
+
+  it("ne cite jamais une zone plus dure que celle affichée par la séance", () => {
+    for (const prg of programmes) {
+      for (const sem of prg.semainesContenu) {
+        for (const seance of sem.seances) {
+          if (seance.zone === null || SANS_PLAFOND.has(seance.code)) continue;
+          const plafond = ORDRE_ZONES.indexOf(seance.zone);
+          const plusDures = zonesCitees(seance.description).filter((z) => ORDRE_ZONES.indexOf(z) > plafond);
+          expect(
+            plusDures,
+            `${prg.code} S${sem.numero} ${seance.code} : la séance affiche ${seance.zone} mais sa description monte jusqu'à ${plusDures.join(', ')}.`,
+          ).toEqual([]);
+        }
+      }
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { ef, sl, seuil, vma, recup, renfo, course, semaine } from './seances.js';
+import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './seances.js';
 
 /**
  * P1, 10 km d'Izon. Neuf semaines de préparation plus une de récupération.
@@ -11,8 +11,14 @@ import { ef, sl, seuil, vma, recup, renfo, course, semaine } from './seances.js'
  * quel que soit le niveau.
  *
  * Barème de volumes, hors course objectif et hors renfo, en minutes :
- * S1 110, S2 115, S3 125, S4 100, S5 130, S6 143, S7 147 (pic), S8 115,
+ * S1 110, S2 115, S3 125, S4 100, S5 130, S6 140, S7 147 (pic), S8 115,
  * S9 53, S10 90.
+ *
+ * Progression des intensités, du plus facile au plus spécifique :
+ * S1 rien, S2 et S3 Z3 (apprentissage de l'effort soutenu), S4 rien,
+ * S5 et S6 Z4 (allure de course), S7 Z5 (vitesse pure), S8 et S9 rappel
+ * de Z4 raccourci. Une seule séance dure par semaine, toujours encadrée
+ * par deux séances faciles.
  */
 export const P1 = {
   code: 'P1',
@@ -54,17 +60,17 @@ export const P1 = {
       2,
       'bloc1',
       'Un peu de rythme',
-      "La routine est prise, on ajoute la première touche d'intensité. Elle est très courte : l'objectif est de découvrir la sensation, pas de se faire mal.",
+      "La routine est prise, on ajoute la première touche d'intensité. Ce sera la Z3, un effort soutenu mais raisonnable : l'objectif est de découvrir la sensation, pas de se faire mal.",
       [
         ef(
           32,
           "32 min en Z2. Reste attentif à ta respiration : elle doit rester ample et régulière du début à la fin.",
           "Entretenir l'endurance entre deux séances plus exigeantes.",
         ),
-        vma(
+        tempo(
           35,
-          "12 min d'échauffement en Z2, puis 8 fois 30 s en Z5 avec 1 min de marche ou de trottinement en Z1 entre chaque, puis 11 min de retour au calme en Z2.",
-          "Réveiller la vitesse et la coordination de la foulée sans casser les jambes.",
+          "12 min d'échauffement en Z2, puis 3 fois 4 min en Z3 avec 2 min de trottinement en Z1 entre chaque, puis 7 min de retour au calme en Z2. En Z3, tu parles encore, mais par phrases courtes et la respiration s'entend.",
+          "Apprendre à tenir un effort soutenu sans se mettre dans le rouge, la compétence qui rendra le seuil abordable dans un mois.",
         ),
         sl(
           48,
@@ -83,17 +89,17 @@ export const P1 = {
       3,
       'bloc1',
       'Premier palier',
-      "Semaine la plus chargée du premier bloc. Tout monte un peu : la durée, le nombre de répétitions, la sortie longue.",
+      "Semaine la plus chargée du premier bloc. Tout monte un peu : la durée totale, la longueur des blocs en Z3, la sortie longue.",
       [
         ef(
           35,
           "35 min en Z2, départ très progressif sur les 10 premières minutes.",
           "Servir de séance de fond, celle qui fait le volume sans coûter de fraîcheur.",
         ),
-        vma(
+        tempo(
           38,
-          "12 min en Z2, puis 10 fois 30 s en Z5 avec 1 min en Z1 entre chaque, puis 11 min en Z2. Les 30 s doivent toutes se ressembler : si la dernière est nettement plus lente, tu es parti trop fort.",
-          "Apprendre à répartir son effort sur une série, compétence directement utile le jour de la course.",
+          "12 min en Z2, puis 2 fois 8 min en Z3 avec 3 min en Z1 entre les deux, puis 7 min en Z2. Les deux blocs doivent se ressembler : si le second est nettement plus laborieux, c'est que tu as démarré le premier trop vite.",
+          "Apprendre à répartir son effort sur la durée, compétence directement utile le jour de la course.",
         ),
         sl(
           52,
@@ -141,7 +147,7 @@ export const P1 = {
       5,
       'bloc2',
       'Le travail au seuil',
-      "Deuxième bloc, nouvelle intensité. On remplace les sprints très courts par des efforts plus longs en Z4, l'allure que tu tiendras le jour du 10 km.",
+      "Deuxième bloc, nouvelle intensité. Après deux semaines passées à apprendre l'effort soutenu en Z3, on monte d'une marche vers la Z4, l'allure que tu tiendras le jour du 10 km.",
       [
         ef(
           35,
@@ -150,7 +156,7 @@ export const P1 = {
         ),
         seuil(
           40,
-          "15 min d'échauffement en Z2, puis 2 fois 6 min en Z4 avec 3 min de trottinement en Z1 entre les deux, puis 10 min en Z2. En Z4, tu ne dis plus que trois ou quatre mots à la fois.",
+          "15 min d'échauffement en Z2, puis 2 fois 6 min en Z4 avec 3 min de trottinement en Z1 entre les deux, puis 10 min en Z2. En Z4, tu ne dis plus que trois ou quatre mots à la fois, c'est un cran au-dessus des blocs en Z3 des semaines 2 et 3.",
           "Découvrir l'allure soutenue mais tenable, celle qui déterminera ton chrono à Izon.",
         ),
         sl(
@@ -170,12 +176,12 @@ export const P1 = {
       6,
       'bloc2',
       'On tient plus longtemps',
-      "Même séance de seuil qu'en semaine 5, mais avec une répétition de plus et une sortie longue d'une heure. Semaine exigeante, dors bien.",
+      "Même séance de seuil qu'en semaine 5, mais avec une répétition de plus et une sortie longue d'une heure. Deux nouveautés d'un coup, donc la séance facile a été raccourcie pour que la semaine reste franchissable. Dors bien.",
       [
         ef(
-          38,
-          "38 min en Z2, sur un parcours que tu connais pour ne pas avoir à réfléchir à ton itinéraire.",
-          "Ajouter du volume facile, c'est lui qui construit l'endurance de fond.",
+          35,
+          "35 min en Z2, sur un parcours que tu connais pour ne pas avoir à réfléchir à ton itinéraire.",
+          "Ajouter du volume facile sans alourdir une semaine qui apporte déjà deux nouveautés.",
         ),
         seuil(
           45,
@@ -199,7 +205,7 @@ export const P1 = {
       7,
       'bloc2',
       'Le pic de charge',
-      "Semaine la plus lourde des neuf. Si tu la termines, la course est déjà largement à ta portée. À partir de là, tout redescend.",
+      "Semaine la plus lourde des neuf, et la seule qui monte jusqu'en Z5. Si tu la termines, la course est déjà largement à ta portée. À partir de là, tout redescend.",
       [
         ef(
           40,
@@ -208,8 +214,8 @@ export const P1 = {
         ),
         vma(
           45,
-          "15 min en Z2, puis 12 fois 30 s en Z5 avec 1 min en Z1 entre chaque, puis 12 min en Z2. Fais les 4 dernières répétitions en te concentrant sur des appuis rapides plutôt que sur de grandes foulées.",
-          "Retrouver de la vitesse pure après un mois de travail au seuil, pour que l'allure de course paraisse plus facile.",
+          "15 min en Z2, puis 12 fois 30 s en Z5 avec 1 min de marche ou de trottinement en Z1 entre chaque, puis 12 min en Z2. Les efforts sont très courts par choix : concentre-toi sur des appuis rapides plutôt que sur de grandes foulées.",
+          "Ajouter de la vitesse pure une fois la base construite et le seuil assimilé, pour que l'allure de course paraisse plus confortable les trois dernières semaines.",
         ),
         sl(
           62,
@@ -242,8 +248,8 @@ export const P1 = {
         ),
         sl(
           45,
-          "45 min en Z2. Termine par 4 fois 20 s un peu plus vite, en Z3, avec 1 min de trot entre chaque, juste pour délier.",
-          "Conserver l'habitude de la sortie longue sans entamer la fraîcheur qui se construit.",
+          "45 min en Z2. Sur les 12 dernières minutes, place 3 fois 2 min en Z3 avec 2 min en Z2 entre chaque, puis termine tranquillement. La séance reste une sortie facile, ces blocs servent seulement à délier.",
+          "Conserver l'habitude de la sortie longue et rappeler la sensation d'effort soutenu, sans entamer la fraîcheur qui se construit.",
         ),
         renfo(
           18,
@@ -264,10 +270,10 @@ export const P1 = {
           "25 min en Z2 en début de semaine, très souple. Rien de plus.",
           "Rester en mouvement et dénouer les jambes sans créer de fatigue.",
         ),
-        vma(
+        seuil(
           28,
-          "10 min en Z2, puis 5 fois 1 min en Z4 avec 1 min en Z1 entre chaque, puis 8 min en Z2. À placer au plus tard le mercredi.",
-          "Garder la vivacité et les sensations d'allure sans creuser le moindre déficit de récupération.",
+          "10 min en Z2, puis 5 fois 1 min en Z4 avec 1 min de trottinement en Z1 entre chaque, puis 8 min en Z2. À placer au plus tard le mercredi.",
+          "Rappeler aux jambes l'allure exacte de dimanche, sans creuser le moindre déficit de récupération.",
         ),
         course(
           "10 km d'Izon",
@@ -297,12 +303,12 @@ export const P1 = {
         ),
         recup(
           30,
-          "30 min en Z1, en montant doucement vers le bas de la Z2 sur la fin si tout va bien.",
+          "30 min en Z1, en fin de semaine. Si tu te surprends à accélérer parce que les jambes reviennent, ralentis : ce n'est pas encore le moment.",
           "Reprendre en douceur en laissant les sensations décider du rythme.",
         ),
         recup(
           35,
-          "35 min en Z2, sur terrain souple. C'est la sortie qui referme le cycle : profite du parcours, sans montre si tu veux.",
+          "35 min en Z1, sur terrain souple. C'est la sortie qui referme le cycle : profite du parcours, sans montre si tu veux.",
           "Retrouver des sensations normales et l'envie d'enchaîner sur un prochain objectif.",
         ),
         renfo(
