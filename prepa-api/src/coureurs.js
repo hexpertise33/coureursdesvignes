@@ -188,3 +188,32 @@ export async function creerOuTrouver(db, { prenom, initiale, programme, variante
 export function parId(db, id) {
   return db.prepare('SELECT * FROM coureurs WHERE id = ?').bind(id).first();
 }
+
+/**
+ * Retrouve un coureur par son identité (prénom + initiale du nom), avec la
+ * même normalisation que creerOuTrouver. Contrairement à creerOuTrouver, ne
+ * crée jamais de fiche et n'en modifie aucune : c'est une simple lecture,
+ * pour les usages où l'appelant a seulement besoin de se faire reconnaître
+ * (par exemple pour valider sa propre séance), pas de s'inscrire ni de
+ * changer de programme.
+ *
+ * Un identifiant numérique ne convenait pas à cet usage-là : ce sont de
+ * petits entiers séquentiels, triviaux à deviner un par un, alors que le
+ * prénom et l'initiale sont l'identité que le coureur connaît de lui-même
+ * et qu'un tiers ne peut pas reconstituer en faisant défiler un compteur.
+ *
+ * Lève les mêmes erreurs de validation que creerOuTrouver si le prénom ou
+ * l'initiale sont absents ou mal formés. Renvoie null (jamais une erreur) si
+ * prénom et initiale sont bien formés mais qu'aucune fiche ne leur
+ * correspond encore.
+ *
+ * @param {D1Database} db
+ * @param {{ prenom: string, initiale: string }} identite
+ * @returns {Promise<object|null>}
+ */
+export function parCle(db, { prenom, initiale } = {}) {
+  const clePrenom = normaliserPrenom(prenom);
+  const initialeValidee = validerInitiale(initiale);
+  const cle = `${clePrenom}_${cleDe(initialeValidee)}`;
+  return db.prepare('SELECT * FROM coureurs WHERE cle = ?').bind(cle).first();
+}

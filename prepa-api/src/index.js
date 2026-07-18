@@ -30,9 +30,10 @@ import {
   DUREE_JETON,
 } from './auth.js';
 import { estPubliee, instantPublication, semaineCourante } from './calendrier.js';
-import { creerOuTrouver, parId, nomAffiche } from './coureurs.js';
+import { creerOuTrouver, parId, parCle, nomAffiche } from './coureurs.js';
 import { PROGRAMMES, semaineDuProgramme } from './programmes/index.js';
 import { ZONES, zonesSecondairesDe } from './programmes/seances.js';
+import { valider, devalider, pourCoureur } from './validations.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 
@@ -53,7 +54,7 @@ const ENTETES_PUBLICS = { 'cache-control': 'public, max-age=3600', vary: 'Accept
 // Routes qui exigent une session. Elles sont listées pour que le contrôle du
 // cookie n'intercepte pas les chemins inconnus : une URL qui n'existe pas
 // doit répondre 404, avec ou sans session.
-const ROUTES_PROTEGEES = new Set(['/api/coureur', '/api/programme', '/api/semaine']);
+const ROUTES_PROTEGEES = new Set(['/api/coureur', '/api/programme', '/api/semaine', '/api/validation']);
 
 export function json(donnees, statut = 200, entetes = {}) {
   return new Response(JSON.stringify(donnees), {
@@ -158,6 +159,22 @@ function vueCoureur(c) {
     programme: c.programme,
     varianteCourse: c.variante_course,
     faitIzon: c.fait_izon === 1,
+  };
+}
+
+/**
+ * Vue d'une validation de séance. valide_le (colonne brute) devient valideLe
+ * (convention camelCase du reste de l'API) ; l'identifiant de ligne et
+ * coureur_id ne sont jamais recopiés, ils n'ont aucun usage côté client, qui
+ * sait déjà de quel coureur il s'agit.
+ */
+function vueValidation(v) {
+  return {
+    semaine: v.semaine,
+    seance: v.seance,
+    ressenti: v.ressenti,
+    note: v.note,
+    valideLe: v.valide_le,
   };
 }
 
@@ -361,6 +378,106 @@ async function routeCoureur(request, env) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Validation des séances
+// ---------------------------------------------------------------------------
+
+/**
+ * Détermine la fiche coureur concernée par une validation, sur le même
+ * principe que contexteLecture ci-dessus, appliqué cette fois à l'écriture.
+ *
+ * Le champ "coureur" (un identifiant numérique) n'est honoré que pour
+ * l'encadrant. Les identifiants sont de petits entiers séquentiels,
+ * triviaux à parcourir un par un, et le rôle "coureur" est un code partagé
+ * par tout le club : les honorer pour un coureur aurait permis à n'importe
+ * quel adhérent de valider des séances au nom d'un autre, ou de lire tout
+ * son suivi (ressentis, notes), en changeant simplement ce nombre dans sa
+ * requête.
+ *
+ * Un coureur ne désigne donc jamais sa fiche par identifiant : il la
+ * désigne, comme à sa création, par son prénom et l'initiale de son nom
+ * (parCle, cf. coureurs.js). C'est une identité qu'il connaît de lui-même et
+ * qu'un tiers ne peut pas reconstituer en faisant défiler un compteur.
+ */
+async function coureurCible(donnees, env, estAdmin) {
+  if (estAdmin) {
+    const id = Number(donnees.coureur);
+    if (!Number.isSafeInteger(id) || id <= 0) return null;
+    return parId(env.DB, id);
+  }
+  return parCle(env.DB, { prenom: donnees.prenom, initiale: donnees.initiale });
+}
+
+/**
+ * Traite POST /api/validation (valider une séance) et DELETE /api/validation
+ * (la dévalider).
+ *
+ * Une semaine non publiée reste fermée à la validation pour un coureur,
+ * exactement comme elle l'est à la lecture dans routeSemaine : sans ce
+ * refus, /api/validation deviendrait un second canal pour deviner le
+ * contenu d'une semaine à venir, en tâtonnant sur les codes de séance et en
+ * observant lesquels sont acceptés. C'est pourquoi la publication est
+ * vérifiée avant la validité du code de séance, et pourquoi le refus a
+ * exactement la même forme (numéro et date d'ouverture seuls) que celui de
+ * routeSemaine, qu'il s'agisse d'un code réel ou inventé. L'encadrant, qui
+ * voit tout en permanence, n'est pas soumis à ce refus.
+ */
+async function routeValidation(request, env, methode, estAdmin) {
+  const donnees = await corps(request);
+
+  let coureur;
+  try {
+    coureur = await coureurCible(donnees, env, estAdmin);
+  } catch (e) {
+    return json({ erreur: e.message }, 400);
+  }
+  if (!coureur) return json({ erreur: 'Coureur introuvable.' }, 400);
+
+  const numero = donnees.semaine;
+  if (!Number.isInteger(numero) || numero < 1) {
+    return json({ erreur: 'Semaine invalide.' }, 400);
+  }
+
+  const s = semaineDuProgramme(coureur.programme, numero, { faitIzon: coureur.fait_izon === 1 });
+  if (!s) return json({ erreur: 'Semaine inconnue.' }, 404);
+
+  if (!estPubliee(numero, Date.now()) && !estAdmin) {
+    // Même forme que le refus de routeSemaine : le numéro et la date
+    // d'ouverture seuls, jamais le contenu ni la liste des séances réelles.
+    return json(
+      {
+        erreur: 'Semaine pas encore disponible.',
+        numero,
+        disponibleLe: iso(instantPublication(numero)),
+      },
+      403,
+    );
+  }
+
+  const codesValides = new Set(s.seances.map((x) => x.code));
+  if (!codesValides.has(donnees.seance)) {
+    return json({ erreur: 'Séance inconnue.' }, 400);
+  }
+
+  try {
+    if (methode === 'POST') {
+      await valider(env.DB, coureur.id, {
+        semaine: numero,
+        seance: donnees.seance,
+        ressenti: donnees.ressenti ?? null,
+        note: donnees.note ?? null,
+      });
+    } else {
+      await devalider(env.DB, coureur.id, { semaine: numero, seance: donnees.seance });
+    }
+  } catch (e) {
+    return json({ erreur: e.message }, 400);
+  }
+
+  const validations = (await pourCoureur(env.DB, coureur.id)).map(vueValidation);
+  return json({ validations });
+}
+
 /**
  * Aiguillage des routes. `methode` vaut déjà GET pour une requête HEAD (voir
  * fetch ci-dessous), une route de lecture n'a donc pas à connaître HEAD.
@@ -394,6 +511,11 @@ async function router(request, env, methode) {
   if (chemin === '/api/coureur') {
     if (methode !== 'POST') return methodeRefusee();
     return routeCoureur(request, env);
+  }
+
+  if (chemin === '/api/validation') {
+    if (methode !== 'POST' && methode !== 'DELETE') return methodeRefusee();
+    return routeValidation(request, env, methode, estAdmin);
   }
 
   if (methode !== 'GET') return methodeRefusee();
