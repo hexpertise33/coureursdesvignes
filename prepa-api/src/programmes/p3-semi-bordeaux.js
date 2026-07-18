@@ -493,7 +493,11 @@ export const P3 = {
         ),
         tempo(
           54,
-          "20 min d'échauffement en Z2, puis 2 fois 11 min en Z3 avec 2 min de trottinement en Z1 entre les deux, puis 10 min de retour au calme en Z2. Vingt minutes d'échauffement pour vingt-deux minutes d'allure de course : à ce stade, c'est la qualité des deux blocs qui compte, pas leur longueur.",
+          // Maintenue au palier 15/8 alors que sa durée appellerait 20/10 : à
+          // 20/10 le corps tomberait à 22 min, soit moins que les 24 min de la
+          // semaine 10, et le travail spécifique reculerait d'une semaine sur
+          // l'autre au moment précis où il doit progresser.
+          "15 min d'échauffement en Z2, puis 2 fois 14 min en Z3 avec 3 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. Quatorze minutes d'affilée à l'allure visée, deux fois : c'est la séance qui ressemble le plus à ce que tu vivras le jour de la course.",
           "Vérifier concrètement que l'allure visée est tenable sur des durées longues, ce qu'aucun calcul théorique ne peut remplacer.",
         ),
         sl(
