@@ -1,0 +1,18 @@
+name = "prepa-api"
+main = "src/index.js"
+compatibility_date = "2026-07-18"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "prepa"
+# Valeur provisoire, la vraie base sera créée et l'identifiant reporté ici a la tâche 16 (mise en ligne).
+database_id = "local-dev-placeholder"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["0 7 * * 6"]
+
+[vars]
+EMAIL_ADMIN = "tridav00@gmail.com"
+SITE_URL = "https://coureursdesvignes.fr"
