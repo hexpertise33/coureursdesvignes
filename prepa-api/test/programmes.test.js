@@ -342,18 +342,22 @@ describe('règles de progression', () => {
   });
 
   it('accepte le barème de non-régression du programme P1 (course-test en avant-dernière semaine d\'affûtage)', () => {
+    // Reproduit le barème réel de P1 après recalibrage (165, 175, 190, 160,
+    // 192, 200, 208, 165, 75, 120). Le couple S3 / S4 y est volontairement au
+    // plus serré que le garde-fou autorise : 160 vaut 84,2 % de 190, juste
+    // sous la limite des -15 %.
     const p = prog([
-      sem(1, 'bloc1', 35, 35, 40),
-      sem(2, 'bloc1', 35, 40, 40),
-      sem(3, 'bloc1', 40, 40, 45),
-      sem(4, 'allegee', 30, 30, 40),
-      sem(5, 'bloc2', 40, 45, 45),
-      sem(6, 'bloc2', 45, 48, 50),
-      sem(7, 'bloc2', 47, 50, 50),
-      sem(8, 'affutage', 35, 40, 40),
-      semAvecCourse(9, 'affutage', 25, 28, 55),
+      sem(1, 'bloc1', 50, 52, 63),
+      sem(2, 'bloc1', 55, 55, 65),
+      sem(3, 'bloc1', 60, 60, 70),
+      sem(4, 'allegee', 50, 50, 60),
+      sem(5, 'bloc2', 55, 65, 72),
+      sem(6, 'bloc2', 58, 68, 74),
+      sem(7, 'bloc2', 65, 68, 75),
+      sem(8, 'affutage', 50, 55, 60),
+      semAvecCourse(9, 'affutage', 35, 40, 55),
       semaine(10, 'recuperation', 'Titre', 'Intention.', [
-        recup(30, 'a.', 'b.'), recup(30, 'a.', 'b.'), recup(30, 'a.', 'b.'), renfo(15, 'a.', 'b.'),
+        recup(35, 'a.', 'b.'), recup(40, 'a.', 'b.'), recup(45, 'a.', 'b.'), renfo(15, 'a.', 'b.'),
       ]),
     ]);
     expect(verifierProgramme(p)).toBe(true);
@@ -389,7 +393,13 @@ describe("P1, 10 km d'Izon", () => {
     expect(P1.dateCourse).toBe('2026-09-27');
     expect(P1.izon).toBe('objectif');
     expect(P1.nom).toBe("10 km d'Izon");
-    expect(P1.prerequis).toMatch(/30 minutes/);
+    // Prérequis recalibré : le public du club n'est pas débutant. « Savoir
+    // courir 30 minutes d'affilée » décrivait un coureur qui n'existe pas dans
+    // ce groupe, où tout le monde court le 10 km en moins d'une heure et sort
+    // déjà 1 h 15 le dimanche.
+    expect(P1.prerequis).toMatch(/1 h 15/);
+    expect(P1.prerequis).toMatch(/moins d'une heure/);
+    expect(P1.prerequis).not.toMatch(/30 minutes/);
   });
 
   it('suit la trame de phases imposée, S1 à S3 bloc 1, S4 allégée, S5 à S7 bloc 2', () => {
@@ -400,12 +410,123 @@ describe("P1, 10 km d'Izon", () => {
   });
 
   it('respecte le barème de volumes hors course et hors renfo', () => {
-    // S6 est passée de 143 à 140 min sur décision de l'encadrant : à 143 la
-    // hausse depuis S5 valait exactement +10,0 %, soit la limite du garde-fou,
-    // et elle tombait sur la semaine qui introduit à la fois la 3e répétition
-    // de seuil et la première heure de sortie longue. À 140, la marche vaut
-    // +7,7 % et ne dépend plus d'une tolérance de virgule flottante.
-    expect(P1.semainesContenu.map(volumeHorsCourse)).toEqual([110, 115, 125, 100, 130, 140, 147, 115, 53, 90]);
+    // Barème recalibré sur le niveau réel du club (tous sous l'heure au 10 km,
+    // 1 h 15 le dimanche). L'ancien barème (110, 115, 125, 100, 130, 140, 147,
+    // 115, 53, 90) était celui d'un plan pour débutants et alignait des séances
+    // de 30 et 35 min sans objet pour ce public.
+    //
+    // Le point serré est le couple S3 / S4 : une semaine normale ne peut pas
+    // descendre sous 50 + 50 + 60 = 160 min (plancher de 50 min par séance,
+    // sortie longue à 60 min minimum), et la semaine allégée doit tomber à
+    // 85 % ou moins de la précédente. S3 ne pouvait donc pas valoir moins de
+    // 160 / 0,85 = 189 min. D'où S3 à 190 et S4 exactement au plancher.
+    expect(P1.semainesContenu.map(volumeHorsCourse)).toEqual([165, 175, 190, 160, 192, 200, 208, 165, 75, 120]);
+  });
+
+  // Garde-fou de durée demandé par l'encadrant : « on ne peut pas faire de
+  // séances de 35 min, on doit faire des séances de 50 min minimum, à 1 h 15
+  // pour la sortie longue ». Les deux seules exceptions sont assumées et
+  // portées par le texte des séances : la semaine de course et la semaine de
+  // récupération, où la brièveté est le but recherché.
+  it('tient le plancher de 50 min hors semaine de course et de récupération', () => {
+    const EXCEPTIONS = new Set([9, 10]);
+    let verifiees = 0;
+    for (const s of P1.semainesContenu) {
+      if (EXCEPTIONS.has(s.numero)) continue;
+      for (const seance of s.seances.filter((x) => x.code !== 'RENFO')) {
+        expect(
+          seance.duree,
+          `P1 S${s.numero} ${seance.id} : ${seance.duree} min, sous le plancher de 50 min.`,
+        ).toBeGreaterThanOrEqual(50);
+        verifiees++;
+      }
+    }
+    expect(verifiees).toBe(24); // 8 semaines normales x 3 séances de course.
+  });
+
+  it('tient la sortie longue entre 60 et 75 min', () => {
+    const longues = P1.semainesContenu.flatMap((s) => s.seances).filter((x) => x.code === 'SL');
+    expect(longues.map((x) => x.duree)).toEqual([63, 65, 70, 60, 72, 74, 75, 60]);
+    for (const x of longues) {
+      expect(x.duree).toBeGreaterThanOrEqual(60);
+      expect(x.duree).toBeLessThanOrEqual(75);
+    }
+  });
+
+  // Les séances courtes de S9 et S10 ne sont pas un oubli de calibrage. Elles
+  // doivent le dire au coureur, qui vient de passer huit semaines à une heure
+  // et plus et lirait sinon une erreur de saisie.
+  it('assume par écrit la brièveté des séances de la semaine de course et de la récupération', () => {
+    for (const numero of [9, 10]) {
+      const s = P1.semainesContenu[numero - 1];
+      const textes = [s.intention, ...s.seances.map((x) => x.description)].join(' ');
+      expect(
+        /but|voulu|dessein|exactement|pas un oubli|volontairement/i.test(textes),
+        `P1 S${numero} : rien n'explique au coureur pourquoi les séances sont courtes.`,
+      ).toBe(true);
+    }
+  });
+
+  // Barème d'échauffement de l'encadrant, fondé sur la durée déclarée :
+  // 40 min et moins 12/7, 41 à 50 min 15/8, plus de 50 min 20/10. Les séances
+  // de qualité étant passées au-dessus de 50 min, elles tombent presque toutes
+  // sur le 20/10 qui est son standard.
+  it("applique le barème d'échauffement à toutes les séances de qualité", () => {
+    const palier = (duree) => (duree <= 40 ? [12, 7] : duree <= 50 ? [15, 8] : [20, 10]);
+    const QUALITE = new Set(['TEMPO', 'SEUIL', 'VMA']);
+    const observees = [];
+    for (const s of P1.semainesContenu) {
+      for (const seance of s.seances.filter((x) => QUALITE.has(x.code))) {
+        const m = seance.description.match(/^(\d+) min[^.]*?en Z2, puis .*?, puis (\d+) min/);
+        expect(m, `P1 S${s.numero} ${seance.code} : échauffement illisible.`).not.toBeNull();
+        expect(
+          [Number(m[1]), Number(m[2])],
+          `P1 S${s.numero} ${seance.code} (${seance.duree} min) : palier d'échauffement hors barème.`,
+        ).toEqual(palier(seance.duree));
+        observees.push(seance.duree);
+      }
+    }
+    expect(observees).toEqual([55, 60, 65, 68, 68, 55, 40]);
+  });
+
+  // Convention impérative : N répétitions donnent N-1 récupérations, et la
+  // somme des segments décrits égale exactement la durée déclarée. Même
+  // contrôle que sur P4 et P5.
+  it('réconcilie exactement la durée déclarée avec les segments décrits', () => {
+    const intervalles =
+      /(\d+) min[^.]*?en Z2, puis (\d+) fois (\d+) min en Z[1-5] avec (\d+) min[^.]*?entre (?:chaque|les deux), puis (\d+) min/;
+    const lignes =
+      /(\d+) min[^.]*? puis (\d+) lignes droites de (\d+) s en Z[45] avec 1 min de marche entre chaque, soit (\d+) min, puis (\d+) min/;
+
+    let intervallesVerifies = 0;
+    let lignesVerifiees = 0;
+    for (const seance of P1.semainesContenu.flatMap((s) => s.seances)) {
+      const i = seance.description.match(intervalles);
+      if (i) {
+        const [, ech, n, duree, recuperation, retour] = i.map(Number);
+        expect(
+          ech + n * duree + (n - 1) * recuperation + retour,
+          `${seance.code} ${seance.duree} min : segments décrits incohérents dans « ${seance.description} »`,
+        ).toBe(seance.duree);
+        intervallesVerifies++;
+        continue;
+      }
+      const l = seance.description.match(lignes);
+      if (l) {
+        const [, ech, n, secondes, bloc, retour] = l.map(Number);
+        // Le bloc de lignes droites est logé À L'INTÉRIEUR de la durée
+        // déclarée : il ne s'ajoute pas au footing, il en fait partie.
+        expect((n * secondes) / 60 + (n - 1)).toBe(bloc);
+        expect(
+          ech + bloc + retour,
+          `${seance.code} ${seance.duree} min : lignes droites mal logées dans « ${seance.description} »`,
+        ).toBe(seance.duree);
+        lignesVerifiees++;
+      }
+    }
+    // Ancres de sécurité : si le parsing cassait, la boucle ne vérifierait rien.
+    expect(intervallesVerifies).toBe(7);
+    expect(lignesVerifiees).toBe(4);
   });
 
   // Décision de l'encadrant : la Z3 est la marche intermédiaire entre

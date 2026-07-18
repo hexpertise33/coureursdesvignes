@@ -91,7 +91,7 @@
 
   var PROGRAMMES = [
     { code: 'P1', nom: "10 km d'Izon", date: 'dimanche 27 septembre', duree: '9 semaines',
-      prerequis: "Savoir courir 30 minutes d'affilée sans s'arrêter.", izon: false },
+      prerequis: "Courir déjà environ 1 h 15 le dimanche sur terrain vallonné et viser moins d'une heure au 10 km.", izon: false },
     { code: 'P2', nom: '10 km de Bordeaux', date: 'dimanche 8 novembre', duree: '15 semaines',
       prerequis: "Savoir courir 30 minutes d'affilée sans s'arrêter.", izon: true },
     { code: 'P3', nom: 'Semi-marathon de Bordeaux', date: 'dimanche 8 novembre', duree: '15 semaines',
