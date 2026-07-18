@@ -1,12 +1,14 @@
 import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
 
-import worker from '../src/index.js';
-import { creerJeton, egalConstant, DUREE_JETON, LIMITE_TENTATIVES } from '../src/auth.js';
-import { estPubliee, instantPublication, semaineCourante } from '../src/calendrier.js';
+import { creerJeton, egalConstant, LIMITE_TENTATIVES } from '../src/auth.js';
+import { estPubliee, instantPublication } from '../src/calendrier.js';
 import { PROGRAMMES, semaineDuProgramme } from '../src/programmes/index.js';
 import { ZONES } from '../src/programmes/seances.js';
 import { RESSENTIS } from '../src/validations.js';
+// Horloge maîtrisée : voir test/horloge.js. Ces utilitaires y ont été
+// extraits pour être partagés avec la suite du back-office (test/admin.test.js).
+import { SECONDE, requeteA, jsonA, AVANT_TOUT, MI_PARCOURS, APRES_TOUT } from './horloge.js';
 
 // Fabrique un cookie de session valide sans passer par la route de session :
 // les tests de contenu n'ont pas à dépendre du code d'accès.
@@ -31,63 +33,6 @@ async function creerCoureur(c, corps) {
 
 const CODES_PROGRAMMES = Object.keys(PROGRAMMES);
 
-// ---------------------------------------------------------------------------
-// Horloge maîtrisée
-// ---------------------------------------------------------------------------
-//
-// Le produit tout entier repose sur une date : chaque dimanche à 19 h une
-// semaine s'ouvre, et pas avant. Une suite qui interroge l'API à l'heure où
-// on la joue ne mesure donc pas le produit, elle mesure le calendrier. En
-// juillet 2026 aucune semaine n'est encore parue, `publiee` vaut faux
-// partout, et l'expression `publiee || estAdmin` se réduit à `estAdmin` :
-// on peut supprimer la moitié de la règle sans qu'un seul test bronche.
-// En décembre 2026 c'est l'inverse, tout est paru, et des assertions
-// écrites pour l'été virent au rouge sans le moindre défaut de code.
-//
-// D'où l'outillage ci-dessous : « exécute cette requête comme si nous
-// étions à tel instant ». Le Worker est appelé directement (worker.fetch)
-// plutôt que par SELF.fetch, parce que c'est ce qui le fait tourner dans le
-// même isolat que le test, donc sous le même Date.now.
-
-const SECONDE = 1000;
-const JOUR = 86400000;
-
-/** Exécute une action en faisant croire au code appelé qu'il est `instant`. */
-async function commeSi(instant, action) {
-  const horlogeReelle = Date.now;
-  Date.now = () => instant;
-  try {
-    return await action();
-  } finally {
-    Date.now = horlogeReelle;
-  }
-}
-
-/**
- * Exécute une requête HTTP comme si nous étions à `instant`.
- *
- * Le cookie de session est fabriqué sous la même horloge que la requête :
- * un jeton daté de l'heure réelle serait déjà expiré, ou pas encore émis,
- * selon la frontière visée.
- */
-async function requeteA(instant, chemin, options = {}) {
-  const { role = null, ip = '203.0.113.9', headers = {}, ...reste } = options;
-  return commeSi(instant, async () => {
-    const entetesFinaux = { 'cf-connecting-ip': ip, ...headers };
-    if (role) {
-      entetesFinaux.cookie = `prepa=${await creerJeton(env.SECRET_JETON, role, DUREE_JETON)}`;
-    }
-    const requete = new Request(`https://p.test${chemin}`, { ...reste, headers: entetesFinaux });
-    return worker.fetch(requete, env);
-  });
-}
-
-/** Idem, en décodant la charge JSON. */
-async function jsonA(instant, chemin, options = {}) {
-  const reponse = await requeteA(instant, chemin, options);
-  return { statut: reponse.status, donnees: await reponse.json(), reponse };
-}
-
 /** Crée (ou retrouve) un coureur à un instant donné, sous un rôle donné. */
 async function creerCoureurA(instant, role, corps) {
   return jsonA(instant, '/api/coureur', { method: 'POST', role, body: JSON.stringify(corps) });
@@ -102,16 +47,6 @@ async function validerA(instant, role, corps) {
 async function devaliderA(instant, role, corps) {
   return jsonA(instant, '/api/validation', { method: 'DELETE', role, body: JSON.stringify(corps) });
 }
-
-// Instants de référence de la suite. Tout test dont le résultat dépend de la
-// date s'accroche à l'un d'eux, jamais à Date.now().
-//
-//   AVANT_TOUT   une seconde avant l'ouverture de la semaine 1, rien n'est paru
-//   MI_PARCOURS  à l'ouverture de la semaine 8, les 1 à 8 sont parues, pas la 9
-//   APRES_TOUT   un jour après l'ouverture de la dernière semaine, tout est paru
-const AVANT_TOUT = instantPublication(1) - SECONDE;
-const MI_PARCOURS = instantPublication(8);
-const APRES_TOUT = instantPublication(17) + JOUR;
 
 describe('Worker', () => {
   it('répond sur /api/sante', async () => {

@@ -34,6 +34,19 @@ import { creerOuTrouver, parId, parCle, nomAffiche } from './coureurs.js';
 import { PROGRAMMES, semaineDuProgramme } from './programmes/index.js';
 import { ZONES, zonesSecondairesDe } from './programmes/seances.js';
 import { valider, devalider, pourCoureur } from './validations.js';
+import {
+  tableau,
+  alertes,
+  fusionner,
+  supprimerCoureur,
+  enregistrerOverride,
+  poserVeto,
+  overrides,
+  vueOverride,
+  semaineEffective,
+  estBloquee,
+  NB_SEMAINES_MAX,
+} from './admin.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 
@@ -55,6 +68,21 @@ const ENTETES_PUBLICS = { 'cache-control': 'public, max-age=3600', vary: 'Accept
 // cookie n'intercepte pas les chemins inconnus : une URL qui n'existe pas
 // doit répondre 404, avec ou sans session.
 const ROUTES_PROTEGEES = new Set(['/api/coureur', '/api/programme', '/api/semaine', '/api/validation']);
+
+// Routes du back-office, réservées à l'encadrant. Elles sont énumérées, et
+// non reconnues par un préfixe /api/admin/ : un préfixe aurait répondu 403 à
+// un coureur sur n'importe quel chemin imaginaire commençant par /api/admin/,
+// ce qui lui apprend que le back-office existe et lui permet d'en deviner
+// les routes par tâtonnement. Une URL qui n'existe pas répond 404, ici comme
+// ailleurs, quel que soit le rôle.
+const ROUTES_ADMIN = new Set([
+  '/api/admin/tableau',
+  '/api/admin/alertes',
+  '/api/admin/semaine',
+  '/api/admin/veto',
+  '/api/admin/fusion',
+  '/api/admin/coureur',
+]);
 
 export function json(donnees, statut = 200, entetes = {}) {
   return new Response(JSON.stringify(donnees), {
@@ -113,14 +141,23 @@ function vueSeance(s) {
  * les cas : ils ne disent rien de l'entraînement à venir, ils permettent
  * simplement à l'application d'afficher le calendrier de parution et le
  * compte à rebours de la prochaine ouverture.
+ *
+ * `veto` n'est renseigné que pour l'encadrant, et reste à null pour un
+ * coureur, auquel cas la clé n'apparaît pas du tout. Une semaine bloquée
+ * doit avoir, vue du coureur, exactement la forme d'une semaine pas encore
+ * parue : sinon le drapeau devient un canal qui expose les décisions
+ * d'encadrement (« la semaine était prête et elle a été retenue »), et il
+ * permet de distinguer les deux situations que le refus de routeSemaine
+ * prend justement soin de rendre indiscernables.
  */
-function vueSemaine(s, publiee, divulgue) {
+function vueSemaine(s, publiee, divulgue, veto = null) {
   const base = {
     numero: s.numero,
     phase: s.phase,
     publiee,
     disponibleLe: iso(instantPublication(s.numero)),
   };
+  if (veto !== null) base.veto = veto;
   if (!divulgue) return base;
   return {
     ...base,
@@ -276,22 +313,47 @@ async function contexteLecture(url, env, estAdmin) {
 // Routes de contenu
 // ---------------------------------------------------------------------------
 
+/**
+ * Une semaine est-elle réellement ouverte au coureur ?
+ *
+ * Deux conditions, et non une seule : la date de parution doit être passée
+ * ET l'encadrant ne doit pas avoir posé son veto. Le veto l'emporte sur le
+ * calendrier, y compris pour une semaine dont la date est passée depuis
+ * longtemps : c'est tout son intérêt. Une semaine partie avec une erreur se
+ * referme d'un clic, sans attendre le dimanche suivant.
+ */
+function ouverte(numero, maintenant, surcharge) {
+  return estPubliee(numero, maintenant) && !estBloquee(surcharge);
+}
+
 async function routeProgramme(url, env, estAdmin) {
   const ctx = await contexteLecture(url, env, estAdmin);
   if (ctx.erreur) return json({ erreur: ctx.erreur }, 400);
 
   const maintenant = Date.now();
+  // Une seule lecture de la table des surcharges pour tout le programme.
+  const cartes = await overrides(env.DB);
+
   const semaines = ctx.p.semainesContenu.map((s) => {
-    const publiee = estPubliee(s.numero, maintenant);
-    // La semaine n'est résolue que pour sa phase, qui dépend de la variante ;
-    // vueSemaine ne recopiera son contenu que si divulgue vaut vrai.
+    const surcharge = cartes.get(`${ctx.p.code}:${s.numero}`);
+    const publiee = ouverte(s.numero, maintenant, surcharge);
+    // La semaine est résolue pour sa phase, qui dépend de la variante, puis
+    // le contenu remanié depuis le back-office prend le pas sur le fichier
+    // source. vueSemaine ne recopiera ce contenu que si divulgue vaut vrai.
     const resolue = semaineDuProgramme(ctx.p.code, s.numero, { faitIzon: ctx.faitIzon });
-    return vueSemaine(resolue, publiee, publiee || estAdmin);
+    const effective = semaineEffective(resolue, surcharge);
+    return vueSemaine(effective, publiee, publiee || estAdmin, estAdmin ? estBloquee(surcharge) : null);
   });
+
+  // semaineCourante est recalculée depuis les semaines réellement ouvertes,
+  // et non demandée au calendrier seul : sans veto les deux coïncident
+  // toujours (les semaines parues forment un préfixe continu), mais une
+  // semaine bloquée doit cesser d'être annoncée comme celle du moment.
+  const ouvertes = semaines.filter((s) => s.publiee).map((s) => s.numero);
 
   return json({
     programme: vueProgramme(ctx.p),
-    semaineCourante: semaineCourante(maintenant, ctx.p.semainesContenu.length),
+    semaineCourante: ouvertes.length > 0 ? Math.max(...ouvertes) : 0,
     semaines,
   });
 }
@@ -304,13 +366,14 @@ async function routeProgramme(url, env, estAdmin) {
  * la forme canonique d'un entier : "01", " 1", "1.0", "1e1", "+1". Sans elle,
  * Number() les accepterait toutes et une même semaine aurait une dizaine
  * d'URL différentes. Un numéro absent ou vide n'est pas une erreur : il
- * désigne la semaine en cours.
+ * désigne la semaine en cours, dont le calcul est fourni par l'appelant
+ * (`courante`) parce qu'il dépend des vetos, que cette fonction n'a pas à
+ * connaître.
  */
-function numeroDemande(url, nbSemaines, maintenant) {
+function numeroDemande(url, nbSemaines, courante) {
   const brut = url.searchParams.get('numero');
 
   if (brut === null || brut === '') {
-    const courante = semaineCourante(maintenant, nbSemaines);
     if (courante === 0) {
       return {
         erreur: "La préparation n'a pas encore commencé.",
@@ -338,14 +401,30 @@ async function routeSemaine(url, env, estAdmin) {
 
   const maintenant = Date.now();
   const nb = ctx.p.semainesContenu.length;
-  const demande = numeroDemande(url, nb, maintenant);
+  const cartes = await overrides(env.DB);
+
+  // La semaine « en cours » est la dernière réellement ouverte : si la
+  // dernière parue est sous veto, c'est la précédente qui fait foi, sinon
+  // une requête sans numéro se verrait refuser la semaine qu'elle vient
+  // elle-même de désigner.
+  let courante = 0;
+  for (let n = 1; n <= nb; n++) {
+    if (ouverte(n, maintenant, cartes.get(`${ctx.p.code}:${n}`))) courante = n;
+  }
+
+  const demande = numeroDemande(url, nb, courante);
   if (demande.erreur) return json({ erreur: demande.erreur }, demande.statut);
 
   const { numero } = demande;
-  const publiee = estPubliee(numero, maintenant);
+  const surcharge = cartes.get(`${ctx.p.code}:${numero}`);
+  const publiee = ouverte(numero, maintenant, surcharge);
   if (!publiee && !estAdmin) {
     // Le refus ne porte que le numéro et la date d'ouverture : de quoi
-    // afficher un compte à rebours, rien de l'entraînement lui-même.
+    // afficher un compte à rebours, rien de l'entraînement lui-même. Il est
+    // volontairement identique pour une semaine pas encore parue et pour une
+    // semaine bloquée : le coureur n'a pas à savoir laquelle des deux
+    // situations le concerne, et l'encadrant n'a pas à voir ses arbitrages
+    // de dernière minute lisibles depuis l'application.
     return json(
       {
         erreur: 'Semaine pas encore disponible.',
@@ -361,7 +440,7 @@ async function routeSemaine(url, env, estAdmin) {
 
   return json({
     programme: ctx.p.code,
-    semaine: vueSemaine(s, publiee, true),
+    semaine: vueSemaine(semaineEffective(s, surcharge), publiee, true, estAdmin ? estBloquee(surcharge) : null),
   });
 }
 
@@ -438,12 +517,18 @@ async function routeValidation(request, env, methode, estAdmin) {
     return json({ erreur: 'Semaine invalide.' }, 400);
   }
 
-  const s = semaineDuProgramme(coureur.programme, numero, { faitIzon: coureur.fait_izon === 1 });
-  if (!s) return json({ erreur: 'Semaine inconnue.' }, 404);
+  const source = semaineDuProgramme(coureur.programme, numero, { faitIzon: coureur.fait_izon === 1 });
+  if (!source) return json({ erreur: 'Semaine inconnue.' }, 404);
 
-  if (!estPubliee(numero, Date.now()) && !estAdmin) {
+  const surcharge = (await overrides(env.DB)).get(`${coureur.programme}:${numero}`);
+
+  if (!ouverte(numero, Date.now(), surcharge) && !estAdmin) {
     // Même forme que le refus de routeSemaine : le numéro et la date
     // d'ouverture seuls, jamais le contenu ni la liste des séances réelles.
+    // Le veto compte ici au même titre que la date, sans quoi une semaine
+    // bloquée resterait ouverte à la validation, et le jeu des codes de
+    // séance acceptés ou refusés en dévoilerait le contenu séance par
+    // séance, exactement ce que ce refus est censé empêcher.
     return json(
       {
         erreur: 'Semaine pas encore disponible.',
@@ -454,6 +539,11 @@ async function routeValidation(request, env, methode, estAdmin) {
     );
   }
 
+  // Les codes acceptés sont ceux de la semaine effectivement servie. Sans
+  // cela, l'encadrant qui remanie une semaine depuis le back-office la ferait
+  // afficher au coureur avec des séances que /api/validation refuserait de
+  // cocher, et laisserait cocher des séances qui ne s'affichent plus.
+  const s = semaineEffective(source, surcharge);
   const codesValides = new Set(s.seances.map((x) => x.code));
   if (!codesValides.has(donnees.seance)) {
     return json({ erreur: 'Séance inconnue.' }, 400);
@@ -476,6 +566,103 @@ async function routeValidation(request, env, methode, estAdmin) {
 
   const validations = (await pourCoureur(env.DB, coureur.id)).map(vueValidation);
   return json({ validations });
+}
+
+// ---------------------------------------------------------------------------
+// Back-office de l'encadrant
+// ---------------------------------------------------------------------------
+
+/**
+ * Routes du back-office. Le contrôle du rôle est fait par l'appelant, une
+ * fois pour toutes : aucune des fonctions ci-dessous ne doit être joignable
+ * autrement, et aucune ne refait le test pour son compte, ce qui laisserait
+ * la porte ouverte le jour où l'une d'elles oublierait de le refaire.
+ *
+ * Les réponses suivent la même discipline que le reste du fichier : ce qui
+ * part vers l'encadrant est projeté sur une liste blanche par admin.js
+ * (tableau, alertes, vueOverride), jamais recopié depuis une ligne de base.
+ * L'encadrant a le droit de tout voir du contenu d'entraînement, il n'a pas
+ * pour autant besoin de la clé de déduplication ni des horodatages internes.
+ */
+async function routeAdmin(request, env, url, chemin, methode) {
+  const maintenant = Date.now();
+
+  if (chemin === '/api/admin/tableau') {
+    if (methode !== 'GET') return methodeRefusee();
+    const semaine = semaineCourante(maintenant, NB_SEMAINES_MAX);
+    const [{ coureurs }, liste, cartes] = await Promise.all([
+      tableau(env.DB),
+      alertes(env.DB, semaine),
+      overrides(env.DB),
+    ]);
+
+    const parCoureur = new Map();
+    for (const a of liste) {
+      if (!parCoureur.has(a.coureurId)) parCoureur.set(a.coureurId, []);
+      parCoureur.get(a.coureurId).push(a);
+    }
+
+    // Les coureurs à surveiller remontent en tête : c'est la raison d'être de
+    // l'écran. À égalité d'alerte, l'ordre alphabétique de tableau() est
+    // conservé, pour que la liste reste stable d'une consultation à l'autre.
+    const avecAlertes = coureurs.map((c) => ({ ...c, alertes: parCoureur.get(c.id) ?? [] }));
+    avecAlertes.sort((a, b) => (b.alertes.length > 0) - (a.alertes.length > 0));
+
+    return json({
+      semaineCourante: semaine,
+      coureurs: avecAlertes,
+      semainesModifiees: [...cartes.values()].map(vueOverride),
+    });
+  }
+
+  if (chemin === '/api/admin/alertes') {
+    if (methode !== 'GET') return methodeRefusee();
+    // ?semaine= permet de rejouer les alertes sur une semaine passée, par
+    // exemple pour relire ce qui aurait dû être vu. Une valeur absente ou
+    // mal formée retombe sur la dernière semaine publiée, elle n'est pas une
+    // erreur : c'est le cas d'usage courant.
+    const brut = Number(url.searchParams.get('semaine'));
+    const semaine = Number.isInteger(brut) && brut >= 1 && brut <= NB_SEMAINES_MAX
+      ? brut
+      : semaineCourante(maintenant, NB_SEMAINES_MAX);
+    return json({ semaine, alertes: await alertes(env.DB, semaine) });
+  }
+
+  const donnees = await corps(request);
+  const lire = (cle) => (Object.hasOwn(donnees, cle) ? donnees[cle] : undefined);
+
+  try {
+    if (chemin === '/api/admin/semaine') {
+      if (methode !== 'PUT') return methodeRefusee();
+      await enregistrerOverride(env.DB, lire('programme'), lire('semaine'), lire('contenu') ?? null, lire('veto'));
+      return json({ ok: true });
+    }
+
+    if (chemin === '/api/admin/veto') {
+      if (methode !== 'POST') return methodeRefusee();
+      await poserVeto(env.DB, lire('programme'), lire('semaine'), Boolean(lire('veto')));
+      return json({ ok: true });
+    }
+
+    if (chemin === '/api/admin/fusion') {
+      if (methode !== 'POST') return methodeRefusee();
+      await fusionner(env.DB, lire('garde'), lire('supprime'));
+      return json({ ok: true });
+    }
+
+    if (chemin === '/api/admin/coureur') {
+      if (methode !== 'DELETE') return methodeRefusee();
+      await supprimerCoureur(env.DB, lire('id'));
+      return json({ ok: true });
+    }
+  } catch (e) {
+    // Les erreurs d'admin.js sont des messages de validation rédigés pour
+    // l'encadrant : ils nomment le champ fautif et ne citent aucun contenu
+    // d'entraînement.
+    return json({ erreur: e.message }, 400);
+  }
+
+  return json({ erreur: 'route inconnue' }, 404);
 }
 
 /**
@@ -502,11 +689,18 @@ async function router(request, env, methode) {
     return routeSession(request, env);
   }
 
-  if (!ROUTES_PROTEGEES.has(chemin)) return json({ erreur: 'route inconnue' }, 404);
+  if (!ROUTES_PROTEGEES.has(chemin) && !ROUTES_ADMIN.has(chemin)) {
+    return json({ erreur: 'route inconnue' }, 404);
+  }
 
   const role = await roleDepuisRequete(request, env);
   if (!role) return json({ erreur: 'Accès refusé.' }, 401);
   const estAdmin = role === 'admin';
+
+  if (ROUTES_ADMIN.has(chemin)) {
+    if (!estAdmin) return json({ erreur: "Réservé à l'encadrant." }, 403);
+    return routeAdmin(request, env, url, chemin, methode);
+  }
 
   if (chemin === '/api/coureur') {
     if (methode !== 'POST') return methodeRefusee();
