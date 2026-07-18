@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { ZONES, ef, sl, vma, seuil, recup, renfo, course, semaine, volume, volumeHorsCourse, zonesSecondairesDe } from '../src/programmes/seances.js';
 import { verifierProgramme } from '../src/programmes/regles.js';
 import { P1 } from '../src/programmes/p1-10km-izon.js';
+import { P2 } from '../src/programmes/p2-10km-bordeaux.js';
+import { P3 } from '../src/programmes/p3-semi-bordeaux.js';
 import * as programmesIzon from '../src/programmes/p1-10km-izon.js';
+import * as programmes10kmBordeaux from '../src/programmes/p2-10km-bordeaux.js';
+import * as programmesSemiBordeaux from '../src/programmes/p3-semi-bordeaux.js';
 
 describe('zones', () => {
   it('couvre Z1 à Z5 avec des fourchettes croissantes et jointives', () => {
@@ -483,10 +487,33 @@ describe('cohérence entre la zone portée par la séance et les zones citées d
   // séance en avait besoin ; la sortie longue de S8 déclare désormais Z3 et
   // toutes les autres sont contrôlées normalement. Le plancher, lui, n'a
   // jamais de dérogation : une séance cite toujours sa propre zone.
-  const programmes = Object.values(programmesIzon).filter((p) => p && Array.isArray(p.semainesContenu));
+  // Registre des programmes soumis au contrôle. Tout module de programme
+  // ajouté au projet doit être listé ici, sans quoi son contenu échapperait
+  // silencieusement au test.
+  const modules = [programmesIzon, programmes10kmBordeaux, programmesSemiBordeaux];
+  const exportes = modules
+    .flatMap((m) => Object.values(m))
+    .filter((p) => p && Array.isArray(p.semainesContenu));
 
-  it('couvre au moins un programme', () => {
-    expect(programmes.length).toBeGreaterThan(0);
+  // Les semaines à variantes n'exposent par défaut que la variante sansIzon
+  // dans leur champ `seances` : la variante avecIzon serait donc invisible du
+  // contrôle. On l'ajoute au registre sous la forme d'un programme fictif
+  // d'une seule semaine, pour que ses séances soient vérifiées comme les
+  // autres.
+  const variantesAvecIzon = exportes.flatMap((p) =>
+    p.semainesContenu
+      .filter((s) => s.variantes)
+      .map((s) => ({ code: `${p.code} (variante avecIzon)`, semainesContenu: [s.variantes.avecIzon] })),
+  );
+
+  const programmes = [...exportes, ...variantesAvecIzon];
+
+  it('couvre les trois programmes écrits et leurs variantes de semaine 9', () => {
+    expect(exportes.map((p) => p.code)).toEqual(['P1', 'P2', 'P3']);
+    expect(variantesAvecIzon.map((p) => p.code)).toEqual([
+      'P2 (variante avecIzon)',
+      'P3 (variante avecIzon)',
+    ]);
   });
 
   it('cite toujours la zone de la séance dans sa description', () => {
@@ -554,5 +581,267 @@ describe('déclaration de zone secondaire', () => {
 
   it('refuse une zone secondaire sur une séance qui ne porte aucune zone', () => {
     expect(() => renfo(20, 'Gainage, puis Z5.', 'Objectif.', { zonesSecondaires: ['Z5'] })).toThrow(/sans zone/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// P2 et P3, 10 km et semi-marathon de Bordeaux, 15 semaines plus récupération.
+// ---------------------------------------------------------------------------
+
+// Reconstruit un programme en substituant, en semaine 9, les séances de la
+// variante demandée. Le champ `phase` de la semaine reste celui de l'entrée
+// principale : les deux variantes partagent la même phase, seule leur charge
+// diffère.
+const avecVariante = (p, nom) => ({
+  ...p,
+  semainesContenu: p.semainesContenu.map((s) =>
+    s.numero === 9 && s.variantes ? { ...s, seances: s.variantes[nom].seances } : s,
+  ),
+});
+
+describe.each([
+  ['P2', P2],
+  ['P3', P3],
+])('%s', (nom, p) => {
+  it('respecte les règles de progression dans les deux variantes', () => {
+    expect(verifierProgramme(p)).toBe(true);
+    expect(verifierProgramme(avecVariante(p, 'sansIzon'))).toBe(true);
+    expect(verifierProgramme(avecVariante(p, 'avecIzon'))).toBe(true);
+  });
+
+  it('compte 15 semaines plus la récupération', () => {
+    expect(p.semainesContenu).toHaveLength(16);
+  });
+
+  it('propose les deux variantes en S9', () => {
+    const s9 = p.semainesContenu[8];
+    expect(s9.variantes.avecIzon.seances.some((s) => s.code === 'COURSE')).toBe(true);
+    expect(s9.variantes.sansIzon.seances.some((s) => s.code === 'COURSE')).toBe(false);
+  });
+
+  it('expose par défaut la variante sansIzon en S9', () => {
+    const s9 = p.semainesContenu[8];
+    expect(s9.seances).toBe(s9.variantes.sansIzon.seances);
+  });
+
+  it('place la course objectif en S15', () => {
+    expect(p.semainesContenu[14].seances.some((s) => s.code === 'COURSE')).toBe(true);
+  });
+
+  it("laisse Izon en option et vise la date du 8 novembre", () => {
+    expect(p.izon).toBe('option');
+    expect(p.dateCourse).toBe('2026-11-08');
+  });
+
+  it('suit la trame de phases imposée', () => {
+    expect(p.semainesContenu.map((s) => s.phase)).toEqual([
+      'bloc1', 'bloc1', 'bloc1', 'allegee',
+      'bloc2', 'bloc2', 'bloc2', 'allegee',
+      'allegee',
+      'bloc3', 'bloc3', 'bloc3', 'allegee',
+      'affutage', 'affutage', 'recuperation',
+    ]);
+    expect(p.semainesContenu.map((s) => s.numero)).toEqual(
+      Array.from({ length: 16 }, (_, i) => i + 1),
+    );
+  });
+
+  it('atteint son pic de charge en S12 et nulle part ailleurs', () => {
+    const volumes = p.semainesContenu.map(volumeHorsCourse);
+    expect(Math.max(...volumes)).toBe(volumes[11]);
+    expect(volumes.filter((v) => v === volumes[11])).toHaveLength(1);
+  });
+
+  it("n'impose jamais d'allure en min/km ni de vitesse chiffrée", () => {
+    const textes = p.semainesContenu
+      .flatMap((s) => [...s.seances, ...(s.variantes ? s.variantes.avecIzon.seances : [])])
+      .map((x) => x.description)
+      .join(' ');
+    expect(textes).not.toMatch(/min\/km/);
+    expect(textes).not.toMatch(/km\/h/);
+  });
+
+  it("n'emploie jamais de tiret cadratin dans les textes affichés", () => {
+    const textes = p.semainesContenu.flatMap((s) => [
+      s.titre,
+      s.intention,
+      ...[...s.seances, ...(s.variantes ? s.variantes.avecIzon.seances : [])].flatMap((x) => [
+        x.titre,
+        x.description,
+        x.objectif,
+      ]),
+    ]);
+    expect(textes.join(' ')).not.toContain('—');
+  });
+
+  it('donne à chaque séance une description exécutable et un objectif rédigé', () => {
+    for (const s of p.semainesContenu) {
+      for (const seance of [...s.seances, ...(s.variantes ? s.variantes.avecIzon.seances : [])]) {
+        expect(seance.description.length).toBeGreaterThan(30);
+        expect(seance.objectif.length).toBeGreaterThan(15);
+      }
+    }
+  });
+
+  it("varie les textes, aucune description n'est répétée d'une semaine à l'autre", () => {
+    const descriptions = p.semainesContenu.flatMap((s) => s.seances.map((x) => x.description));
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+  });
+
+  it("ne reprend aucune description telle quelle à P1", () => {
+    const deP1 = new Set(P1.semainesContenu.flatMap((s) => s.seances.map((x) => x.description)));
+    const communes = p.semainesContenu
+      .flatMap((s) => s.seances.map((x) => x.description))
+      .filter((d) => deP1.has(d));
+    expect(communes).toEqual([]);
+  });
+
+  it('place la Z3 avant le premier travail en Z4', () => {
+    const numeroPremiereZone = (zone) =>
+      p.semainesContenu.find((s) => s.seances.some((x) => x.zone === zone))?.numero;
+    expect(numeroPremiereZone('Z3')).toBeLessThan(numeroPremiereZone('Z4'));
+  });
+
+  it('ne programme jamais deux séances dures dans la même semaine', () => {
+    const DURES = new Set(['TEMPO', 'SEUIL', 'VMA']);
+    for (const s of p.semainesContenu) {
+      for (const seances of [s.seances, s.variantes ? s.variantes.avecIzon.seances : []]) {
+        expect(seances.filter((x) => DURES.has(x.code)).length).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("n'introduit les lignes droites en Z5 qu'à la fin du bloc 1, puis les entretient", () => {
+    const estLigneDroite = (x) =>
+      /lignes droites/.test(x.description) && zonesSecondairesDe(x).includes('Z5');
+    const semainesAvecLignes = p.semainesContenu
+      .filter((s) => s.seances.some(estLigneDroite))
+      .map((s) => s.numero);
+
+    const finBloc1 = Math.max(
+      ...p.semainesContenu.filter((s) => s.phase === 'bloc1').map((s) => s.numero),
+    );
+    expect(finBloc1).toBe(3);
+    expect(semainesAvecLignes[0]).toBe(finBloc1);
+    expect(semainesAvecLignes.length).toBeGreaterThanOrEqual(4);
+
+    // Jamais pendant une semaine allégée, ni pendant la semaine de course.
+    const allegees = p.semainesContenu.filter((s) => s.phase === 'allegee').map((s) => s.numero);
+    for (const n of allegees) expect(semainesAvecLignes).not.toContain(n);
+    expect(semainesAvecLignes).not.toContain(15);
+
+    // Toujours en fin d'endurance fondamentale, au format prescrit.
+    for (const s of p.semainesContenu) {
+      for (const seance of s.seances.filter(estLigneDroite)) {
+        expect(seance.code).toBe('EF');
+        expect(seance.description).toMatch(/[46] lignes droites de (15|20) s en Z5/);
+        expect(seance.description).toMatch(/marche/);
+      }
+    }
+  });
+
+  it('réduit le renfo sur les deux semaines qui précèdent la course', () => {
+    const dureeRenfo = (s) => s.seances.find((x) => x.code === 'RENFO').duree;
+    const pic = Math.max(...p.semainesContenu.map(dureeRenfo));
+    expect(dureeRenfo(p.semainesContenu[13])).toBeLessThan(pic);
+    expect(dureeRenfo(p.semainesContenu[14])).toBeLessThan(dureeRenfo(p.semainesContenu[13]));
+  });
+});
+
+describe('P2, 10 km de Bordeaux', () => {
+  it("porte l'identité et le prérequis attendus", () => {
+    expect(P2.code).toBe('P2');
+    expect(P2.nom).toBe('10 km de Bordeaux');
+    expect(P2.prerequis).toMatch(/30 minutes/);
+  });
+
+  it('respecte son barème de volumes hors course et hors renfo', () => {
+    expect(P2.semainesContenu.map(volumeHorsCourse)).toEqual([
+      100, 108, 117, 96, 126, 136, 147, 122, 100, 140, 151, 162, 132, 118, 55, 90,
+    ]);
+    expect(volumeHorsCourse(P2.semainesContenu[8].variantes.avecIzon)).toBe(55);
+  });
+
+  it('plafonne la sortie longue à 1 h 15', () => {
+    const longues = P2.semainesContenu.flatMap((s) => s.seances.filter((x) => x.code === 'SL'));
+    expect(Math.max(...longues.map((x) => x.duree))).toBe(75);
+  });
+
+  it('travaille majoritairement en Z4 et Z5', () => {
+    const dures = P2.semainesContenu
+      .flatMap((s) => s.seances)
+      .filter((x) => ['TEMPO', 'SEUIL', 'VMA'].includes(x.code));
+    const z4z5 = dures.filter((x) => x.zone === 'Z4' || x.zone === 'Z5');
+    expect(z4z5.length).toBeGreaterThan(dures.length / 2);
+  });
+
+  it('comporte la séance de seuil de référence, 3 fois 8 min en Z4, en fin de préparation', () => {
+    const s14 = P2.semainesContenu[13];
+    const reference = s14.seances.find((x) => x.code === 'SEUIL');
+    expect(reference.description).toMatch(/3 fois 8 min en Z4/);
+  });
+
+  it('court son objectif sur 10 km', () => {
+    const objectif = P2.semainesContenu[14].seances.find((x) => x.code === 'COURSE');
+    expect(objectif.distance).toBe(10);
+    expect(objectif.titre).toBe('10 km de Bordeaux');
+  });
+});
+
+describe('P3, semi-marathon de Bordeaux', () => {
+  it("porte l'identité et le prérequis attendus", () => {
+    expect(P3.code).toBe('P3');
+    expect(P3.nom).toBe('Semi-marathon de Bordeaux');
+    expect(P3.prerequis).toMatch(/20 km par semaine depuis 2 mois/);
+  });
+
+  it('respecte son barème de volumes hors course et hors renfo', () => {
+    expect(P3.semainesContenu.map(volumeHorsCourse)).toEqual([
+      130, 141, 152, 124, 160, 172, 185, 152, 126, 172, 186, 200, 165, 140, 61, 105,
+    ]);
+    expect(volumeHorsCourse(P3.semainesContenu[8].variantes.avecIzon)).toBe(70);
+  });
+
+  it('monte la sortie longue à 1 h 50 en S12', () => {
+    const s12 = P3.semainesContenu[11].seances.find((x) => x.code === 'SL');
+    expect(s12.duree).toBe(110);
+    const longues = P3.semainesContenu.flatMap((s) => s.seances.filter((x) => x.code === 'SL'));
+    expect(Math.max(...longues.map((x) => x.duree))).toBe(110);
+  });
+
+  it('travaille majoritairement en Z3 et Z4', () => {
+    const dures = P3.semainesContenu
+      .flatMap((s) => s.seances)
+      .filter((x) => ['TEMPO', 'SEUIL', 'VMA'].includes(x.code));
+    expect(dures.every((x) => x.zone === 'Z3' || x.zone === 'Z4')).toBe(true);
+  });
+
+  it('comporte la séance spécifique de référence, 2 fois 20 min en Z3, en fin de préparation', () => {
+    const s14 = P3.semainesContenu[13];
+    const reference = s14.seances.find((x) => x.code === 'TEMPO');
+    expect(reference.description).toMatch(/2 fois 20 min en Z3/);
+  });
+
+  it('court son objectif sur 21,1 km', () => {
+    const objectif = P3.semainesContenu[14].seances.find((x) => x.code === 'COURSE');
+    expect(objectif.distance).toBe(21.1);
+    expect(objectif.titre).toBe('Semi-marathon de Bordeaux');
+  });
+});
+
+it('P3 comporte des sorties longues plus longues que P2', () => {
+  const longue = (p) =>
+    Math.max(
+      ...p.semainesContenu.flatMap((s) => s.seances.filter((x) => x.code === 'SL').map((x) => x.duree)),
+    );
+  expect(longue(P3)).toBeGreaterThan(longue(P2));
+});
+
+it('P3 est plus chargé que P2 à chaque semaine de bloc', () => {
+  const volumes = (p) => p.semainesContenu.map(volumeHorsCourse);
+  const vP2 = volumes(P2);
+  const vP3 = volumes(P3);
+  P3.semainesContenu.forEach((s, i) => {
+    if (s.phase.startsWith('bloc')) expect(vP3[i]).toBeGreaterThan(vP2[i]);
   });
 });
