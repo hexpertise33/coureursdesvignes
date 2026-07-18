@@ -1083,22 +1083,22 @@ describe('méthode HEAD', () => {
 describe('validation de séance', () => {
   it('enregistre une validation avec ressenti et note, et la restitue', async () => {
     await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Valideur', initiale: 'V', programme: 'P3' });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
 
     const { statut, donnees } = await validerA(MI_PARCOURS, 'coureur', {
-      prenom: 'Valideur', initiale: 'V', semaine: 1, seance: codeSeance,
+      prenom: 'Valideur', initiale: 'V', semaine: 1, seanceId: idSeance,
       ressenti: 'ok', note: 'Genou un peu raide.',
     });
 
     expect(statut).toBe(200);
     expect(donnees.validations).toHaveLength(1);
     expect(donnees.validations[0]).toMatchObject({
-      semaine: 1, seance: codeSeance, ressenti: 'ok', note: 'Genou un peu raide.',
+      semaine: 1, seanceId: idSeance, ressenti: 'ok', note: 'Genou un peu raide.',
     });
     expect(typeof donnees.validations[0].valideLe).toBe('string');
     // Aucune colonne interne (id de ligne, coureur_id, valide_le brut).
     expect(Object.keys(donnees.validations[0]).sort()).toEqual(
-      ['note', 'ressenti', 'seance', 'semaine', 'valideLe'].sort(),
+      ['note', 'ressenti', 'seanceId', 'semaine', 'valideLe'].sort(),
     );
   });
 
@@ -1106,8 +1106,8 @@ describe('validation de séance', () => {
     const { donnees: c } = await creerCoureurA(MI_PARCOURS, 'coureur', {
       prenom: 'Idem', initiale: 'I', programme: 'P3',
     });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
-    const corps = (ressenti) => ({ prenom: 'Idem', initiale: 'I', semaine: 1, seance: codeSeance, ressenti });
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
+    const corps = (ressenti) => ({ prenom: 'Idem', initiale: 'I', semaine: 1, seanceId: idSeance, ressenti });
 
     await validerA(MI_PARCOURS, 'coureur', corps('facile'));
     const { statut, donnees } = await validerA(MI_PARCOURS, 'coureur', corps('difficile'));
@@ -1117,19 +1117,19 @@ describe('validation de séance', () => {
     expect(donnees.validations[0].ressenti).toBe('difficile');
 
     const lignes = await env.DB.prepare(
-      'SELECT ressenti FROM validations WHERE coureur_id = ? AND semaine = 1 AND seance = ?',
-    ).bind(c.coureur.id, codeSeance).all();
+      'SELECT ressenti FROM validations WHERE coureur_id = ? AND semaine = 1 AND seance_id = ?',
+    ).bind(c.coureur.id, idSeance).all();
     expect(lignes.results).toHaveLength(1);
     expect(lignes.results[0].ressenti).toBe('difficile');
   });
 
   it('refuse un ressenti hors liste', async () => {
     await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Mauvais', initiale: 'M', programme: 'P3' });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
     expect(RESSENTIS).not.toContain('epuisant');
 
     const { statut, donnees } = await validerA(MI_PARCOURS, 'coureur', {
-      prenom: 'Mauvais', initiale: 'M', semaine: 1, seance: codeSeance, ressenti: 'epuisant',
+      prenom: 'Mauvais', initiale: 'M', semaine: 1, seanceId: idSeance, ressenti: 'epuisant',
     });
     expect(statut).toBe(400);
     expect(donnees.erreur).not.toMatch(/—/) // aucun tiret cadratin dans les messages;
@@ -1139,8 +1139,8 @@ describe('validation de séance', () => {
     const { donnees: c } = await creerCoureurA(MI_PARCOURS, 'coureur', {
       prenom: 'Devalide', initiale: 'D', programme: 'P3',
     });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
-    const identite = { prenom: 'Devalide', initiale: 'D', semaine: 1, seance: codeSeance };
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
+    const identite = { prenom: 'Devalide', initiale: 'D', semaine: 1, seanceId: idSeance };
 
     await validerA(MI_PARCOURS, 'coureur', identite);
     const { statut, donnees } = await devaliderA(MI_PARCOURS, 'coureur', identite);
@@ -1154,9 +1154,9 @@ describe('validation de séance', () => {
 
   it('dévalider une séance jamais validée ne lève pas d\'erreur (idempotent)', async () => {
     await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Jamais', initiale: 'J', programme: 'P3' });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
     const { statut, donnees } = await devaliderA(MI_PARCOURS, 'coureur', {
-      prenom: 'Jamais', initiale: 'J', semaine: 1, seance: codeSeance,
+      prenom: 'Jamais', initiale: 'J', semaine: 1, seanceId: idSeance,
     });
     expect(statut).toBe(200);
     expect(donnees.validations).toHaveLength(0);
@@ -1166,9 +1166,9 @@ describe('validation de séance', () => {
     const { donnees: c } = await creerCoureurA(MI_PARCOURS, 'coureur', {
       prenom: 'Bavard', initiale: 'B', programme: 'P3',
     });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
     await validerA(MI_PARCOURS, 'coureur', {
-      prenom: 'Bavard', initiale: 'B', semaine: 1, seance: codeSeance, note: 'x'.repeat(1000),
+      prenom: 'Bavard', initiale: 'B', semaine: 1, seanceId: idSeance, note: 'x'.repeat(1000),
     });
     const l = await env.DB.prepare('SELECT note FROM validations WHERE coureur_id = ?')
       .bind(c.coureur.id).first();
@@ -1178,7 +1178,7 @@ describe('validation de séance', () => {
   it("refuse un code de séance qui n'existe pas dans la semaine, une fois celle-ci publiée", async () => {
     await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Farceur', initiale: 'F', programme: 'P3' });
     const { statut, donnees } = await validerA(MI_PARCOURS, 'coureur', {
-      prenom: 'Farceur', initiale: 'F', semaine: 1, seance: 'CODE-INVENTE',
+      prenom: 'Farceur', initiale: 'F', semaine: 1, seanceId: 'IDENTIFIANT-INVENTE',
     });
     expect(statut).toBe(400);
     expect(donnees.erreur).toMatch(/séance/i);
@@ -1187,10 +1187,10 @@ describe('validation de séance', () => {
 
   it('refuse une semaine mal formée (non entière, négative ou absente)', async () => {
     await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Flottant', initiale: 'F', programme: 'P3' });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
     for (const semaine of ['1', 1.5, -1, 0, null, undefined]) {
       const { statut } = await validerA(MI_PARCOURS, 'coureur', {
-        prenom: 'Flottant', initiale: 'F', semaine, seance: codeSeance,
+        prenom: 'Flottant', initiale: 'F', semaine, seanceId: idSeance,
       });
       expect(statut).toBe(400);
     }
@@ -1199,14 +1199,14 @@ describe('validation de séance', () => {
   it('refuse une semaine hors bornes du programme', async () => {
     await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Hors', initiale: 'B', programme: 'P3' });
     const { statut } = await validerA(MI_PARCOURS, 'coureur', {
-      prenom: 'Hors', initiale: 'B', semaine: 999, seance: 'EF',
+      prenom: 'Hors', initiale: 'B', semaine: 999, seanceId: 'EF-1',
     });
     expect(statut).toBe(404);
   });
 
   it('refuse sans cookie', async () => {
     const r = await requeteA(MI_PARCOURS, '/api/validation', {
-      method: 'POST', headers: {}, body: JSON.stringify({ semaine: 1, seance: 'EF' }),
+      method: 'POST', headers: {}, body: JSON.stringify({ semaine: 1, seanceId: 'EF-1' }),
     });
     expect(r.status).toBe(401);
   });
@@ -1227,7 +1227,7 @@ describe('validation de séance : semaine non publiée', () => {
     const secrete = semaineDuProgramme('P3', 1, { faitIzon: false });
 
     const { statut, donnees } = await validerA(AVANT_TOUT, 'coureur', {
-      prenom: 'Impatient', initiale: 'I', semaine: 1, seance: secrete.seances[0].code, ressenti: 'ok',
+      prenom: 'Impatient', initiale: 'I', semaine: 1, seanceId: secrete.seances[0].id, ressenti: 'ok',
     });
 
     expect(statut).toBe(403);
@@ -1246,24 +1246,24 @@ describe('validation de séance : semaine non publiée', () => {
     // réponse : sinon, la différence entre les deux devient un second canal
     // pour reconstituer le contenu d'une semaine à venir, séance par séance.
     await creerCoureurA(AVANT_TOUT, 'coureur', { prenom: 'Curieux', initiale: 'C', programme: 'P3' });
-    const codeReel = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const identifiantReel = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
 
-    const avecCodeReel = await validerA(AVANT_TOUT, 'coureur', {
-      prenom: 'Curieux', initiale: 'C', semaine: 1, seance: codeReel,
+    const avecIdentifiantReel = await validerA(AVANT_TOUT, 'coureur', {
+      prenom: 'Curieux', initiale: 'C', semaine: 1, seanceId: identifiantReel,
     });
-    const avecCodeInvente = await validerA(AVANT_TOUT, 'coureur', {
-      prenom: 'Curieux', initiale: 'C', semaine: 1, seance: 'CODE-INVENTE',
+    const avecIdentifiantInvente = await validerA(AVANT_TOUT, 'coureur', {
+      prenom: 'Curieux', initiale: 'C', semaine: 1, seanceId: 'IDENTIFIANT-INVENTE',
     });
 
-    expect(avecCodeReel.statut).toBe(403);
-    expect(avecCodeInvente.statut).toBe(403);
-    expect(avecCodeReel.donnees).toEqual(avecCodeInvente.donnees);
+    expect(avecIdentifiantReel.statut).toBe(403);
+    expect(avecIdentifiantInvente.statut).toBe(403);
+    expect(avecIdentifiantReel.donnees).toEqual(avecIdentifiantInvente.donnees);
   });
 
   it("dévalider une semaine non publiée est refusé de la même façon", async () => {
     await creerCoureurA(AVANT_TOUT, 'coureur', { prenom: 'Presse', initiale: 'P', programme: 'P3' });
     const { statut, donnees } = await devaliderA(AVANT_TOUT, 'coureur', {
-      prenom: 'Presse', initiale: 'P', semaine: 1, seance: 'EF',
+      prenom: 'Presse', initiale: 'P', semaine: 1, seanceId: 'EF-1',
     });
     expect(statut).toBe(403);
     expect(donnees.validations).toBeUndefined();
@@ -1273,14 +1273,81 @@ describe('validation de séance : semaine non publiée', () => {
     const { donnees: c } = await creerCoureurA(AVANT_TOUT, 'admin', {
       prenom: 'Suivi', initiale: 'S', programme: 'P3',
     });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
 
     const { statut, donnees } = await validerA(AVANT_TOUT, 'admin', {
-      coureur: c.coureur.id, semaine: 1, seance: codeSeance, ressenti: 'ok',
+      coureur: c.coureur.id, semaine: 1, seanceId: idSeance, ressenti: 'ok',
     });
 
     expect(statut).toBe(200);
     expect(donnees.validations).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Deux séances de même code dans une semaine
+// ---------------------------------------------------------------------------
+//
+// Le défaut que l'identifiant de séance corrige. La semaine 1 de P1 aligne
+// EF, EF, SL, RENFO : deux endurances fondamentales, deux jours différents,
+// deux descriptions différentes. Tant que la validation était clavetée sur le
+// code, cocher la seconde effaçait la première, avec son ressenti et sa note.
+
+describe('séances homonymes dans une semaine', () => {
+  it('enregistre séparément les deux endurances fondamentales de la semaine 1 de P1', async () => {
+    await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Doublon', initiale: 'D', programme: 'P1' });
+    const s1 = semaineDuProgramme('P1', 1, { faitIzon: false });
+    expect(s1.seances.filter((x) => x.code === 'EF')).toHaveLength(2);
+
+    await validerA(MI_PARCOURS, 'coureur', {
+      prenom: 'Doublon', initiale: 'D', semaine: 1, seanceId: 'EF-1',
+      ressenti: 'facile', note: 'footing du mardi, tranquille',
+    });
+    const { statut, donnees } = await validerA(MI_PARCOURS, 'coureur', {
+      prenom: 'Doublon', initiale: 'D', semaine: 1, seanceId: 'EF-2',
+      ressenti: 'difficile', note: 'footing du jeudi, jambes lourdes',
+    });
+
+    expect(statut).toBe(200);
+    // Deux lignes, et chacune a gardé son propre ressenti et sa propre note.
+    expect(donnees.validations).toHaveLength(2);
+    const parId = new Map(donnees.validations.map((v) => [v.seanceId, v]));
+    expect(parId.get('EF-1')).toMatchObject({
+      semaine: 1, ressenti: 'facile', note: 'footing du mardi, tranquille',
+    });
+    expect(parId.get('EF-2')).toMatchObject({
+      semaine: 1, ressenti: 'difficile', note: 'footing du jeudi, jambes lourdes',
+    });
+  });
+
+  it('dévalider une des deux endurances laisse l\'autre en place', async () => {
+    await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Decoche', initiale: 'D', programme: 'P1' });
+    const identite = { prenom: 'Decoche', initiale: 'D', semaine: 1 };
+    await validerA(MI_PARCOURS, 'coureur', { ...identite, seanceId: 'EF-1', ressenti: 'ok' });
+    await validerA(MI_PARCOURS, 'coureur', { ...identite, seanceId: 'EF-2', ressenti: 'difficile' });
+
+    const { donnees } = await devaliderA(MI_PARCOURS, 'coureur', { ...identite, seanceId: 'EF-1' });
+    expect(donnees.validations).toHaveLength(1);
+    expect(donnees.validations[0].seanceId).toBe('EF-2');
+    expect(donnees.validations[0].ressenti).toBe('difficile');
+  });
+
+  it("publie l'identifiant de chaque séance à côté de son code", async () => {
+    const { donnees } = await jsonA(MI_PARCOURS, '/api/semaine?programme=P1&numero=1', { role: 'coureur' });
+    expect(donnees.semaine.seances.map((x) => x.id)).toEqual(['EF-1', 'EF-2', 'SL-1', 'RENFO-1']);
+    expect(donnees.semaine.seances.map((x) => x.code)).toEqual(['EF', 'EF', 'SL', 'RENFO']);
+  });
+
+  it("refuse un identifiant de séance qui n'existe pas dans la semaine", async () => {
+    await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Trop', initiale: 'T', programme: 'P1' });
+    // La semaine 1 de P1 n'a que deux endurances : EF-3 n'existe pas, et le
+    // code nu « EF » n'est plus une identité valable.
+    for (const seanceId of ['EF-3', 'EF', 'SL-2']) {
+      const { statut } = await validerA(MI_PARCOURS, 'coureur', {
+        prenom: 'Trop', initiale: 'T', semaine: 1, seanceId,
+      });
+      expect(statut).toBe(400);
+    }
   });
 });
 
@@ -1292,11 +1359,11 @@ describe('validation de séance : sécurité de l\'identifiant coureur', () => {
     const { donnees: attaquant } = await creerCoureurA(MI_PARCOURS, 'admin', {
       prenom: 'Attaquant', initiale: 'A', programme: 'P3',
     });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
 
     // La victime valide légitimement sa propre séance.
     await validerA(MI_PARCOURS, 'coureur', {
-      prenom: 'Victime', initiale: 'V', semaine: 1, seance: codeSeance,
+      prenom: 'Victime', initiale: 'V', semaine: 1, seanceId: idSeance,
       ressenti: 'difficile', note: 'douleur au genou',
     });
 
@@ -1306,7 +1373,7 @@ describe('validation de séance : sécurité de l\'identifiant coureur', () => {
     const { statut, donnees } = await validerA(MI_PARCOURS, 'coureur', {
       coureur: victime.coureur.id, // tentative de vol d'identité
       prenom: 'Attaquant', initiale: 'A',
-      semaine: 1, seance: codeSeance, ressenti: 'facile', note: 'usurpation',
+      semaine: 1, seanceId: idSeance, ressenti: 'facile', note: 'usurpation',
     });
 
     expect(statut).toBe(200);
@@ -1320,14 +1387,14 @@ describe('validation de séance : sécurité de l\'identifiant coureur', () => {
     // Vérification directe en base : la ligne de la victime n'a pas bougé,
     // l'écriture de l'attaquant est bien allée sur SA propre fiche.
     const ligneVictime = await env.DB.prepare(
-      'SELECT ressenti, note FROM validations WHERE coureur_id = ? AND semaine = 1 AND seance = ?',
-    ).bind(victime.coureur.id, codeSeance).first();
+      'SELECT ressenti, note FROM validations WHERE coureur_id = ? AND semaine = 1 AND seance_id = ?',
+    ).bind(victime.coureur.id, idSeance).first();
     expect(ligneVictime.ressenti).toBe('difficile');
     expect(ligneVictime.note).toBe('douleur au genou');
 
     const ligneAttaquant = await env.DB.prepare(
-      'SELECT ressenti, note FROM validations WHERE coureur_id = ? AND semaine = 1 AND seance = ?',
-    ).bind(attaquant.coureur.id, codeSeance).first();
+      'SELECT ressenti, note FROM validations WHERE coureur_id = ? AND semaine = 1 AND seance_id = ?',
+    ).bind(attaquant.coureur.id, idSeance).first();
     expect(ligneAttaquant.ressenti).toBe('facile');
     expect(ligneAttaquant.note).toBe('usurpation');
   });
@@ -1336,10 +1403,10 @@ describe('validation de séance : sécurité de l\'identifiant coureur', () => {
     const { donnees: cible } = await creerCoureurA(MI_PARCOURS, 'admin', {
       prenom: 'Cible', initiale: 'C', programme: 'P3',
     });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
 
     const { statut, donnees } = await validerA(MI_PARCOURS, 'coureur', {
-      coureur: cible.coureur.id, semaine: 1, seance: codeSeance, ressenti: 'ok',
+      coureur: cible.coureur.id, semaine: 1, seanceId: idSeance, ressenti: 'ok',
     });
 
     expect(statut).toBe(400);
@@ -1353,16 +1420,16 @@ describe('validation de séance : sécurité de l\'identifiant coureur', () => {
     const { donnees: secrete } = await creerCoureurA(MI_PARCOURS, 'admin', {
       prenom: 'Discrete', initiale: 'D', programme: 'P3',
     });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
     await validerA(MI_PARCOURS, 'admin', {
-      coureur: secrete.coureur.id, semaine: 1, seance: codeSeance,
+      coureur: secrete.coureur.id, semaine: 1, seanceId: idSeance,
       ressenti: 'difficile', note: 'information confidentielle',
     });
 
     await creerCoureurA(MI_PARCOURS, 'coureur', { prenom: 'Fouineur', initiale: 'F', programme: 'P3' });
     const { donnees } = await validerA(MI_PARCOURS, 'coureur', {
       coureur: secrete.coureur.id,
-      prenom: 'Fouineur', initiale: 'F', semaine: 1, seance: codeSeance, ressenti: 'ok',
+      prenom: 'Fouineur', initiale: 'F', semaine: 1, seanceId: idSeance, ressenti: 'ok',
     });
 
     expect(JSON.stringify(donnees)).not.toMatch(/information confidentielle/);
@@ -1373,9 +1440,9 @@ describe('validation de séance : sécurité de l\'identifiant coureur', () => {
     const { donnees: c } = await creerCoureurA(MI_PARCOURS, 'admin', {
       prenom: 'CibleAdmin', initiale: 'C', programme: 'P3',
     });
-    const codeSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].code;
+    const idSeance = semaineDuProgramme('P3', 1, { faitIzon: false }).seances[0].id;
     const { statut, donnees } = await validerA(MI_PARCOURS, 'admin', {
-      coureur: c.coureur.id, semaine: 1, seance: codeSeance, ressenti: 'ok',
+      coureur: c.coureur.id, semaine: 1, seanceId: idSeance, ressenti: 'ok',
     });
     expect(statut).toBe(200);
     expect(donnees.validations).toHaveLength(1);
@@ -1384,7 +1451,7 @@ describe('validation de séance : sécurité de l\'identifiant coureur', () => {
   it('refuse un identifiant coureur absent ou invalide pour un admin', async () => {
     for (const coureur of [undefined, 0, -1, 'abc', 999999]) {
       const { statut } = await validerA(MI_PARCOURS, 'admin', {
-        coureur, semaine: 1, seance: 'EF', ressenti: 'ok',
+        coureur, semaine: 1, seanceId: 'EF-1', ressenti: 'ok',
       });
       expect(statut).toBe(400);
     }

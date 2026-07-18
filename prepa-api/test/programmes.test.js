@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ZONES, ef, sl, vma, seuil, recup, renfo, course, semaine, volume, volumeHorsCourse, zonesSecondairesDe } from '../src/programmes/seances.js';
+import { ZONES, ef, sl, vma, seuil, recup, renfo, course, semaine, volume, volumeHorsCourse, zonesSecondairesDe, identifiantSeance, identifierSeances } from '../src/programmes/seances.js';
 import { verifierProgramme } from '../src/programmes/regles.js';
 import { P1 } from '../src/programmes/p1-10km-izon.js';
 import { P2 } from '../src/programmes/p2-10km-bordeaux.js';
@@ -515,6 +515,112 @@ const VARIANTES_AVEC_IZON = PROGRAMMES.flatMap((p) =>
 );
 
 const TOUS_LES_CONTENUS = [...PROGRAMMES, ...VARIANTES_AVEC_IZON];
+
+// ---------------------------------------------------------------------------
+// Identité des séances dans la semaine
+// ---------------------------------------------------------------------------
+//
+// Le code de type (EF, SL, VMA...) n'identifie pas une séance : 57 des 150
+// semaines résolues du corpus en portent deux du même. C'est l'identifiant
+// « code-rang » qui fait foi, et le balayage ci-dessous est le filet qui
+// garantit qu'il ne se répète jamais dans une semaine, sur les cinq
+// programmes et dans les deux variantes.
+
+describe('identité des séances dans la semaine', () => {
+  it('numérote chaque séance par son rang d\'occurrence de code, suffixe toujours posé', () => {
+    const seances = identifierSeances([
+      { code: 'EF' }, { code: 'EF' }, { code: 'SL' }, { code: 'RENFO' },
+    ]);
+    expect(seances.map((s) => s.id)).toEqual(['EF-1', 'EF-2', 'SL-1', 'RENFO-1']);
+    // Le suffixe est posé même sur un code unique dans la semaine. Sans lui,
+    // ajouter une seconde endurance forcerait l'unique « EF » à devenir
+    // « EF-1 » et orphelinerait toutes les validations déjà posées.
+    expect(identifierSeances([{ code: 'SL' }])[0].id).toBe('SL-1');
+    expect(identifiantSeance('EF', 2)).toBe('EF-2');
+  });
+
+  it('ne mute pas les séances sources et recalcule un identifiant déjà posé', () => {
+    const source = [{ code: 'EF', id: 'PERIME' }, { code: 'EF' }];
+    const rendues = identifierSeances(source);
+    expect(source[0].id).toBe('PERIME');
+    expect(rendues.map((s) => s.id)).toEqual(['EF-1', 'EF-2']);
+  });
+
+  it('la semaine 1 de P1 distingue bien ses deux endurances fondamentales', () => {
+    const s1 = semaineDuProgramme('P1', 1, { faitIzon: false });
+    expect(s1.seances.map((s) => s.code)).toEqual(['EF', 'EF', 'SL', 'RENFO']);
+    expect(s1.seances.map((s) => s.id)).toEqual(['EF-1', 'EF-2', 'SL-1', 'RENFO-1']);
+    // Deux séances distinctes, pas une saisie en double : descriptions et
+    // durées diffèrent.
+    expect(s1.seances[0].description).not.toBe(s1.seances[1].description);
+  });
+
+  it('donne un identifiant unique à chaque séance des 150 semaines résolues, dans les deux variantes', () => {
+    const collisions = [];
+    let semainesBalayees = 0;
+    let semainesAHomonymes = 0;
+    let seancesBalayees = 0;
+
+    for (const code of Object.keys(REGISTRE_PROGRAMMES)) {
+      const nb = REGISTRE_PROGRAMMES[code].semainesContenu.length;
+      for (const faitIzon of [false, true]) {
+        for (let n = 1; n <= nb; n++) {
+          const s = semaineDuProgramme(code, n, { faitIzon });
+          semainesBalayees += 1;
+          seancesBalayees += s.seances.length;
+
+          const codes = s.seances.map((x) => x.code);
+          if (new Set(codes).size !== codes.length) semainesAHomonymes += 1;
+
+          const ids = s.seances.map((x) => x.id);
+          for (const id of ids) {
+            expect(typeof id).toBe('string');
+            expect(id).toMatch(/^[A-Za-z0-9-]+-\d+$/);
+          }
+          if (new Set(ids).size !== ids.length) {
+            collisions.push(`${code} S${n} (izon=${faitIzon}) : ${ids.join(', ')}`);
+          }
+        }
+      }
+    }
+
+    // 150 résolutions : 75 semaines de plan sur les cinq programmes, chacune
+    // lue dans ses deux variantes (avec et sans la course-test d'Izon). Le
+    // compte de semaines à séances homonymes est asserté et non seulement
+    // affiché : s'il tombait à zéro, ce test ne prouverait plus rien du
+    // défaut qu'il couvre, et il faudrait s'en apercevoir.
+    expect(semainesBalayees).toBe(150);
+    expect(semainesAHomonymes).toBe(57);
+    expect(seancesBalayees).toBe(600);
+    expect(collisions).toEqual([]);
+  });
+
+  it('rend le même identifiant à chaque lecture, sans dépendre de l\'ordre des appels', () => {
+    // La stabilité est l'exigence qui fait tenir la coche du coureur d'un
+    // jour à l'autre et d'un déploiement à l'autre : l'identifiant ne dépend
+    // que du contenu de la semaine, jamais d'un compteur ni d'une horloge.
+    for (const code of Object.keys(REGISTRE_PROGRAMMES)) {
+      for (const faitIzon of [false, true]) {
+        const nb = REGISTRE_PROGRAMMES[code].semainesContenu.length;
+        for (let n = 1; n <= nb; n++) {
+          const a = semaineDuProgramme(code, n, { faitIzon }).seances.map((x) => x.id);
+          const b = semaineDuProgramme(code, n, { faitIzon }).seances.map((x) => x.id);
+          expect(b).toEqual(a);
+        }
+      }
+    }
+  });
+
+  it('les deux variantes d\'une semaine à variantes numérotent chacune la sienne', () => {
+    const sans = semaineDuProgramme('P2', 9, { faitIzon: false });
+    const avec = semaineDuProgramme('P2', 9, { faitIzon: true });
+    expect(new Set(sans.seances.map((s) => s.id)).size).toBe(sans.seances.length);
+    expect(new Set(avec.seances.map((s) => s.id)).size).toBe(avec.seances.length);
+    // La variante avec course porte un COURSE-1 que l'autre n'a pas.
+    expect(avec.seances.some((s) => s.id === 'COURSE-1')).toBe(true);
+    expect(sans.seances.some((s) => s.id === 'COURSE-1')).toBe(false);
+  });
+});
 
 describe('registre des programmes', () => {
   it('se construit par découverte du dossier, sans liste écrite en dur', () => {

@@ -47,22 +47,18 @@ async function coureur(base, programme = 'P1') {
 }
 
 /**
- * Codes de séance distincts d'une semaine réelle du programme.
+ * Identifiants des séances d'une semaine réelle du programme.
  *
- * Le dédoublonnage n'est pas cosmétique. Cinquante-sept des cent cinquante
- * semaines résolues du corpus portent deux séances de même code (deux
- * endurances fondamentales, toutes deux « EF »), alors que la table des
- * validations impose UNIQUE(coureur_id, semaine, seance) : la seconde
- * validation écrase silencieusement la première. Une boucle sur les codes
- * bruts croirait donc écrire trois lignes et n'en écrirait que deux, et un
- * test de majorité de ressentis se retrouverait à mesurer autre chose que ce
- * qu'il annonce. Ce défaut est antérieur à cette tâche et lui survit : il est
- * décrit dans le rapport, il se corrige par une migration qui donne une
- * identité propre à chaque séance de la semaine.
+ * Aucun dédoublonnage. Cinquante-sept des cent cinquante semaines résolues du
+ * corpus portent deux séances de même code (deux endurances fondamentales,
+ * toutes deux « EF »), et ce sont bien deux séances distinctes : la semaine 1
+ * de P1 rend donc quatre identifiants, EF-1, EF-2, SL-1 et RENFO-1. Tant que
+ * la clé de validation était le code, cette liste devait être dédoublonnée
+ * sous peine de faire croire à un test qu'il écrivait quatre lignes quand la
+ * base n'en gardait que trois. L'identifiant de séance a supprimé ce piège.
  */
-function codesSeances(programme, numero) {
-  const codes = semaineDuProgramme(programme, numero, { faitIzon: false }).seances.map((s) => s.code);
-  return [...new Set(codes)];
+function identifiantsSeances(programme, numero) {
+  return semaineDuProgramme(programme, numero, { faitIzon: false }).seances.map((s) => s.id);
 }
 
 /** Un contenu de semaine bien formé, tel que l'encadrant en saisirait un. */
@@ -98,9 +94,9 @@ function contenuValide(marqueur) {
 describe('tableau d\'assiduité', () => {
   it('restitue les validations semaine par semaine, coureur par coureur', async () => {
     const c = await coureur('Assidu');
-    const [premiere, seconde] = codesSeances('P1', 1);
-    await valider(env.DB, c.id, { semaine: 1, seance: premiere, ressenti: 'ok', note: 'RAS' });
-    await valider(env.DB, c.id, { semaine: 2, seance: seconde, ressenti: 'facile' });
+    const [premiere, seconde] = identifiantsSeances('P1', 1);
+    await valider(env.DB, c.id, { semaine: 1, seanceId: premiere, ressenti: 'ok', note: 'RAS' });
+    await valider(env.DB, c.id, { semaine: 2, seanceId: seconde, ressenti: 'facile' });
 
     const { coureurs } = await tableau(env.DB);
     const ligne = coureurs.find((x) => x.id === c.id);
@@ -108,18 +104,22 @@ describe('tableau d\'assiduité', () => {
     expect(ligne.programme).toBe('P1');
     expect(ligne.validations).toHaveLength(2);
     expect(ligne.validations[0]).toEqual({
-      semaine: 1, seance: premiere, ressenti: 'ok', note: 'RAS', valideLe: expect.any(String),
+      semaine: 1, seanceId: premiere, ressenti: 'ok', note: 'RAS',
+      valideLe: expect.any(String), connue: true,
     });
+    // La semaine 1 de P1 aligne EF, EF, SL, RENFO : quatre séances, dont deux
+    // de même code. Le tableau attend donc bien quatre séances, et non trois.
+    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({ semaine: 1, attendues: 4, faites: 1 });
   });
 
   it("n'expose aucune colonne interne de la base", async () => {
     const c = await coureur('Discret');
-    await valider(env.DB, c.id, { semaine: 1, seance: codesSeances('P1', 1)[0], ressenti: 'ok' });
+    await valider(env.DB, c.id, { semaine: 1, seanceId: identifiantsSeances('P1', 1)[0], ressenti: 'ok' });
 
     const { coureurs } = await tableau(env.DB);
     const ligne = coureurs.find((x) => x.id === c.id);
     expect(Object.keys(ligne).sort()).toEqual(
-      ['faitIzon', 'id', 'initiale', 'nomAffiche', 'prenom', 'programme', 'validations', 'varianteCourse'].sort(),
+      ['assiduite', 'faitIzon', 'id', 'initiale', 'nomAffiche', 'prenom', 'programme', 'validations', 'varianteCourse'].sort(),
     );
     const brut = JSON.stringify(coureurs);
     expect(brut).not.toMatch(/"cle"/);
@@ -147,8 +147,8 @@ describe('alertes', () => {
   it('signale un coureur majoritairement en difficulté deux semaines de suite', async () => {
     const c = await coureur('Cuit');
     for (const semaine of [1, 2]) {
-      for (const seance of codesSeances('P1', semaine)) {
-        await valider(env.DB, c.id, { semaine, seance, ressenti: 'difficile' });
+      for (const identifiant of identifiantsSeances('P1', semaine)) {
+        await valider(env.DB, c.id, { semaine, seanceId: identifiant, ressenti: 'difficile' });
       }
     }
     const liste = await alertes(env.DB, 2);
@@ -161,8 +161,8 @@ describe('alertes', () => {
   it("ne signale pas un coureur assidu et à l'aise", async () => {
     const c = await coureur('Serein');
     for (const semaine of [1, 2]) {
-      for (const seance of codesSeances('P1', semaine)) {
-        await valider(env.DB, c.id, { semaine, seance, ressenti: 'ok' });
+      for (const identifiant of identifiantsSeances('P1', semaine)) {
+        await valider(env.DB, c.id, { semaine, seanceId: identifiant, ressenti: 'ok' });
       }
     }
     const liste = await alertes(env.DB, 2);
@@ -171,11 +171,11 @@ describe('alertes', () => {
 
   it('ne signale pas une seule semaine difficile isolée', async () => {
     const c = await coureur('Ponctuel');
-    for (const seance of codesSeances('P1', 1)) {
-      await valider(env.DB, c.id, { semaine: 1, seance, ressenti: 'ok' });
+    for (const identifiant of identifiantsSeances('P1', 1)) {
+      await valider(env.DB, c.id, { semaine: 1, seanceId: identifiant, ressenti: 'ok' });
     }
-    for (const seance of codesSeances('P1', 2)) {
-      await valider(env.DB, c.id, { semaine: 2, seance, ressenti: 'difficile' });
+    for (const identifiant of identifiantsSeances('P1', 2)) {
+      await valider(env.DB, c.id, { semaine: 2, seanceId: identifiant, ressenti: 'difficile' });
     }
     const liste = await alertes(env.DB, 2);
     expect(liste.some((a) => a.coureurId === c.id)).toBe(false);
@@ -184,10 +184,10 @@ describe('alertes', () => {
   it("ne prend pas une minorité de séances difficiles pour une majorité", async () => {
     const c = await coureur('Limite');
     for (const semaine of [1, 2]) {
-      const [a, b, d] = codesSeances('P1', semaine);
-      await valider(env.DB, c.id, { semaine, seance: a, ressenti: 'difficile' });
-      await valider(env.DB, c.id, { semaine, seance: b, ressenti: 'ok' });
-      await valider(env.DB, c.id, { semaine, seance: d, ressenti: 'facile' });
+      const [a, b, d] = identifiantsSeances('P1', semaine);
+      await valider(env.DB, c.id, { semaine, seanceId: a, ressenti: 'difficile' });
+      await valider(env.DB, c.id, { semaine, seanceId: b, ressenti: 'ok' });
+      await valider(env.DB, c.id, { semaine, seanceId: d, ressenti: 'facile' });
     }
     const liste = await alertes(env.DB, 2);
     expect(liste.some((a) => a.coureurId === c.id)).toBe(false);
@@ -200,8 +200,8 @@ describe('alertes', () => {
     const nbP1 = PROGRAMMES.P1.semainesContenu.length;
     expect(nbP1).toBeLessThan(17);
     const c = await coureur('Court', 'P1');
-    for (const seance of codesSeances('P1', nbP1)) {
-      await valider(env.DB, c.id, { semaine: nbP1, seance, ressenti: 'ok' });
+    for (const identifiant of identifiantsSeances('P1', nbP1)) {
+      await valider(env.DB, c.id, { semaine: nbP1, seanceId: identifiant, ressenti: 'ok' });
     }
     const liste = await alertes(env.DB, 17);
     expect(liste.some((a) => a.coureurId === c.id)).toBe(false);
@@ -245,8 +245,8 @@ describe('alertes servies par la route, à horloge fixée', () => {
   it('fait remonter les coureurs à surveiller en tête du tableau', async () => {
     const surveille = await coureur('Zzzabsent');
     const tranquille = await coureur('Aaaassidu');
-    for (const seance of codesSeances('P1', 8)) {
-      await valider(env.DB, tranquille.id, { semaine: 8, seance, ressenti: 'ok' });
+    for (const identifiant of identifiantsSeances('P1', 8)) {
+      await valider(env.DB, tranquille.id, { semaine: 8, seanceId: identifiant, ressenti: 'ok' });
     }
     const { donnees } = await jsonA(MI_PARCOURS, '/api/admin/tableau', { role: 'admin' });
     const rangSurveille = donnees.coureurs.findIndex((x) => x.id === surveille.id);
@@ -267,17 +267,17 @@ describe('fusion de deux coureurs', () => {
   it('réaffecte les validations et supprime la fiche en double', async () => {
     const garde = await coureur('JeanMichel');
     const double = await coureur('JeanMi');
-    const [a, b] = codesSeances('P1', 1);
-    await valider(env.DB, garde.id, { semaine: 1, seance: a, ressenti: 'ok' });
-    await valider(env.DB, double.id, { semaine: 1, seance: b, ressenti: 'facile' });
+    const [a, b] = identifiantsSeances('P1', 1);
+    await valider(env.DB, garde.id, { semaine: 1, seanceId: a, ressenti: 'ok' });
+    await valider(env.DB, double.id, { semaine: 1, seanceId: b, ressenti: 'facile' });
 
     await fusionner(env.DB, garde.id, double.id);
 
     const restant = await env.DB.prepare('SELECT * FROM coureurs WHERE id = ?').bind(double.id).first();
     expect(restant).toBeNull();
-    const v = await env.DB.prepare('SELECT seance FROM validations WHERE coureur_id = ? ORDER BY seance')
+    const v = await env.DB.prepare('SELECT seance_id FROM validations WHERE coureur_id = ? ORDER BY seance_id')
       .bind(garde.id).all();
-    expect(v.results.map((x) => x.seance).sort()).toEqual([a, b].sort());
+    expect(v.results.map((x) => x.seance_id).sort()).toEqual([a, b].sort());
   });
 
   // Les horodatages sont posés explicitement en base plutôt que fabriqués en
@@ -300,10 +300,10 @@ describe('fusion de deux coureurs', () => {
     // précédente, ressenti et note compris, et elles voyagent ensemble.
     const garde = await coureur('Ancien');
     const double = await coureur('Recent');
-    const seance = codesSeances('P1', 1)[0];
+    const identifiant = identifiantsSeances('P1', 1)[0];
 
-    await valider(env.DB, garde.id, { semaine: 1, seance, ressenti: 'facile', note: 'saisie ancienne' });
-    await valider(env.DB, double.id, { semaine: 1, seance, ressenti: 'difficile', note: 'saisie recente' });
+    await valider(env.DB, garde.id, { semaine: 1, seanceId: identifiant, ressenti: 'facile', note: 'saisie ancienne' });
+    await valider(env.DB, double.id, { semaine: 1, seanceId: identifiant, ressenti: 'difficile', note: 'saisie recente' });
     await horodater(garde.id, '2026-09-01T10:00:00.000Z');
     await horodater(double.id, '2026-09-02T10:00:00.000Z');
 
@@ -319,10 +319,10 @@ describe('fusion de deux coureurs', () => {
   it("conserve la saisie du coureur gardé si c'est elle la plus récente", async () => {
     const garde = await coureur('Frais');
     const double = await coureur('Perime');
-    const seance = codesSeances('P1', 1)[0];
+    const identifiant = identifiantsSeances('P1', 1)[0];
 
-    await valider(env.DB, double.id, { semaine: 1, seance, ressenti: 'facile', note: 'vieille saisie' });
-    await valider(env.DB, garde.id, { semaine: 1, seance, ressenti: 'difficile', note: 'saisie gardee' });
+    await valider(env.DB, double.id, { semaine: 1, seanceId: identifiant, ressenti: 'facile', note: 'vieille saisie' });
+    await valider(env.DB, garde.id, { semaine: 1, seanceId: identifiant, ressenti: 'difficile', note: 'saisie gardee' });
     await horodater(double.id, '2026-09-01T10:00:00.000Z');
     await horodater(garde.id, '2026-09-02T10:00:00.000Z');
 
@@ -342,10 +342,10 @@ describe('fusion de deux coureurs', () => {
     // parcours de la base.
     const garde = await coureur('Exaequoa');
     const double = await coureur('Exaequob');
-    const seance = codesSeances('P1', 1)[0];
+    const identifiant = identifiantsSeances('P1', 1)[0];
 
-    await valider(env.DB, garde.id, { semaine: 1, seance, ressenti: 'ok', note: 'fiche gardee' });
-    await valider(env.DB, double.id, { semaine: 1, seance, ressenti: 'difficile', note: 'fiche absorbee' });
+    await valider(env.DB, garde.id, { semaine: 1, seanceId: identifiant, ressenti: 'ok', note: 'fiche gardee' });
+    await valider(env.DB, double.id, { semaine: 1, seanceId: identifiant, ressenti: 'difficile', note: 'fiche absorbee' });
     await horodater(garde.id, '2026-09-01T10:00:00.000Z');
     await horodater(double.id, '2026-09-01T10:00:00.000Z');
 
@@ -360,9 +360,9 @@ describe('fusion de deux coureurs', () => {
   it('ne laisse aucune validation orpheline derrière elle', async () => {
     const garde = await coureur('Proprea');
     const double = await coureur('Propreb');
-    for (const seance of codesSeances('P1', 1)) {
-      await valider(env.DB, garde.id, { semaine: 1, seance, ressenti: 'ok' });
-      await valider(env.DB, double.id, { semaine: 1, seance, ressenti: 'difficile' });
+    for (const identifiant of identifiantsSeances('P1', 1)) {
+      await valider(env.DB, garde.id, { semaine: 1, seanceId: identifiant, ressenti: 'ok' });
+      await valider(env.DB, double.id, { semaine: 1, seanceId: identifiant, ressenti: 'difficile' });
     }
     await fusionner(env.DB, garde.id, double.id);
 
@@ -389,8 +389,8 @@ describe('fusion de deux coureurs', () => {
 describe('effacement d\'un coureur', () => {
   it('efface la fiche et toutes ses validations', async () => {
     const c = await coureur('Efface');
-    for (const seance of codesSeances('P1', 1)) {
-      await valider(env.DB, c.id, { semaine: 1, seance, ressenti: 'ok' });
+    for (const identifiant of identifiantsSeances('P1', 1)) {
+      await valider(env.DB, c.id, { semaine: 1, seanceId: identifiant, ressenti: 'ok' });
     }
     await supprimerCoureur(env.DB, c.id);
 
@@ -432,18 +432,22 @@ describe('édition d\'une semaine depuis le back-office', () => {
   it('les séances modifiées sont celles que /api/validation accepte', async () => {
     await enregistrerOverride(env.DB, 'P1', 1, contenuValide('validation'), false);
     const c = await coureur('Modifie');
-    const ancienCode = codesSeances('P1', 1).find((code) => code !== 'EF' && code !== 'RENFO');
-    expect(ancienCode).toBeTruthy();
+    // La semaine remaniée ne porte qu'une endurance et un renfo, donc les
+    // seuls identifiants EF-1 et RENFO-1. Tout ce que portait le fichier
+    // source au-delà de ceux-là doit être refusé.
+    const nouveaux = new Set(['EF-1', 'RENFO-1']);
+    const ancienIdentifiant = identifiantsSeances('P1', 1).find((id) => !nouveaux.has(id));
+    expect(ancienIdentifiant).toBeTruthy();
 
     const accepte = await jsonA(MI_PARCOURS, '/api/validation', {
       role: 'coureur', method: 'POST',
-      body: JSON.stringify({ prenom: c.prenom, initiale: 'T', semaine: 1, seance: 'EF', ressenti: 'ok' }),
+      body: JSON.stringify({ prenom: c.prenom, initiale: 'T', semaine: 1, seanceId: 'EF-1', ressenti: 'ok' }),
     });
     expect(accepte.statut).toBe(200);
 
     const refuse = await jsonA(MI_PARCOURS, '/api/validation', {
       role: 'coureur', method: 'POST',
-      body: JSON.stringify({ prenom: c.prenom, initiale: 'T', semaine: 1, seance: ancienCode }),
+      body: JSON.stringify({ prenom: c.prenom, initiale: 'T', semaine: 1, seanceId: ancienIdentifiant }),
     });
     expect(refuse.statut).toBe(400);
   });
@@ -550,6 +554,171 @@ describe('édition d\'une semaine depuis le back-office', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Assiduité sur une semaine à séances homonymes
+// ---------------------------------------------------------------------------
+//
+// La raison d'être de l'identifiant de séance. La semaine 1 de P1 contient
+// deux endurances fondamentales : tant que la clé de validation était le
+// code, un coureur qui faisait ses quatre séances n'en faisait apparaître que
+// trois, et l'encadrant lisait un décrochage qui n'existait pas.
+
+describe('assiduité sur une semaine à séances homonymes', () => {
+  it('compte les quatre séances de la semaine 1 de P1, dont les deux endurances', async () => {
+    const s1 = semaineDuProgramme('P1', 1, { faitIzon: false });
+    expect(s1.seances.map((x) => x.code)).toEqual(['EF', 'EF', 'SL', 'RENFO']);
+    // Trois codes distincts pour quatre séances : c'est tout le défaut.
+    expect(new Set(s1.seances.map((x) => x.code)).size).toBe(3);
+
+    const c = await coureur('Complet');
+    for (const identifiant of identifiantsSeances('P1', 1)) {
+      await valider(env.DB, c.id, { semaine: 1, seanceId: identifiant, ressenti: 'ok' });
+    }
+
+    const { coureurs } = await tableau(env.DB);
+    const ligne = coureurs.find((x) => x.id === c.id);
+    expect(ligne.validations.filter((v) => v.semaine === 1)).toHaveLength(4);
+    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
+      semaine: 1, attendues: 4, faites: 4,
+    });
+    expect(ligne.validations.every((v) => v.connue)).toBe(true);
+  });
+
+  it('distingue une semaine complète d\'une semaine où une seule endurance est faite', async () => {
+    const c = await coureur('Moitie');
+    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-1', ressenti: 'ok' });
+
+    const { coureurs } = await tableau(env.DB);
+    const ligne = coureurs.find((x) => x.id === c.id);
+    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
+      semaine: 1, attendues: 4, faites: 1,
+    });
+    // Avant l'identifiant de séance, cocher EF-1 puis EF-2 rendait toujours
+    // une seule ligne : le décompte ne pouvait pas dépasser 3 sur 3.
+    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-2', ressenti: 'difficile' });
+    const apres = (await tableau(env.DB)).coureurs.find((x) => x.id === c.id);
+    expect(apres.assiduite.find((a) => a.semaine === 1).faites).toBe(2);
+  });
+
+  it('la semaine sans validation reste à zéro et le coureur est signalé absent', async () => {
+    const c = await coureur('Absent2');
+    const liste = await alertes(env.DB, 1);
+    const sienne = liste.find((a) => a.coureurId === c.id);
+    expect(sienne.type).toBe('absence');
+    const ligne = (await tableau(env.DB)).coureurs.find((x) => x.id === c.id);
+    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
+      semaine: 1, attendues: 4, faites: 0,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ce que devient une validation quand l'encadrant remanie la semaine
+// ---------------------------------------------------------------------------
+
+describe('remaniement d\'une semaine déjà validée', () => {
+  it('conserve la validation dont la séance a disparu, mais cesse de la compter', async () => {
+    const c = await coureur('Remanie');
+    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-2', ressenti: 'difficile', note: 'jambes lourdes' });
+
+    // La semaine remaniée ne porte plus qu'une endurance et un renfo :
+    // EF-2 n'existe plus.
+    await enregistrerOverride(env.DB, 'P1', 1, contenuValide('remaniement'), false);
+
+    const ligne = (await tableau(env.DB)).coureurs.find((x) => x.id === c.id);
+    const v = ligne.validations.find((x) => x.seanceId === 'EF-2');
+    // Rien n'est détruit : le ressenti et la note du coureur sont son
+    // témoignage, l'encadrant ne les efface pas en remaniant un plan.
+    expect(v).toBeDefined();
+    expect(v.ressenti).toBe('difficile');
+    expect(v.note).toBe('jambes lourdes');
+    // Mais la ligne est marquée orpheline et ne compte plus.
+    expect(v.connue).toBe(false);
+    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
+      semaine: 1, attendues: 2, faites: 0,
+    });
+  });
+
+  it('une validation orpheline ne masque plus une absence', async () => {
+    const c = await coureur('Orphelin');
+    await valider(env.DB, c.id, { semaine: 1, seanceId: 'SL-1', ressenti: 'ok' });
+    await enregistrerOverride(env.DB, 'P1', 1, contenuValide('absence'), false);
+
+    const liste = await alertes(env.DB, 1);
+    const sienne = liste.find((a) => a.coureurId === c.id);
+    expect(sienne).toBeDefined();
+    expect(sienne.type).toBe('absence');
+  });
+
+  it('revenir au contenu source remet la validation en compte, à l\'identique', async () => {
+    const c = await coureur('Retour');
+    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-2', ressenti: 'difficile' });
+    await enregistrerOverride(env.DB, 'P1', 1, contenuValide('aller'), false);
+    expect(
+      (await tableau(env.DB)).coureurs.find((x) => x.id === c.id)
+        .assiduite.find((a) => a.semaine === 1).faites,
+    ).toBe(0);
+
+    // L'identifiant étant déterministe, revenir au fichier source suffit :
+    // aucune table de correspondance n'a été perdue en route.
+    await enregistrerOverride(env.DB, 'P1', 1, null, false);
+    const ligne = (await tableau(env.DB)).coureurs.find((x) => x.id === c.id);
+    expect(ligne.validations.find((x) => x.seanceId === 'EF-2').connue).toBe(true);
+    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
+      semaine: 1, attendues: 4, faites: 1,
+    });
+  });
+
+  it('réordonner des séances de codes différents ne déplace aucune coche', async () => {
+    const c = await coureur('Ordre');
+    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-2', ressenti: 'ok' });
+
+    // Même contenu que la semaine source, séances remises dans un autre
+    // ordre : SL passe devant les deux EF. Le rang se comptant par code, les
+    // endurances restent EF-1 et EF-2.
+    const source = semaineDuProgramme('P1', 1, { faitIzon: false });
+    const depouillee = (x) => ({
+      code: x.code, titre: x.titre, duree: x.duree, zone: x.zone,
+      description: x.description, objectif: x.objectif,
+    });
+    const remaniee = {
+      titre: source.titre,
+      intention: source.intention,
+      seances: [
+        depouillee(source.seances[2]), // SL
+        depouillee(source.seances[0]), // EF
+        depouillee(source.seances[1]), // EF
+        depouillee(source.seances[3]), // RENFO
+      ],
+    };
+    await enregistrerOverride(env.DB, 'P1', 1, remaniee, false);
+
+    const ligne = (await tableau(env.DB)).coureurs.find((x) => x.id === c.id);
+    expect(ligne.validations.find((x) => x.seanceId === 'EF-2').connue).toBe(true);
+    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
+      semaine: 1, attendues: 4, faites: 1,
+    });
+  });
+
+  it('accepte désormais deux séances de même code depuis le back-office', async () => {
+    // L'asymétrie est levée : les fichiers source contiennent des codes en
+    // double, l'encadrant peut en poser aussi. C'est l'identifiant qui les
+    // distingue, plus le code.
+    const contenu = contenuValide('doublecode');
+    contenu.seances = [
+      { ...contenu.seances[0], code: 'EF', titre: 'Endurance du mardi' },
+      { ...contenu.seances[0], code: 'EF', titre: 'Endurance du jeudi' },
+      contenu.seances[1],
+    ];
+    await enregistrerOverride(env.DB, 'P1', 5, contenu, false);
+
+    const stocke = contenuSurcharge((await overrides(env.DB)).get('P1:5'));
+    expect(stocke.seances.map((x) => x.id)).toEqual(['EF-1', 'EF-2', 'RENFO-1']);
+    expect(stocke.seances[0].titre).toBe('Endurance du mardi');
+    expect(stocke.seances[1].titre).toBe('Endurance du jeudi');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Veto de publication
 // ---------------------------------------------------------------------------
 
@@ -604,12 +773,12 @@ describe('veto de publication', () => {
 
   it('/api/validation refuse de valider une séance d\'une semaine vetoée', async () => {
     const c = await coureur('Bloque');
-    const seance = codesSeances('P1', 1)[0];
+    const identifiant = identifiantsSeances('P1', 1)[0];
     await poserVeto(env.DB, 'P1', 1, true);
 
     const { statut, donnees } = await jsonA(MI_PARCOURS, '/api/validation', {
       role: 'coureur', method: 'POST',
-      body: JSON.stringify({ prenom: c.prenom, initiale: 'T', semaine: 1, seance, ressenti: 'ok' }),
+      body: JSON.stringify({ prenom: c.prenom, initiale: 'T', semaine: 1, seanceId: identifiant, ressenti: 'ok' }),
     });
     expect(statut).toBe(403);
     expect(Object.keys(donnees).sort()).toEqual(['disponibleLe', 'erreur', 'numero']);
@@ -800,7 +969,7 @@ describe('routes du back-office : effets', () => {
   it('POST /api/admin/fusion recolle deux fiches', async () => {
     const garde = await coureur('Fusiona');
     const double = await coureur('Fusionb');
-    await valider(env.DB, double.id, { semaine: 1, seance: codesSeances('P1', 1)[0], ressenti: 'ok' });
+    await valider(env.DB, double.id, { semaine: 1, seanceId: identifiantsSeances('P1', 1)[0], ressenti: 'ok' });
 
     const { statut } = await jsonA(MI_PARCOURS, '/api/admin/fusion', {
       role: 'admin', method: 'POST',
@@ -825,7 +994,7 @@ describe('routes du back-office : effets', () => {
 
   it('DELETE /api/admin/coureur efface la fiche et ses validations', async () => {
     const c = await coureur('Oubli');
-    await valider(env.DB, c.id, { semaine: 1, seance: codesSeances('P1', 1)[0], ressenti: 'ok' });
+    await valider(env.DB, c.id, { semaine: 1, seanceId: identifiantsSeances('P1', 1)[0], ressenti: 'ok' });
     const { statut } = await jsonA(MI_PARCOURS, '/api/admin/coureur', {
       role: 'admin', method: 'DELETE', body: JSON.stringify({ id: c.id }),
     });
@@ -838,7 +1007,7 @@ describe('routes du back-office : effets', () => {
 
   it('GET /api/admin/tableau ne laisse filtrer aucune colonne interne', async () => {
     const c = await coureur('Colonne');
-    await valider(env.DB, c.id, { semaine: 1, seance: codesSeances('P1', 1)[0], ressenti: 'ok' });
+    await valider(env.DB, c.id, { semaine: 1, seanceId: identifiantsSeances('P1', 1)[0], ressenti: 'ok' });
     const r = await requeteA(MI_PARCOURS, '/api/admin/tableau', { role: 'admin' });
     const brut = await r.text();
     expect(brut).not.toMatch(/"cle"/);

@@ -118,6 +118,11 @@ function paramVrai(valeur) {
 
 function vueSeance(s) {
   const vue = {
+    // `id` identifie la séance dans sa semaine ("EF-1", "EF-2", "SL-1") et
+    // c'est lui que le client renvoie à /api/validation. `code` reste publié
+    // à côté : il porte le type de séance, dont l'affichage a besoin pour
+    // choisir une icône ou grouper, et il n'est plus une identité.
+    id: s.id,
     code: s.code,
     titre: s.titre,
     duree: s.duree,
@@ -200,15 +205,19 @@ function vueCoureur(c) {
 }
 
 /**
- * Vue d'une validation de séance. valide_le (colonne brute) devient valideLe
- * (convention camelCase du reste de l'API) ; l'identifiant de ligne et
- * coureur_id ne sont jamais recopiés, ils n'ont aucun usage côté client, qui
- * sait déjà de quel coureur il s'agit.
+ * Vue d'une validation de séance. valide_le et seance_id (colonnes brutes)
+ * deviennent valideLe et seanceId (convention camelCase du reste de l'API) ;
+ * l'identifiant de ligne et coureur_id ne sont jamais recopiés, ils n'ont
+ * aucun usage côté client, qui sait déjà de quel coureur il s'agit.
+ *
+ * seanceId porte l'identité de la séance dans sa semaine, pas son code de
+ * type : deux endurances fondamentales d'une même semaine sont "EF-1" et
+ * "EF-2", et sont deux validations distinctes.
  */
 function vueValidation(v) {
   return {
     semaine: v.semaine,
-    seance: v.seance,
+    seanceId: v.seance_id,
     ressenti: v.ressenti,
     note: v.note,
     valideLe: v.valide_le,
@@ -539,13 +548,21 @@ async function routeValidation(request, env, methode, estAdmin) {
     );
   }
 
-  // Les codes acceptés sont ceux de la semaine effectivement servie. Sans
-  // cela, l'encadrant qui remanie une semaine depuis le back-office la ferait
-  // afficher au coureur avec des séances que /api/validation refuserait de
-  // cocher, et laisserait cocher des séances qui ne s'affichent plus.
+  // Les identifiants acceptés sont ceux de la semaine effectivement servie.
+  // Sans cela, l'encadrant qui remanie une semaine depuis le back-office la
+  // ferait afficher au coureur avec des séances que /api/validation
+  // refuserait de cocher, et laisserait cocher des séances qui ne
+  // s'affichent plus.
+  //
+  // C'est l'identifiant de séance ("EF-1") qui est attendu du client, et non
+  // le code de type ("EF"). Le code ne distingue pas les deux endurances
+  // fondamentales que 57 des 150 semaines du corpus contiennent : sur ces
+  // semaines-là, la seconde validation écrasait la première, avec son
+  // ressenti et sa note, et le coureur voyait une case se décocher en en
+  // cochant une autre.
   const s = semaineEffective(source, surcharge);
-  const codesValides = new Set(s.seances.map((x) => x.code));
-  if (!codesValides.has(donnees.seance)) {
+  const identifiantsValides = new Set(s.seances.map((x) => x.id));
+  if (!identifiantsValides.has(donnees.seanceId)) {
     return json({ erreur: 'Séance inconnue.' }, 400);
   }
 
@@ -553,12 +570,12 @@ async function routeValidation(request, env, methode, estAdmin) {
     if (methode === 'POST') {
       await valider(env.DB, coureur.id, {
         semaine: numero,
-        seance: donnees.seance,
+        seanceId: donnees.seanceId,
         ressenti: donnees.ressenti ?? null,
         note: donnees.note ?? null,
       });
     } else {
-      await devalider(env.DB, coureur.id, { semaine: numero, seance: donnees.seance });
+      await devalider(env.DB, coureur.id, { semaine: numero, seanceId: donnees.seanceId });
     }
   } catch (e) {
     return json({ erreur: e.message }, 400);
@@ -590,11 +607,13 @@ async function routeAdmin(request, env, url, chemin, methode) {
   if (chemin === '/api/admin/tableau') {
     if (methode !== 'GET') return methodeRefusee();
     const semaine = semaineCourante(maintenant, NB_SEMAINES_MAX);
-    const [{ coureurs }, liste, cartes] = await Promise.all([
-      tableau(env.DB),
-      alertes(env.DB, semaine),
-      overrides(env.DB),
-    ]);
+    // Le tableau est lu une fois et repassé aux alertes, qui s'en servent
+    // au lieu de le relire : les deux se calculent sur les mêmes comptes
+    // d'assiduité, et un second balayage de table ne pourrait qu'en donner
+    // une version décalée dans le temps.
+    const [lecture, cartes] = await Promise.all([tableau(env.DB), overrides(env.DB)]);
+    const { coureurs } = lecture;
+    const liste = await alertes(env.DB, semaine, lecture);
 
     const parCoureur = new Map();
     for (const a of liste) {

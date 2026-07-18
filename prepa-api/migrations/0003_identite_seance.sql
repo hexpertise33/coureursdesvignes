@@ -1,0 +1,20 @@
+-- Identite stable des seances dans la semaine.
+--
+-- La colonne "seance" stockait le code de type de la seance (EF, SL, VMA,
+-- SEUIL, TEMPO, RECUP, RENFO, COURSE). Ce code n'est pas une identite :
+-- 57 des 150 semaines resolues du corpus contiennent deux seances de meme
+-- code, a commencer par la semaine 1 de P1 qui aligne EF, EF, SL, RENFO.
+-- Avec la contrainte UNIQUE(coureur_id, semaine, seance), un coureur qui
+-- faisait ses deux footings n'en enregistrait qu'un : la seconde validation
+-- ecrasait silencieusement la premiere, ressenti et note compris, et le
+-- tableau d'assiduite sous-comptait sur plus d'un tiers des semaines.
+--
+-- La colonne porte desormais l'identifiant de la seance dans sa semaine,
+-- "EF-1", "EF-2", "SL-1", calcule a la volee depuis le contenu de la semaine
+-- (voir identifierSeances() dans src/programmes/seances.js). Aucune table de
+-- correspondance n'est stockee : l'identifiant est deterministe.
+--
+-- Un simple renommage suffit. La contrainte d'unicite et les index suivent la
+-- colonne renommee, et rien n'est deploye : aucune donnee reelle n'a besoin
+-- d'etre convertie du code vers l'identifiant.
+ALTER TABLE validations RENAME COLUMN seance TO seance_id;

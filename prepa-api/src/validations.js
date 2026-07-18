@@ -19,23 +19,30 @@ const NOTE_MAX = 500;
 /**
  * Enregistre ou met à jour la validation d'une séance.
  *
+ * La séance est désignée par son identifiant dans la semaine ("EF-1",
+ * "EF-2", "SL-1"), et non par son code de type. Le code ne distingue pas les
+ * deux endurances fondamentales d'une même semaine, et il y en a deux dans
+ * 57 des 150 semaines du corpus : clavetée sur le code, cette fonction
+ * faisait perdre la première des deux validations. Voir identifierSeances()
+ * dans programmes/seances.js.
+ *
  * Idempotent : valider deux fois la même séance (même coureur, même
- * semaine, même code de séance) ne crée jamais deux lignes, la contrainte
- * d'unicité UNIQUE(coureur_id, semaine, seance) de la migration 0001 le
- * garantit via ON CONFLICT. Le second appel remplace intégralement le
- * ressenti et la note du premier (et l'horodatage), il ne les fusionne pas :
- * c'est la dernière saisie du coureur qui compte, pas un empilement.
+ * semaine, même identifiant de séance) ne crée jamais deux lignes, la
+ * contrainte d'unicité UNIQUE(coureur_id, semaine, seance_id) le garantit
+ * via ON CONFLICT. Le second appel remplace intégralement le ressenti et la
+ * note du premier (et l'horodatage), il ne les fusionne pas : c'est la
+ * dernière saisie du coureur qui compte, pas un empilement.
  *
  * @param {D1Database} db
  * @param {number} coureurId
- * @param {{ semaine: number, seance: string, ressenti?: string|null, note?: string|null }} entree
+ * @param {{ semaine: number, seanceId: string, ressenti?: string|null, note?: string|null }} entree
  * @returns {Promise<void>}
  */
-export async function valider(db, coureurId, { semaine, seance, ressenti = null, note = null }) {
+export async function valider(db, coureurId, { semaine, seanceId, ressenti = null, note = null }) {
   if (!Number.isInteger(semaine) || semaine < 1) {
     throw new Error('Semaine invalide.');
   }
-  if (typeof seance !== 'string' || seance.trim() === '') {
+  if (typeof seanceId !== 'string' || seanceId.trim() === '') {
     throw new Error('Séance manquante.');
   }
   if (ressenti !== null && !RESSENTIS.includes(ressenti)) {
@@ -45,14 +52,14 @@ export async function valider(db, coureurId, { semaine, seance, ressenti = null,
 
   await db
     .prepare(
-      `INSERT INTO validations (coureur_id, semaine, seance, ressenti, note, valide_le)
+      `INSERT INTO validations (coureur_id, semaine, seance_id, ressenti, note, valide_le)
        VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(coureur_id, semaine, seance) DO UPDATE SET
+       ON CONFLICT(coureur_id, semaine, seance_id) DO UPDATE SET
          ressenti = excluded.ressenti,
          note = excluded.note,
          valide_le = excluded.valide_le`,
     )
-    .bind(coureurId, semaine, seance, ressenti, noteBornee, new Date().toISOString())
+    .bind(coureurId, semaine, seanceId, ressenti, noteBornee, new Date().toISOString())
     .run();
 }
 
@@ -68,13 +75,13 @@ export async function valider(db, coureurId, { semaine, seance, ressenti = null,
  *
  * @param {D1Database} db
  * @param {number} coureurId
- * @param {{ semaine: number, seance: string }} cible
+ * @param {{ semaine: number, seanceId: string }} cible
  * @returns {Promise<void>}
  */
-export async function devalider(db, coureurId, { semaine, seance }) {
+export async function devalider(db, coureurId, { semaine, seanceId }) {
   await db
-    .prepare('DELETE FROM validations WHERE coureur_id = ? AND semaine = ? AND seance = ?')
-    .bind(coureurId, semaine, seance)
+    .prepare('DELETE FROM validations WHERE coureur_id = ? AND semaine = ? AND seance_id = ?')
+    .bind(coureurId, semaine, seanceId)
     .run();
 }
 
@@ -87,12 +94,12 @@ export async function devalider(db, coureurId, { semaine, seance }) {
  *
  * @param {D1Database} db
  * @param {number} coureurId
- * @returns {Promise<Array<{ semaine: number, seance: string, ressenti: string|null, note: string|null, valide_le: string }>>}
+ * @returns {Promise<Array<{ semaine: number, seance_id: string, ressenti: string|null, note: string|null, valide_le: string }>>}
  */
 export async function pourCoureur(db, coureurId) {
   const r = await db
     .prepare(
-      'SELECT semaine, seance, ressenti, note, valide_le FROM validations WHERE coureur_id = ? ORDER BY semaine, seance',
+      'SELECT semaine, seance_id, ressenti, note, valide_le FROM validations WHERE coureur_id = ? ORDER BY semaine, seance_id',
     )
     .bind(coureurId)
     .all();

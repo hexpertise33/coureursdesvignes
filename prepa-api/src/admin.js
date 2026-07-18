@@ -21,8 +21,8 @@
 //      d'être stocké : ce qui entre en base est déjà exactement ce que le
 //      coureur pourra lire, et rien d'autre.
 
-import { PROGRAMMES } from './programmes/index.js';
-import { ZONES } from './programmes/seances.js';
+import { PROGRAMMES, semaineDuProgramme } from './programmes/index.js';
+import { ZONES, identifierSeances } from './programmes/seances.js';
 import { nomAffiche } from './coureurs.js';
 
 /** Longueur du plus long programme : borne haute d'une semaine de référence. */
@@ -35,14 +35,43 @@ export const NB_SEMAINES_MAX = Math.max(
 // ---------------------------------------------------------------------------
 
 /**
+ * Identifiants de séance réellement attendus d'un coureur sur une semaine.
+ *
+ * C'est la semaine telle qu'elle lui est servie : la variante Izon qui le
+ * concerne, puis le contenu remanié depuis le back-office s'il y en a un.
+ * Une semaine hors bornes de son programme rend un ensemble vide.
+ */
+function identifiantsAttendus(programmeCode, numero, faitIzon, cartes) {
+  const source = semaineDuProgramme(programmeCode, numero, { faitIzon });
+  if (!source) return new Set();
+  const effective = semaineEffective(source, cartes.get(`${programmeCode}:${numero}`));
+  return new Set(effective.seances.map((s) => s.id));
+}
+
+/**
  * Tableau d'assiduité : tous les coureurs, tous programmes confondus, avec
- * leurs validations.
+ * leurs validations et le compte de séances faites semaine par semaine.
  *
  * Deux requêtes, pas une par coureur : le club compte quelques dizaines
  * d'adhérents et quelques centaines de validations, une jointure applicative
  * en mémoire coûte moins qu'une rafale d'allers-retours vers D1. Le tri se
  * fait en SQL (COLLATE NOCASE) pour que « alice » et « Alice » se rangent au
  * même endroit.
+ *
+ * Le compte est adossé aux identifiants de séance de la semaine effective, et
+ * non au simple nombre de lignes de la table. Deux raisons, l'une acquise et
+ * l'autre nouvelle :
+ *
+ *   1. Deux séances de même code sont désormais deux lignes distinctes
+ *      ("EF-1" et "EF-2"), là où l'ancienne clé par code n'en gardait qu'une.
+ *      C'est ce qui fait que le tableau compte enfin juste sur les 57
+ *      semaines à séances homonymes du corpus.
+ *   2. Une validation peut survivre à la séance qu'elle désignait, si
+ *      l'encadrant remanie la semaine après coup. La ligne est conservée (le
+ *      ressenti d'un coureur est un témoignage, on ne l'efface pas dans son
+ *      dos) mais elle est marquée `connue: false` et ne compte pas dans
+ *      `faites` : sans quoi une séance retirée du plan continuerait à
+ *      créditer l'assiduité, et à masquer une absence.
  *
  * @param {D1Database} db
  * @returns {Promise<{ coureurs: Array<object> }>}
@@ -61,39 +90,73 @@ export async function tableau(db) {
   const validations = (
     await db
       .prepare(
-        `SELECT coureur_id, semaine, seance, ressenti, note, valide_le
+        `SELECT coureur_id, semaine, seance_id, ressenti, note, valide_le
            FROM validations
-          ORDER BY semaine, seance`,
+          ORDER BY semaine, seance_id`,
       )
       .all()
   ).results;
 
+  const cartes = await overrides(db);
+
   const parCoureur = new Map();
   for (const v of validations) {
     if (!parCoureur.has(v.coureur_id)) parCoureur.set(v.coureur_id, []);
-    // valide_le (colonne brute) devient valideLe, convention camelCase du
-    // reste de l'API ; coureur_id n'est pas recopié, il est déjà porté par
-    // la fiche qui contient la liste.
+    // valide_le et seance_id (colonnes brutes) deviennent valideLe et
+    // seanceId, convention camelCase du reste de l'API ; coureur_id n'est
+    // pas recopié, il est déjà porté par la fiche qui contient la liste.
     parCoureur.get(v.coureur_id).push({
       semaine: v.semaine,
-      seance: v.seance,
+      seanceId: v.seance_id,
       ressenti: v.ressenti,
       note: v.note,
       valideLe: v.valide_le,
     });
   }
 
+  // Une semaine résolue est la même pour tous les coureurs qui partagent
+  // programme, variante et numéro : on ne la recalcule pas par coureur.
+  const memoire = new Map();
+  const attendus = (programmeCode, numero, faitIzon) => {
+    const cle = `${programmeCode}:${numero}:${faitIzon ? 1 : 0}`;
+    if (!memoire.has(cle)) memoire.set(cle, identifiantsAttendus(programmeCode, numero, faitIzon, cartes));
+    return memoire.get(cle);
+  };
+
   return {
-    coureurs: coureurs.map((c) => ({
-      id: c.id,
-      prenom: c.prenom,
-      initiale: c.initiale,
-      nomAffiche: nomAffiche(c),
-      programme: c.programme,
-      varianteCourse: c.variante_course,
-      faitIzon: c.fait_izon === 1,
-      validations: parCoureur.get(c.id) ?? [],
-    })),
+    coureurs: coureurs.map((c) => {
+      const faitIzon = c.fait_izon === 1;
+      const p = Object.hasOwn(PROGRAMMES, c.programme) ? PROGRAMMES[c.programme] : null;
+      const nbSemaines = p ? p.semainesContenu.length : 0;
+      const brutes = parCoureur.get(c.id) ?? [];
+
+      const lesSiennes = brutes.map((v) => ({
+        ...v,
+        connue: v.semaine >= 1 && v.semaine <= nbSemaines
+          && attendus(c.programme, v.semaine, faitIzon).has(v.seanceId),
+      }));
+
+      const assiduite = [];
+      for (let n = 1; n <= nbSemaines; n++) {
+        assiduite.push({
+          semaine: n,
+          attendues: attendus(c.programme, n, faitIzon).size,
+          faites: lesSiennes.filter((v) => v.semaine === n && v.connue).length,
+        });
+      }
+
+      return {
+        id: c.id,
+        prenom: c.prenom,
+        initiale: c.initiale,
+        nomAffiche: nomAffiche(c),
+        programme: c.programme,
+        varianteCourse: c.variante_course,
+        faitIzon,
+        validations: lesSiennes,
+        assiduite,
+      };
+    }),
   };
 }
 
@@ -114,7 +177,11 @@ export async function tableau(db) {
  * déclenchent, une sur deux ne déclenche pas.
  */
 function majoritairementDifficile(validations, semaine) {
-  const exprimees = validations.filter((v) => v.semaine === semaine && v.ressenti);
+  // `connue` filtre les validations orphelines, celles dont la séance a été
+  // retirée de la semaine depuis. Un ressenti porte sur une séance précise :
+  // une fois cette séance sortie du plan, il ne dit plus rien de la charge
+  // de la semaine telle qu'elle est aujourd'hui.
+  const exprimees = validations.filter((v) => v.semaine === semaine && v.connue && v.ressenti);
   if (exprimees.length === 0) return false;
   const dures = exprimees.filter((v) => v.ressenti === 'difficile').length;
   return dures * 2 > exprimees.length;
@@ -145,12 +212,15 @@ function majoritairementDifficile(validations, semaine) {
  *
  * @param {D1Database} db
  * @param {number} semaineReference dernière semaine publiée du calendrier
+ * @param {{ coureurs: Array<object> }} [deja] tableau déjà lu, pour éviter
+ *   à l'appelant qui en a besoin par ailleurs de le faire relire une
+ *   seconde fois (cas de /api/admin/tableau, qui sert les deux ensemble).
  * @returns {Promise<Array<{ coureurId: number, prenom: string, nomAffiche: string, programme: string, semaine: number, type: 'absence'|'difficulte', detail: string }>>}
  */
-export async function alertes(db, semaineReference) {
+export async function alertes(db, semaineReference, deja = null) {
   if (!Number.isInteger(semaineReference) || semaineReference < 1) return [];
 
-  const { coureurs } = await tableau(db);
+  const { coureurs } = deja ?? (await tableau(db));
   const resultat = [];
 
   for (const c of coureurs) {
@@ -172,7 +242,11 @@ export async function alertes(db, semaineReference) {
       semaine: n,
     };
 
-    if (!c.validations.some((v) => v.semaine === n)) {
+    // Le compte du tableau fait foi, et non la simple présence d'une ligne :
+    // une validation dont la séance a disparu de la semaine remaniée ne doit
+    // pas masquer une absence.
+    const compte = c.assiduite.find((a) => a.semaine === n);
+    if (!compte || compte.faites === 0) {
       resultat.push({
         ...commun,
         type: 'absence',
@@ -214,8 +288,8 @@ async function exige(db, id, quoi) {
  * supprimée rejoignent la fiche gardée, puis la fiche supprimée disparaît.
  *
  * Le doublon, c'est-à-dire le cas où les deux fiches portent la même séance
- * de la même semaine, ne peut pas être conservé tel quel : la contrainte
- * UNIQUE(coureur_id, semaine, seance) de la migration 0001 l'interdit. Il
+ * de la même semaine (même identifiant, "EF-2" et "EF-2"), ne peut pas être conservé tel quel : la contrainte
+ * UNIQUE(coureur_id, semaine, seance_id) l'interdit. Il
  * faut donc trancher, et la règle retenue est celle qui s'applique déjà
  * quand un coureur revalide une séance (voir validations.js) : la saisie la
  * plus récente remplace l'autre, ressenti et note compris.
@@ -261,7 +335,7 @@ export async function fusionner(db, idGarde, idSupprime) {
               SELECT 1 FROM validations AS autre
                WHERE autre.coureur_id = ?
                  AND autre.semaine = validations.semaine
-                 AND autre.seance = validations.seance
+                 AND autre.seance_id = validations.seance_id
                  AND autre.valide_le > validations.valide_le
             )`,
       )
@@ -406,7 +480,6 @@ export function validerContenuSemaine(brut) {
     throw new Error(`Une semaine ne peut pas comporter plus de ${MAX_SEANCES} séances.`);
   }
 
-  const vus = new Set();
   const seances = brutes.map((s) => {
     if (s === null || typeof s !== 'object' || Array.isArray(s)) {
       throw new Error('Séance invalide : un objet est attendu.');
@@ -416,10 +489,14 @@ export function validerContenuSemaine(brut) {
     if (!CODE_SEANCE.test(code)) {
       throw new Error(`Code de séance invalide : ${code}. Lettres, chiffres et tirets seulement.`);
     }
-    if (vus.has(code)) {
-      throw new Error(`Code de séance en double dans la semaine : ${code}.`);
-    }
-    vus.add(code);
+    // Le code peut être répété dans la semaine, et il l'est massivement dans
+    // les fichiers source (deux endurances fondamentales par semaine dans
+    // 57 des 150 semaines du corpus). Le refuser ici était une asymétrie
+    // assumée tant que la validation était clavetée sur le code : elle
+    // empêchait le back-office de fabriquer une semaine impossible à cocher.
+    // L'identifiant de séance ayant rendu ces semaines valides, l'asymétrie
+    // n'a plus lieu d'être et l'encadrant peut poser deux footings comme le
+    // fait le plan.
 
     const duree = Object.hasOwn(s, 'duree') ? s.duree : null;
     if (!Number.isInteger(duree) || duree <= 0 || duree > DUREE_MAX) {
@@ -458,7 +535,13 @@ export function validerContenuSemaine(brut) {
     return vue;
   });
 
-  return { titre, intention, seances };
+  // L'identifiant est posé ici et pas ailleurs, par la même fonction que
+  // pour les fichiers source : une semaine remaniée est numérotée
+  // exactement comme une semaine du plan, sans quoi les deux chemins
+  // divergeraient un jour. Il est recalculé à chaque relecture du contenu
+  // stocké (contenuSurcharge), donc jamais lu depuis la base : c'est ce qui
+  // le rend déterministe et dispense de stocker une table de correspondance.
+  return { titre, intention, seances: identifierSeances(seances) };
 }
 
 // ---------------------------------------------------------------------------
@@ -629,6 +712,30 @@ export function contenuSurcharge(surcharge) {
  * semaine dans le calendrier de parution, et la phase est une étiquette de
  * structure (« bloc », « affûtage ») que l'encadrant ne remanie pas séance
  * par séance.
+ *
+ * Ce que devient une validation déjà posée quand la semaine est remaniée.
+ * Les identifiants de la semaine remaniée sont recalculés depuis son propre
+ * contenu, par identifierSeances(), exactement comme ceux du fichier source.
+ * Trois cas, et un seul appelle une remarque :
+ *
+ *   - Réordonner des séances de codes différents ne change rien. Le rang se
+ *     compte par code : déplacer la sortie longue avant les deux endurances
+ *     laisse celles-ci en "EF-1" et "EF-2".
+ *   - Ajouter ou retirer une séance en fin de série ne touche pas aux
+ *     précédentes. Retirer la seconde endurance supprime "EF-2" et laisse
+ *     "EF-1" intact.
+ *   - Intervertir deux séances de même code, ou retirer la première des
+ *     deux, décale les rangs : "EF-1" désigne alors l'autre endurance. La
+ *     coche du coureur reste sur "EF-1", donc sur la première endurance de
+ *     la semaine, mais plus forcément sur celle qu'il avait courue.
+ *
+ * Les validations dont l'identifiant ne correspond plus à aucune séance de
+ * la semaine ne sont pas supprimées : le ressenti et la note d'un coureur
+ * sont son témoignage, l'encadrant n'a pas à l'effacer en remaniant un plan.
+ * Elles cessent simplement d'être comptées, et le tableau d'assiduité les
+ * marque `connue: false` pour que l'encadrant les voie pour ce qu'elles
+ * sont. Revenir au contenu antérieur les remet en compte à l'identique,
+ * puisque rien n'a été détruit et que l'identifiant est déterministe.
  *
  * @param {object} source semaine résolue par semaineDuProgramme
  * @param {object|undefined} surcharge ligne de semaines_override

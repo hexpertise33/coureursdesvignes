@@ -88,6 +88,75 @@ export function zonesSecondairesDe(seance) {
   return seance.zonesSecondaires ?? [];
 }
 
+/**
+ * Identité d'une séance dans sa semaine : "EF-1", "EF-2", "SL-1", "RENFO-1".
+ *
+ * Le code seul ne peut pas servir d'identité. Cinquante-sept des cent
+ * cinquante semaines résolues du corpus portent deux séances de même code :
+ * la semaine 1 de P1 aligne EF, EF, SL, RENFO, deux endurances fondamentales
+ * qui sont deux séances distinctes, à deux jours différents, avec deux
+ * descriptions différentes. Tant que la validation était clavetée sur le
+ * code, le coureur qui faisait ses deux footings n'en enregistrait qu'un, le
+ * second écrasant le premier avec son ressenti et sa note, et le tableau
+ * d'assiduité de l'encadrant sous-comptait sur plus d'un tiers des semaines.
+ *
+ * La forme retenue est le code suivi du rang d'occurrence de ce code dans la
+ * liste des séances de la semaine. Elle satisfait les quatre exigences :
+ *
+ *   unique      deux séances de même code ont deux rangs différents ;
+ *   stable      elle ne dépend que du contenu de la semaine, qui ne change
+ *               pas entre deux lectures ni entre deux déploiements ;
+ *   lisible     "EF-2" se lit dans un tableau et dans un message d'erreur,
+ *               contrairement à une empreinte ou à un identifiant de ligne ;
+ *   déterministe  elle se recalcule à la volée des deux côtés, aucune table
+ *               de correspondance à stocker ni à migrer.
+ *
+ * Le rang est posé même quand le code est unique dans la semaine : "SL-1" et
+ * non "SL". Ce n'est pas de la symétrie décorative. Si le suffixe
+ * n'apparaissait qu'en cas de collision, le jour où l'encadrant ajoute une
+ * seconde endurance à une semaine, l'unique "EF" devrait devenir "EF-1" et
+ * toutes les validations déjà posées sous "EF" pointeraient dans le vide.
+ * Avec le suffixe systématique, l'arrivée d'une deuxième séance ne touche
+ * jamais à l'identité de la première.
+ *
+ * Le rang est un entier décimal sans séparateur, et il est toujours en
+ * dernière position : le dernier tiret de l'identifiant sépare donc sans
+ * ambiguïté le code du rang, y compris pour un code contenant lui-même des
+ * tirets (un code "EF-1" saisi depuis le back-office donne "EF-1-1", jamais
+ * confondu avec le "EF-1" de la fabrique ef).
+ */
+export function identifiantSeance(code, rang) {
+  return `${code}-${rang}`;
+}
+
+/**
+ * Pose l'identifiant de chaque séance d'une liste, dans l'ordre de la liste.
+ *
+ * Rend un nouveau tableau de nouveaux objets : les séances sources ne sont
+ * jamais mutées, et une séance déjà identifiée voit son identifiant
+ * recalculé, ce qui garantit qu'un contenu relu depuis la base est numéroté
+ * exactement comme un contenu fraîchement saisi.
+ *
+ * Le contrôle d'unicité est théoriquement superflu (le couple code + rang est
+ * unique par construction). Il est là pour que l'invariant soit vérifié et
+ * non seulement affirmé : c'est précisément l'invariant dont l'absence a
+ * cassé le suivi d'assiduité.
+ */
+export function identifierSeances(seances) {
+  const rangs = new Map();
+  const vus = new Set();
+  return seances.map((s) => {
+    const rang = (rangs.get(s.code) ?? 0) + 1;
+    rangs.set(s.code, rang);
+    const id = identifiantSeance(s.code, rang);
+    if (vus.has(id)) {
+      throw new Error(`Identifiant de séance en double dans la semaine : ${id}.`);
+    }
+    vus.add(id);
+    return { ...s, id };
+  });
+}
+
 function fabrique(code, titre, zone) {
   return (duree, description, objectif, options = {}) => {
     verifierTexte(description, objectif);
@@ -123,7 +192,12 @@ export function semaine(numero, phase, titre, intention, seances) {
   if (renfos.length !== 1) {
     throw new Error(`Semaine ${numero} : 1 renfo attendu, ${renfos.length} trouvé(s).`);
   }
-  return { numero, phase, titre, intention, seances };
+  // Les identifiants sont posés ici, au seul endroit par lequel une semaine
+  // des fichiers source est construite. Les semaines à variantes (P2, P3 et
+  // P4 en semaine 9) réutilisent le tableau de séances d'une semaine déjà
+  // construite par cette fonction, elles héritent donc des identifiants sans
+  // rien faire de particulier.
+  return { numero, phase, titre, intention, seances: identifierSeances(seances) };
 }
 
 export function volume(semaineObj) {
