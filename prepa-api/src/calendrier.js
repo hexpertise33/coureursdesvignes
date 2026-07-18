@@ -18,14 +18,38 @@ function decalageParisMinutes(instantUtc) {
   return (commeUtc - instantUtc) / 60000;
 }
 
-/** Convertit une date-heure locale de Paris en instant UTC. Deux passes suffisent. */
-function parisVersUtc(annee, mois, jour, heure, minute) {
+/**
+ * Convertit une date-heure locale de Paris en instant UTC.
+ *
+ * Le point fixe (décalage(resultat) === décalage utilisé pour l'obtenir) est
+ * trouvé en une itération pour la grande majorité des heures, y compris les
+ * heures ambiguës du passage à l'heure d'hiver (ex. 25/10/2026 2 h 30, qui
+ * existe deux fois) : les deux décalages testés convergent alors vers le
+ * même résultat, de façon stable.
+ *
+ * Les heures inexistantes du passage à l'heure d'été (ex. 29/03/2026 2 h 30,
+ * l'horloge saute de 2 h à 3 h) n'ont en revanche aucun point fixe : la
+ * boucle oscillerait indéfiniment entre les deux décalages sans jamais se
+ * stabiliser, et le résultat dépendrait arbitrairement du nombre d'itérations
+ * choisi. Dans ce cas, on applique la convention habituelle des
+ * bibliothèques de fuseaux horaires (ex. java.time) : l'heure inexistante est
+ * reportée après le saut, ce qui revient à utiliser le décalage en vigueur
+ * avant le saut (le plus petit des deux décalages rencontrés).
+ *
+ * Exportée uniquement pour permettre de verrouiller ce comportement par un
+ * test direct : l'usage applicatif (toujours 19 h) passe par
+ * instantPublication ci-dessous.
+ */
+export function parisVersUtc(annee, mois, jour, heure, minute) {
   const naif = Date.UTC(annee, mois - 1, jour, heure, minute);
-  let resultat = naif;
-  for (let i = 0; i < 2; i++) {
-    resultat = naif - decalageParisMinutes(resultat) * 60000;
+  const decalage1 = decalageParisMinutes(naif);
+  const candidat = naif - decalage1 * 60000;
+  const decalage2 = decalageParisMinutes(candidat);
+  if (decalage1 === decalage2) {
+    return candidat;
   }
-  return resultat;
+  // Heure locale inexistante : convention "reportée après le saut".
+  return naif - Math.min(decalage1, decalage2) * 60000;
 }
 
 export function lundiDeLaSemaine(numero) {
