@@ -590,11 +590,10 @@ describe('déclaration de zone secondaire', () => {
 
 // Reconstruit un programme en substituant, en semaine 9, la variante demandée.
 // La phase est reprise en même temps que les séances : elle est propre à
-// chaque variante, puisque ce sont deux semaines réellement différentes. En
-// P2, la variante sans dossard est la première marche d'un cycle progressif
-// (bloc3) tandis que la variante avec dossard est une semaine allégée. En P3
-// les deux variantes portent encore la même phase, la substitution y est donc
-// sans effet sur ce point.
+// chaque variante, puisque ce sont deux semaines réellement différentes. En P2
+// comme en P3, la variante sans dossard est la première marche d'un cycle
+// progressif (bloc3) tandis que la variante avec dossard est une semaine
+// allégée, le coureur courant pour de bon le dimanche.
 const avecVariante = (p, nom) => ({
   ...p,
   semainesContenu: p.semainesContenu.map((s) =>
@@ -604,10 +603,12 @@ const avecVariante = (p, nom) => ({
   ),
 });
 
-// Trame de phases attendue, programme par programme. P2 suit des cycles de
-// trois semaines progressives plus une semaine plus douce ; P3 conserve pour
-// l'instant sa trame d'origine.
-const TRAME_P2 = [
+// Trame de phases attendue. P2 et P3 suivent désormais la même construction :
+// trois semaines progressives puis une semaine plus douce, répétées, et un
+// quatrième cycle réduit à la seule S13 qui porte le pic de charge. La liste
+// blanche de regles.js ne connaissant que trois étiquettes de bloc, S13 est
+// étiquetée bloc3 comme le cycle qu'elle relance.
+const TRAME_CYCLES = [
   'bloc1', 'bloc1', 'bloc1', 'allegee',
   'bloc2', 'bloc2', 'bloc2', 'allegee',
   'bloc3', 'bloc3', 'bloc3', 'allegee',
@@ -615,19 +616,12 @@ const TRAME_P2 = [
   'affutage', 'affutage', 'recuperation',
 ];
 
-const TRAME_P3 = [
-  'bloc1', 'bloc1', 'bloc1', 'allegee',
-  'bloc2', 'bloc2', 'bloc2', 'allegee',
-  'allegee',
-  'bloc3', 'bloc3', 'bloc3', 'allegee',
-  'affutage', 'affutage', 'recuperation',
-];
-
 describe.each([
   // [nom, programme, trame de phases, numéro de la semaine de pic de charge]
-  ['P2', P2, TRAME_P2, 13],
-  ['P3', P3, TRAME_P3, 12],
-])('%s', (nom, p, trame, semainePic) => {
+  // [nom, programme, trame, semaine de pic, plancher de sortie longue S5 à S13]
+  ['P2', P2, TRAME_CYCLES, 13, 50],
+  ['P3', P3, TRAME_CYCLES, 13, 75],
+])('%s', (nom, p, trame, semainePic, plancherSL) => {
   it('respecte les règles de progression dans les deux variantes', () => {
     expect(verifierProgramme(p)).toBe(true);
     expect(verifierProgramme(avecVariante(p, 'sansIzon'))).toBe(true);
@@ -767,6 +761,59 @@ describe.each([
     expect(dureeRenfo(p.semainesContenu[13])).toBeLessThan(pic);
     expect(dureeRenfo(p.semainesContenu[14])).toBeLessThan(dureeRenfo(p.semainesContenu[13]));
   });
+
+  // Trame en cycles de trois semaines progressives plus une semaine plus
+  // douce. Ces trois tests sont la traduction mécanique de la consigne de
+  // l'encadrant : ils échoueraient si l'on réintroduisait un creux au milieu
+  // de la préparation, comme le faisait l'ancienne trame.
+  it('fait monter le volume sur chacune des trois semaines de chaque cycle', () => {
+    const v = p.semainesContenu.map(volumeHorsCourse);
+    for (const [a, b, c] of [[1, 2, 3], [5, 6, 7], [9, 10, 11]]) {
+      expect(v[b - 1]).toBeGreaterThan(v[a - 1]);
+      expect(v[c - 1]).toBeGreaterThan(v[b - 1]);
+    }
+    // S13 relance après la semaine douce de S12 et devient le pic.
+    expect(v[12]).toBeGreaterThan(v[10]);
+  });
+
+  it("n'enchaîne jamais deux semaines plus douces et ne creuse pas la sortie longue", () => {
+    const phases = p.semainesContenu.map((s) => s.phase);
+    expect(phases.filter((ph) => ph === 'allegee')).toHaveLength(3);
+    phases.forEach((ph, i) => {
+      if (ph === 'allegee') expect(phases[i + 1]).not.toBe('allegee');
+    });
+
+    // La sortie longue ne retombe jamais sous son plancher entre S5 et S13 :
+    // c'est le creux de l'ancienne trame (35 min en S9 pour P2, 52 min pour
+    // P3) que la trame en cycles supprime.
+    const longue = (n) => p.semainesContenu[n - 1].seances.find((x) => x.code === 'SL').duree;
+    for (let n = 5; n <= 13; n++) expect(longue(n)).toBeGreaterThanOrEqual(plancherSL);
+  });
+
+  it('ne fait jamais reculer la sortie longue à l\'intérieur d\'un cycle', () => {
+    const longue = (n) => p.semainesContenu[n - 1].seances.find((x) => x.code === 'SL').duree;
+    for (const [a, b, c] of [[1, 2, 3], [5, 6, 7], [9, 10, 11]]) {
+      expect(longue(b)).toBeGreaterThan(longue(a));
+      expect(longue(c)).toBeGreaterThan(longue(b));
+    }
+  });
+
+  it('donne à chaque variante de S9 sa propre phase, et les deux restent valides', () => {
+    const s9 = p.semainesContenu[8];
+    expect(s9.variantes.sansIzon.phase).toBe('bloc3');
+    expect(s9.variantes.avecIzon.phase).toBe('allegee');
+    expect(verifierProgramme(avecVariante(p, 'sansIzon'))).toBe(true);
+    expect(verifierProgramme(avecVariante(p, 'avecIzon'))).toBe(true);
+  });
+
+  it("allège les deux jours qui précèdent la course-test dans la variante avecIzon", () => {
+    const textes = p.semainesContenu[8].variantes.avecIzon.seances
+      .filter((x) => x.code === 'EF')
+      .map((x) => x.description)
+      .join(' ');
+    expect(textes).toMatch(/vendredi/i);
+    expect(textes).toMatch(/la veille (du départ|de la course)/);
+  });
 });
 
 describe('P2, 10 km de Bordeaux', () => {
@@ -781,49 +828,6 @@ describe('P2, 10 km de Bordeaux', () => {
       100, 108, 117, 96, 126, 136, 147, 122, 132, 140, 151, 126, 162, 118, 55, 90,
     ]);
     expect(volumeHorsCourse(P2.semainesContenu[8].variantes.avecIzon)).toBe(55);
-  });
-
-  // Trame en cycles de trois semaines progressives plus une semaine plus
-  // douce. Ces deux tests sont la traduction mécanique de la consigne de
-  // l'encadrant : ils échoueraient si l'on réintroduisait un creux au milieu
-  // de la préparation.
-  it('fait monter le volume sur chacune des trois semaines de chaque cycle', () => {
-    const v = P2.semainesContenu.map(volumeHorsCourse);
-    for (const [a, b, c] of [[1, 2, 3], [5, 6, 7], [9, 10, 11]]) {
-      expect(v[b - 1]).toBeGreaterThan(v[a - 1]);
-      expect(v[c - 1]).toBeGreaterThan(v[b - 1]);
-    }
-    // S13 relance après la semaine douce de S12 et devient le pic.
-    expect(v[12]).toBeGreaterThan(v[10]);
-  });
-
-  it("n'enchaîne jamais deux semaines plus douces et ne creuse pas la sortie longue", () => {
-    const phases = P2.semainesContenu.map((s) => s.phase);
-    expect(phases.filter((ph) => ph === 'allegee')).toHaveLength(3);
-    phases.forEach((ph, i) => {
-      if (ph === 'allegee') expect(phases[i + 1]).not.toBe('allegee');
-    });
-
-    // La sortie longue ne redescend jamais sous les 50 min entre S5 et S13 :
-    // c'est le creux de l'ancienne trame (35 min en S9) que la nouvelle
-    // supprime.
-    const longue = (n) => P2.semainesContenu[n - 1].seances.find((x) => x.code === 'SL').duree;
-    for (let n = 5; n <= 13; n++) expect(longue(n)).toBeGreaterThanOrEqual(50);
-  });
-
-  it('donne à chaque variante de S9 sa propre phase, et les deux restent valides', () => {
-    const s9 = P2.semainesContenu[8];
-    expect(s9.variantes.sansIzon.phase).toBe('bloc3');
-    expect(s9.variantes.avecIzon.phase).toBe('allegee');
-    expect(verifierProgramme(avecVariante(P2, 'sansIzon'))).toBe(true);
-    expect(verifierProgramme(avecVariante(P2, 'avecIzon'))).toBe(true);
-  });
-
-  it("allège les deux jours qui précèdent la course-test dans la variante avecIzon", () => {
-    const veille = P2.semainesContenu[8].variantes.avecIzon.seances.filter((x) => x.code === 'EF');
-    const textes = veille.map((x) => x.description).join(' ');
-    expect(textes).toMatch(/[Vv]endredi, rien/);
-    expect(textes).toMatch(/la veille de la course/);
   });
 
   it('plafonne la sortie longue à 1 h 15', () => {
@@ -861,23 +865,58 @@ describe('P3, semi-marathon de Bordeaux', () => {
 
   it('respecte son barème de volumes hors course et hors renfo', () => {
     expect(P3.semainesContenu.map(volumeHorsCourse)).toEqual([
-      130, 141, 152, 124, 160, 172, 185, 152, 126, 172, 186, 200, 165, 140, 61, 105,
+      130, 141, 152, 124, 160, 172, 185, 152, 165, 176, 188, 158, 200, 140, 61, 105,
     ]);
     expect(volumeHorsCourse(P3.semainesContenu[8].variantes.avecIzon)).toBe(70);
   });
 
-  it('monte la sortie longue à 1 h 50 en S12', () => {
-    const s12 = P3.semainesContenu[11].seances.find((x) => x.code === 'SL');
-    expect(s12.duree).toBe(110);
+  it('monte la sortie longue à 1 h 50 en S13, au pic de charge', () => {
+    const s13 = P3.semainesContenu[12].seances.find((x) => x.code === 'SL');
+    expect(s13.duree).toBe(110);
     const longues = P3.semainesContenu.flatMap((s) => s.seances.filter((x) => x.code === 'SL'));
     expect(Math.max(...longues.map((x) => x.duree))).toBe(110);
+    expect(longues.filter((x) => x.duree === 110)).toHaveLength(1);
   });
 
-  it('travaille majoritairement en Z3 et Z4', () => {
+  it('garde sa dominante en Z3 et Z4 malgré les séances de fractionné court', () => {
     const dures = P3.semainesContenu
       .flatMap((s) => s.seances)
       .filter((x) => ['TEMPO', 'SEUIL', 'VMA'].includes(x.code));
-    expect(dures.every((x) => x.zone === 'Z3' || x.zone === 'Z4')).toBe(true);
+    const z3z4 = dures.filter((x) => x.zone === 'Z3' || x.zone === 'Z4');
+    // La dominante n'est pas une simple majorité : elle doit rester écrasante.
+    expect(z3z4.length).toBeGreaterThanOrEqual(dures.length - 3);
+    expect(z3z4.length / dures.length).toBeGreaterThan(0.7);
+  });
+
+  // Décision de l'encadrant : P3 ne comportait aucun fractionné court, si bien
+  // qu'un coureur enchaînant P1 puis P3 passait cinq mois sans jamais courir
+  // vite. Deux séances de Z5 sont posées dans le deuxième cycle, une fois la
+  // base installée et le seuil ouvert.
+  it('comporte deux à trois séances de VMA, situées dans le deuxième cycle', () => {
+    const semainesVma = P3.semainesContenu
+      .filter((s) => s.seances.some((x) => x.code === 'VMA'))
+      .map((s) => s.numero);
+    expect(semainesVma.length).toBeGreaterThanOrEqual(2);
+    expect(semainesVma.length).toBeLessThanOrEqual(3);
+    // Deuxième cycle : S5 à S8. Jamais avant, jamais dans le bloc spécifique.
+    for (const n of semainesVma) {
+      expect(n).toBeGreaterThanOrEqual(5);
+      expect(n).toBeLessThanOrEqual(8);
+    }
+  });
+
+  it('place la première VMA après le premier travail au seuil', () => {
+    const premiere = (code) =>
+      P3.semainesContenu.find((s) => s.seances.some((x) => x.code === code)).numero;
+    expect(premiere('TEMPO')).toBeLessThan(premiere('SEUIL'));
+    expect(premiere('SEUIL')).toBeLessThan(premiere('VMA'));
+  });
+
+  it("n'accompagne jamais une semaine de VMA de lignes droites", () => {
+    for (const s of P3.semainesContenu) {
+      if (!s.seances.some((x) => x.code === 'VMA')) continue;
+      expect(s.seances.some((x) => /lignes droites/.test(x.description))).toBe(false);
+    }
   });
 
   it('comporte la séance spécifique de référence, 2 fois 20 min en Z3, en fin de préparation', () => {
