@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ZONES, ef, sl, vma, seuil, recup, renfo, course, semaine, volume, volumeHorsCourse } from '../src/programmes/seances.js';
 import { verifierProgramme } from '../src/programmes/regles.js';
+import { P1 } from '../src/programmes/p1-10km-izon.js';
 
 describe('zones', () => {
   it('couvre Z1 à Z5 avec des fourchettes croissantes et jointives', () => {
@@ -339,5 +340,72 @@ describe('règles de progression', () => {
       ]),
     ]);
     expect(verifierProgramme(p)).toBe(true);
+  });
+});
+
+describe("P1, 10 km d'Izon", () => {
+  it('respecte les règles de progression', () => {
+    expect(verifierProgramme(P1)).toBe(true);
+  });
+
+  it('compte 9 semaines de prépa plus une de récupération', () => {
+    expect(P1.semainesContenu).toHaveLength(10);
+    expect(P1.semainesContenu[8].phase).toBe('affutage');
+    expect(P1.semainesContenu[9].phase).toBe('recuperation');
+  });
+
+  it('place la course en S9', () => {
+    const s9 = P1.semainesContenu[8];
+    expect(s9.seances.some((s) => s.code === 'COURSE')).toBe(true);
+  });
+
+  it("n'impose jamais d'allure en min/km", () => {
+    const textes = P1.semainesContenu.flatMap((s) => s.seances.map((x) => x.description));
+    expect(textes.join(' ')).not.toMatch(/min\/km/);
+  });
+
+  // Tests ajoutés en complément de l'extrait du brief : ils verrouillent
+  // l'identité du programme, la trame de phases imposée et le barème de
+  // volumes vérifié comme compatible avec le garde-fou.
+  it("porte l'identité attendue du programme objectif d'Izon", () => {
+    expect(P1.code).toBe('P1');
+    expect(P1.dateCourse).toBe('2026-09-27');
+    expect(P1.izon).toBe('objectif');
+    expect(P1.nom).toBe("10 km d'Izon");
+    expect(P1.prerequis).toMatch(/30 minutes/);
+  });
+
+  it('suit la trame de phases imposée, S1 à S3 bloc 1, S4 allégée, S5 à S7 bloc 2', () => {
+    expect(P1.semainesContenu.map((s) => s.phase)).toEqual([
+      'bloc1', 'bloc1', 'bloc1', 'allegee', 'bloc2', 'bloc2', 'bloc2', 'affutage', 'affutage', 'recuperation',
+    ]);
+    expect(P1.semainesContenu.map((s) => s.numero)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
+
+  it('respecte le barème de volumes hors course et hors renfo', () => {
+    expect(P1.semainesContenu.map(volumeHorsCourse)).toEqual([110, 115, 125, 100, 130, 143, 147, 115, 53, 90]);
+  });
+
+  it("n'emploie jamais de tiret cadratin dans les textes affichés", () => {
+    const textes = P1.semainesContenu.flatMap((s) => [
+      s.titre,
+      s.intention,
+      ...s.seances.flatMap((x) => [x.titre, x.description, x.objectif]),
+    ]);
+    expect(textes.join(' ')).not.toContain('—');
+  });
+
+  it('donne à chaque séance une description exécutable et un objectif rédigé', () => {
+    for (const s of P1.semainesContenu) {
+      for (const seance of s.seances) {
+        expect(seance.description.length).toBeGreaterThan(30);
+        expect(seance.objectif.length).toBeGreaterThan(15);
+      }
+    }
+  });
+
+  it('varie les textes, aucune description n\'est copiée d\'une semaine à l\'autre', () => {
+    const descriptions = P1.semainesContenu.flatMap((s) => s.seances.map((x) => x.description));
+    expect(new Set(descriptions).size).toBe(descriptions.length);
   });
 });
