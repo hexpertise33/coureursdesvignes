@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>document.documentElement.classList.add('js')</script>
+  <title>Préparation aux courses — Les Coureurs des Vignes</title>
+  <meta name="description" content="Ta préparation personnalisée, semaine par semaine : 10 km, semi-marathon et marathon avec Les Coureurs des Vignes." />
+  <meta name="theme-color" content="#14331e" />
+  <link rel="icon" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260718a" />
+</head>
+<body>
+  <div class="scroll-progress" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container masthead">
+      <a href="index.html" class="brand">
+        <img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/logo.svg'" alt="" class="brand__badge logo-coin" width="46" height="46" />
+        <span class="brand__name"><strong>Les Coureurs des Vignes</strong><span>Montagne</span></span>
+      </a>
+      <button class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul class="nav__list">
+        <li><a href="index.html" class="nav__link">Accueil</a></li>
+        <li><a href="entrainements.html" class="nav__link">Entraînements</a></li>
+        <li><a href="prepa.html" class="nav__link is-active">Prépa</a></li>
+        <li><a href="evenements.html" class="nav__link">Événements</a></li>
+        <li><a href="blog.html" class="nav__link">Blog</a></li>
+        <li><a href="adhesion.html" class="nav__link">Adhésion</a></li>
+        <li class="nav__cta"><a href="adhesion.html" class="btn btn--shoot">Nous rejoindre <svg class="btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></li>
+      </ul>
+    </div>
+  </header>
+
+  <section class="page-hero">
+    <div class="container page-hero__inner">
+      <span class="eyebrow">Préparation</span>
+      <h1 class="page-hero__title">Ta prépa, semaine par semaine</h1>
+      <p class="page-hero__lead">Un programme adapté à ta course, publié chaque dimanche soir. À toi d'adapter ton rythme à ton niveau.</p>
+    </div>
+  </section>
+
+  <main class="section surface-limestone">
+    <div class="container">
+
+      <nav class="prepa-onglets" id="onglets" hidden>
+        <button class="prepa-onglet is-active" data-vue="semaine">Ma semaine</button>
+        <button class="prepa-onglet" data-vue="programme">Mon programme</button>
+        <button class="prepa-onglet" data-vue="zones">Les zones</button>
+        <button class="prepa-onglet" data-vue="admin" id="onglet-admin" hidden>Encadrant</button>
+      </nav>
+
+      <div id="message" class="prepa-message" hidden></div>
+
+      <!-- Écran 1 : code d'accès -->
+      <section id="ecran-code" class="prepa-carte prepa-carte--etroite" hidden>
+        <h2>Code d'accès</h2>
+        <p>Saisis le code que l'association t'a communiqué.</p>
+        <form id="form-code" autocomplete="off">
+          <label class="prepa-champ">
+            <span>Code</span>
+            <input type="text" id="champ-code" inputmode="numeric" required autocomplete="off" />
+          </label>
+          <button type="submit" class="btn btn--vine">Entrer</button>
+        </form>
+      </section>
+
+      <!-- Écran 2 : profil -->
+      <section id="ecran-profil" class="prepa-carte" hidden>
+        <h2>Qui es-tu ?</h2>
+        <p>Ton prénom et la première lettre de ton nom, pour te reconnaître d'une semaine à l'autre. Deux Julien dans le club, ça arrive.</p>
+        <form id="form-profil" autocomplete="off">
+          <div class="prepa-ligne">
+            <label class="prepa-champ">
+              <span>Prénom</span>
+              <input type="text" id="champ-prenom" required maxlength="40" autocomplete="given-name" />
+            </label>
+            <label class="prepa-champ prepa-champ--court">
+              <span>Initiale</span>
+              <input type="text" id="champ-initiale" required maxlength="1" size="1" />
+            </label>
+          </div>
+
+          <h3>Quelle course prépares-tu ?</h3>
+          <div id="choix-programmes" class="prepa-programmes"></div>
+
+          <div id="bloc-variante" hidden>
+            <h3>Quel marathon ?</h3>
+            <div class="prepa-ligne">
+              <label class="prepa-radio"><input type="radio" name="variante" value="Bordeaux" checked /> <span>Marathon de Bordeaux</span></label>
+              <label class="prepa-radio"><input type="radio" name="variante" value="Nice-Cannes" /> <span>Marathon de Nice-Cannes</span></label>
+            </div>
+          </div>
+
+          <label class="prepa-case" id="bloc-izon" hidden>
+            <input type="checkbox" id="champ-izon" />
+            <span>Je cours aussi le <strong>10 km d'Izon</strong> le dimanche 27 septembre. Ta semaine 9 sera adaptée.</span>
+          </label>
+
+          <button type="submit" class="btn btn--vine">C'est parti</button>
+        </form>
+        <p class="prepa-mention">On enregistre uniquement ton prénom, ton initiale, le programme que tu suis et les séances que tu valides, pour que l'encadrant puisse suivre le groupe et adapter les semaines. Aucun e-mail, aucun mot de passe, aucune donnée médicale. Pour tout effacer, demande-le à l'encadrant.</p>
+      </section>
+
+      <!-- Écran 3 : ma semaine -->
+      <section id="ecran-semaine" hidden></section>
+
+      <!-- Écran 4 : mon programme -->
+      <section id="ecran-programme" hidden></section>
+
+      <!-- Écran 5 : les zones -->
+      <section id="ecran-zones" hidden></section>
+
+      <!-- Écran 6 : encadrant -->
+      <section id="ecran-admin" hidden></section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <div class="footer__brand"><img src="assets/logo.png" onerror="this.onerror=null;this.src='assets/logo.svg'" alt="" class="logo-coin" width="52" height="52" /><strong>Les Coureurs des Vignes</strong></div>
+          <p>Club de course à pied à Montagne. Chemin, route et coteaux, au cœur du vignoble. Association loi 1901, créée début 2026.</p>
+        </div>
+        <nav class="footer__col">
+          <h4>Navigation</h4>
+          <a href="index.html">Accueil</a>
+          <a href="entrainements.html">Entraînements</a>
+          <a href="prepa.html">Prépa</a>
+          <a href="evenements.html">Événements</a>
+          <a href="blog.html">Blog</a>
+          <a href="adhesion.html">Adhésion</a>
+        </nav>
+        <div class="footer__col">
+          <h4>Contact</h4>
+          <a href="mailto:coureursdesvignes@gmail.com">coureursdesvignes@gmail.com</a>
+          <a href="tel:+33635484392">06 35 48 43 92</a>
+          <a href="#">Montagne · 33570</a>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© <span data-year>2026</span> Les Coureurs des Vignes</span>
+        <span>Mentions légales · Confidentialité</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js?v=20260713b"></script>
+  <script src="js/prepa.js?v=20260718a"></script>
+</body>
+</html>

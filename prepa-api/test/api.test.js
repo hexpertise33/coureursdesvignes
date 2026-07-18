@@ -875,7 +875,7 @@ describe('en-têtes de cache', () => {
     it(`${chemin} interdit toute mise en cache`, async () => {
       const r = await requeteA(MI_PARCOURS, chemin, { role: 'coureur' });
       expect(r.headers.get('cache-control')).toBe('no-store');
-      expect(r.headers.get('vary')).toBe('Cookie');
+      expect(r.headers.get('vary')).toMatch(/\bCookie\b/);
     });
   }
 
@@ -886,7 +886,7 @@ describe('en-têtes de cache', () => {
       await requeteA(MI_PARCOURS, '/api/inconnue', { role: 'coureur' }), // 404
     ]) {
       expect(r.headers.get('cache-control')).toBe('no-store');
-      expect(r.headers.get('vary')).toBe('Cookie');
+      expect(r.headers.get('vary')).toMatch(/\bCookie\b/);
     }
   });
 
@@ -905,13 +905,13 @@ describe('en-têtes de cache', () => {
       body: JSON.stringify({ code: 'coureur-test' }),
     });
     expect(s.headers.get('cache-control')).toBe('no-store');
-    expect(s.headers.get('vary')).toBe('Cookie');
+    expect(s.headers.get('vary')).toMatch(/\bCookie\b/);
   });
 
   it('les zones, seule ressource publique, restent cachables sans varier sur le cookie', async () => {
     const r = await SELF.fetch('https://p.test/api/zones');
     expect(r.headers.get('cache-control')).toBe('public, max-age=3600');
-    expect(r.headers.get('vary')).toBe('Accept-Encoding');
+    expect(r.headers.get('vary')).toMatch(/\bAccept-Encoding\b/);
   });
 
   it("la même URL ne sert pas la réponse de l'encadrant au coureur", async () => {
@@ -1211,11 +1211,25 @@ describe('validation de séance', () => {
     expect(r.status).toBe(401);
   });
 
-  it('refuse une autre méthode que POST ou DELETE', async () => {
-    for (const method of ['GET', 'HEAD', 'PUT']) {
+  it('refuse une autre méthode que GET, POST ou DELETE', async () => {
+    for (const method of ['PUT', 'PATCH']) {
       const r = await requeteA(MI_PARCOURS, '/api/validation', { role: 'coureur', method });
       expect(r.status).toBe(405);
     }
+  });
+
+  it('accepte GET, qui sert à réafficher les coches au chargement', async () => {
+    // Sans coureur désigné la lecture échoue en 400, pas en 405 : la méthode
+    // est bien acceptée, c'est la désignation qui manque.
+    const r = await requeteA(MI_PARCOURS, '/api/validation', { role: 'coureur', method: 'GET' });
+    expect(r.status).toBe(400);
+  });
+
+  it('ne laisse pas un coureur lire le suivi d\'un autre par son identifiant', async () => {
+    const r = await requeteA(MI_PARCOURS, '/api/validation?coureur=1', { role: 'coureur', method: 'GET' });
+    expect(r.status).toBe(400);
+    const corps = await r.json();
+    expect(corps.validations).toBeUndefined();
   });
 });
 

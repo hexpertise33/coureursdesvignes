@@ -510,6 +510,31 @@ async function coureurCible(donnees, env, estAdmin) {
  * routeSemaine, qu'il s'agisse d'un code réel ou inventé. L'encadrant, qui
  * voit tout en permanence, n'est pas soumis à ce refus.
  */
+/**
+ * GET /api/validation : renvoie les validations du coureur désigné.
+ *
+ * Le coureur se désigne comme partout ailleurs, par prénom et initiale ; seul
+ * l'encadrant peut viser un identifiant, ce qui l'empêche de lire le suivi
+ * d'un camarade en changeant un paramètre.
+ */
+async function routeValidationsLire(url, env, estAdmin) {
+  const donnees = {
+    coureur: url.searchParams.get('coureur'),
+    prenom: url.searchParams.get('prenom'),
+    initiale: url.searchParams.get('initiale'),
+  };
+
+  let coureur;
+  try {
+    coureur = await coureurCible(donnees, env, estAdmin);
+  } catch (e) {
+    return json({ erreur: e.message }, 400);
+  }
+  if (!coureur) return json({ erreur: 'Coureur introuvable.' }, 400);
+
+  return json({ validations: (await pourCoureur(env.DB, coureur.id)).map(vueValidation) });
+}
+
 async function routeValidation(request, env, methode, estAdmin) {
   const donnees = await corps(request);
 
@@ -727,6 +752,11 @@ async function router(request, env, methode) {
   }
 
   if (chemin === '/api/validation') {
+    // La lecture sert à réafficher les coches au chargement de la page. Elle
+    // ne divulgue que les validations du coureur désigné, jamais de contenu
+    // de séance : une validation ne porte qu'un identifiant, un ressenti et
+    // une note écrite par le coureur lui-même.
+    if (methode === 'GET') return routeValidationsLire(url, env, estAdmin);
     if (methode !== 'POST' && methode !== 'DELETE') return methodeRefusee();
     return routeValidation(request, env, methode, estAdmin);
   }
@@ -736,16 +766,54 @@ async function router(request, env, methode) {
   return routeSemaine(url, env, estAdmin);
 }
 
+// Origines autorisées à appeler l'API depuis un navigateur. La liste est
+// fermée et non paramétrable par la requête : le cookie de session étant
+// envoyé avec les appels (credentials), renvoyer l'origine demandée sans la
+// vérifier laisserait n'importe quel site lire la prépa d'un adhérent connecté.
+const ORIGINES = new Set([
+  'https://coureursdesvignes.fr',
+  'https://www.coureursdesvignes.fr',
+  'http://localhost:4599',
+  'http://127.0.0.1:4599',
+]);
+
+function entetesCors(request) {
+  const origine = request.headers.get('origin');
+  if (!origine || !ORIGINES.has(origine)) return {};
+  return {
+    'access-control-allow-origin': origine,
+    'access-control-allow-credentials': 'true',
+    'access-control-allow-headers': 'content-type',
+    'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    'access-control-max-age': '86400',
+  };
+}
+
 export default {
   async fetch(request, env) {
+    const cors = entetesCors(request);
+
+    // Requête préparatoire du navigateur avant un POST ou un DELETE.
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: { ...cors, vary: 'Origin' } });
+    }
+
     // HTTP demande que HEAD soit accepté partout où GET l'est, avec les mêmes
     // en-têtes et sans corps. La requête est donc traitée comme un GET, puis
     // le corps est retiré de la réponse. Sans cela une sonde de supervision,
     // qui interroge volontiers en HEAD, signalerait l'API comme cassée.
     const estHead = request.method === 'HEAD';
-    const reponse = await router(request, env, estHead ? 'GET' : request.method);
-    if (!estHead) return reponse;
-    return new Response(null, { status: reponse.status, headers: reponse.headers });
+    const brute = await router(request, env, estHead ? 'GET' : request.method);
+
+    // Le Vary porte déjà Cookie sur les routes protégées : on y ajoute Origin,
+    // sans quoi un cache pourrait resservir une réponse portant l'en-tête CORS
+    // d'une autre origine.
+    const entetes = new Headers(brute.headers);
+    for (const [cle, valeur] of Object.entries(cors)) entetes.set(cle, valeur);
+    const vary = entetes.get('vary');
+    entetes.set('vary', vary ? `${vary}, Origin` : 'Origin');
+
+    return new Response(estHead ? null : brute.body, { status: brute.status, headers: entetes });
   },
 
   async scheduled(event, env, ctx) {

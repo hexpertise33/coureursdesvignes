@@ -904,7 +904,7 @@ describe('fermeture du back-office', () => {
       const body = corps ? JSON.stringify(corps(ids)) : undefined;
       const r = await requeteA(MI_PARCOURS, chemin, { role: 'admin', method, body });
       expect(r.headers.get('cache-control')).toBe('no-store');
-      expect(r.headers.get('vary')).toBe('Cookie');
+      expect(r.headers.get('vary')).toMatch(/\bCookie\b/);
     });
   }
 

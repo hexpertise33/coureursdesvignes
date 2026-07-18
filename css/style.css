@@ -633,3 +633,156 @@ p { margin: 0 0 1rem; }
   .hero__media img { animation: none; transform: scale(1.04); }
   .quote-band { background-attachment: scroll; }
 }
+
+/* =========================================================
+   PRÉPA AUX COURSES
+   Reprend les jetons du design system, aucune couleur nouvelle.
+   ========================================================= */
+
+.prepa-onglets {
+  display: flex; flex-wrap: wrap; gap: .5rem;
+  margin-bottom: 2rem; padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.prepa-onglet {
+  font-family: var(--f-body); font-size: .95rem; font-weight: 600;
+  padding: .55rem 1.1rem; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
+  cursor: pointer; transition: all .2s var(--ease);
+}
+.prepa-onglet:hover { border-color: var(--vine); color: var(--vine); }
+.prepa-onglet.is-active { background: var(--vine); border-color: var(--vine); color: var(--chalk); }
+
+.prepa-carte {
+  background: var(--chalk); border-radius: var(--r-lg); box-shadow: var(--sh);
+  padding: clamp(1.4rem, 4vw, 2.4rem); margin-bottom: 1.25rem;
+}
+.prepa-carte--etroite { max-width: 460px; }
+.prepa-carte h2 { margin-bottom: .35em; }
+.prepa-carte h3 { margin-top: 1.6rem; }
+
+.prepa-message {
+  padding: .9rem 1.2rem; border-radius: var(--r); margin-bottom: 1.25rem;
+  font-weight: 500; border-left: 4px solid var(--vine); background: var(--chalk);
+}
+.prepa-message--erreur { border-left-color: var(--wine); color: var(--wine-2); }
+.prepa-message--ok { border-left-color: var(--shoot-dark); }
+
+/* ---------- Formulaires ---------- */
+.prepa-champ { display: block; margin-bottom: 1rem; }
+.prepa-champ > span { display: block; font-size: .85rem; font-weight: 600; color: var(--ink-soft); margin-bottom: .35rem; }
+.prepa-champ input, .prepa-note textarea {
+  width: 100%; font-family: var(--f-body); font-size: 1rem; color: var(--ink);
+  padding: .7rem .9rem; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--limestone-2); transition: border-color .2s var(--ease);
+}
+.prepa-champ input:focus, .prepa-note textarea:focus { border-color: var(--vine); outline: none; }
+.prepa-champ--court { max-width: 130px; }
+.prepa-ligne { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+.prepa-radio, .prepa-case { display: flex; gap: .6rem; align-items: flex-start; margin: .5rem 0 1rem; cursor: pointer; }
+.prepa-case { padding: .9rem 1.1rem; border: 1px solid var(--line); border-radius: var(--r); background: var(--limestone-2); }
+
+.prepa-programmes { display: grid; gap: .75rem; margin: 1rem 0 1.5rem; }
+.prepa-programme {
+  display: flex; gap: .9rem; align-items: flex-start; cursor: pointer;
+  padding: 1rem 1.2rem; border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--limestone-2); transition: all .2s var(--ease);
+}
+.prepa-programme:hover { border-color: var(--vine); }
+.prepa-programme:has(input:checked) { border-color: var(--vine); background: color-mix(in srgb, var(--shoot) 10%, var(--chalk)); }
+.prepa-programme__corps { display: grid; gap: .2rem; }
+.prepa-programme__nom { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; }
+.prepa-programme__meta { font-family: var(--f-mono); font-size: .82rem; color: var(--muted); }
+.prepa-programme__prerequis { font-size: .88rem; color: var(--ink-soft); font-style: italic; }
+
+/* ---------- Séances ---------- */
+.prepa-entete {
+  display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: space-between; align-items: flex-start;
+  background: var(--vine-deep); color: var(--chalk);
+  border-radius: var(--r-lg); padding: clamp(1.4rem, 4vw, 2.2rem); margin-bottom: 1.5rem;
+}
+.prepa-entete h2 { color: var(--chalk); margin: .2em 0; }
+.prepa-entete .eyebrow { color: var(--shoot); }
+.prepa-intention { color: rgba(250, 248, 241, .82); margin: 0; max-width: 52ch; }
+.prepa-carte .prepa-intention { color: var(--ink-soft); }
+.prepa-compteur { text-align: center; font-family: var(--f-mono); }
+.prepa-compteur strong { display: block; font-size: 2.6rem; line-height: 1; color: var(--shoot); }
+.prepa-compteur span { font-size: .82rem; color: rgba(250, 248, 241, .7); }
+
+.prepa-seance {
+  background: var(--chalk); border: 1px solid var(--line); border-left: 5px solid var(--zone, var(--vine));
+  border-radius: var(--r); padding: 1.25rem 1.4rem; margin-bottom: 1rem;
+}
+.prepa-seance.est-validee { background: color-mix(in srgb, var(--shoot) 12%, var(--chalk)); }
+.prepa-seance__tete { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; margin-bottom: .6rem; }
+.prepa-seance__tete h4 { margin: 0; flex: 1; font-family: var(--f-display); font-size: 1.02rem; }
+.prepa-seance__meta { font-family: var(--f-mono); font-size: .85rem; color: var(--muted); }
+.prepa-seance__desc { margin: 0 0 .5rem; }
+.prepa-seance__objectif { margin: 0 0 1rem; color: var(--ink-soft); font-style: italic; font-size: .93rem; }
+.prepa-seance__actions { display: flex; gap: .8rem; flex-wrap: wrap; align-items: center; }
+.prepa-seance .btn { padding: .5rem 1rem; font-size: .9rem; }
+
+.prepa-puce {
+  display: inline-block; font-family: var(--f-mono); font-weight: 700; font-size: .78rem;
+  padding: .18rem .62rem; border-radius: var(--r-pill);
+  background: var(--zone, var(--vine)); color: var(--chalk);
+}
+.zone-Z1 { --zone: var(--muted); }
+.zone-Z2 { --zone: var(--vine); }
+.zone-Z3 { --zone: var(--shoot-dark); }
+.zone-Z4 { --zone: var(--wine); }
+.zone-Z5 { --zone: var(--wine-2); }
+
+.prepa-ressenti { display: flex; gap: .4rem; flex-wrap: wrap; }
+.prepa-ressenti__btn {
+  font-family: var(--f-body); font-size: .88rem; cursor: pointer;
+  padding: .45rem .9rem; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: var(--chalk); color: var(--ink-soft);
+  transition: all .2s var(--ease);
+}
+.prepa-ressenti__btn:hover { border-color: var(--vine); }
+.prepa-ressenti__btn[aria-pressed="true"] { background: var(--vine); border-color: var(--vine); color: var(--chalk); }
+
+.prepa-note { margin-top: .9rem; }
+.prepa-note summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
+.prepa-note textarea { margin: .6rem 0; }
+.prepa-note .btn { padding: .4rem .9rem; font-size: .85rem; }
+
+/* ---------- Semaines verrouillées ---------- */
+.prepa-carte--verrou { position: relative; overflow: hidden; }
+.prepa-verrou { filter: blur(5px); user-select: none; pointer-events: none; opacity: .55; }
+.prepa-verrou-libelle {
+  font-family: var(--f-mono); font-size: .88rem; color: var(--muted);
+  text-align: center; margin: .5rem 0 0;
+}
+
+/* ---------- Divers ---------- */
+.prepa-jauge { height: 8px; border-radius: var(--r-pill); background: var(--limestone-2); overflow: hidden; margin: 1rem 0 .5rem; }
+.prepa-jauge span { display: block; height: 100%; background: linear-gradient(90deg, var(--vine), var(--shoot)); }
+
+.prepa-liste { list-style: none; padding: 0; margin: .8rem 0 0; display: grid; gap: .5rem; }
+.prepa-liste li { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+
+.prepa-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: .93rem; }
+.prepa-table th, .prepa-table td { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.prepa-table th { font-family: var(--f-mono); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.prepa-chiffre { font-family: var(--f-mono); }
+
+.prepa-alerte { padding: .6rem .9rem; border-radius: var(--r-sm); border-left: 4px solid var(--muted); background: var(--limestone-2); display: block; }
+.prepa-alerte--difficulte { border-left-color: var(--wine); }
+
+.prepa-mention { font-size: .85rem; color: var(--muted); margin-top: 1.5rem; }
+
+@media (max-width: 640px) {
+  .prepa-entete { flex-direction: column; }
+  .prepa-compteur { text-align: left; }
+  .prepa-table { display: block; overflow-x: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prepa-onglet, .prepa-programme, .prepa-ressenti__btn { transition: none; }
+}
+
+/* L'attribut hidden doit primer sur les display des blocs ci-dessus. */
+.prepa-onglets[hidden], .prepa-carte[hidden], .prepa-ligne[hidden],
+.prepa-case[hidden], .prepa-message[hidden], .prepa-seance[hidden] { display: none !important; }
+.prepa-apercu { color: var(--wine); font-weight: 700; }
