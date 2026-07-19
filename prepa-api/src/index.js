@@ -725,7 +725,30 @@ async function router(request, env, methode) {
   const url = new URL(request.url);
   const chemin = url.pathname;
 
-  if (chemin === '/api/sante') return json({ ok: true });
+  /**
+   * Sonde de santé, et surtout de configuration.
+   *
+   * `configure` dit si les trois valeurs sans lesquelles l'application ne
+   * laisse entrer personne sont bien présentes. Elle existe parce que leur
+   * absence est silencieuse : un Worker sans code d'accès démarre, répond,
+   * et refuse simplement tout le monde.
+   *
+   * Le cas s'est produit. Un code posé en Variable depuis le tableau de bord
+   * Cloudflare est effacé au déploiement suivant, `wrangler deploy` remplaçant
+   * les variables du Worker par celles de wrangler.toml. L'accès encadrant a
+   * disparu sans un message, et ne s'est vu qu'en essayant de se connecter.
+   * Les secrets, eux, survivent aux déploiements : c'est sous cette forme que
+   * les trois valeurs doivent être posées.
+   *
+   * On publie un booléen unique et non le détail de ce qui manque : savoir
+   * qu'une configuration est incomplète suffit à qui administre, et n'apprend
+   * rien d'exploitable à qui ne le devrait pas, l'application étant de toute
+   * façon fermée dans cet état.
+   */
+  if (chemin === '/api/sante') {
+    const configure = Boolean(env.CODE_COUREUR) && Boolean(env.CODE_ADMIN) && Boolean(env.SECRET_JETON);
+    return json({ ok: true, configure });
+  }
 
   // Les zones d'intensité sont la seule ressource publique : la page qui
   // les explique doit rester consultable avant la saisie du code, et elles

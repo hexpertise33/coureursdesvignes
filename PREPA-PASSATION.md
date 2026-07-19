@@ -130,14 +130,21 @@ coureur et encadrant du club. Elles sont le produit.
    `wrangler secret put CODE_COUREUR`, `CODE_ADMIN`, `SECRET_JETON`. Sans eux
    la production démarre sans code valide. Ne pas les faire transiter par une
    session d'assistant.
-3. **Déployer le Worker**, puis reporter son URL dans la constante `API` de
+3. **Poser les valeurs en Secret et jamais en Variable.** Une valeur posée en
+   Variable depuis le tableau de bord Cloudflare est effacée au déploiement
+   suivant : `wrangler deploy` remplace les variables du Worker par celles de
+   `wrangler.toml`. Le cas s'est produit le 19 juillet, l'accès encadrant a
+   disparu sans un message. `GET /api/sante` renvoie désormais
+   `{ ok, configure }` : `configure` à faux signale qu'il manque au moins une
+   des trois valeurs.
+4. **Déployer le Worker**, puis reporter son URL dans la constante `API` de
    `js/prepa.js`, puis déployer la page. **Le Worker d'abord** : le déroulé
    des séances se replie sur l'ancien paragraphe si le Worker déployé ne le
    connaît pas encore, et l'inverse donnerait une page cassée.
-4. **Activer le rappel du samedi** : vérifier tridav00@gmail.com dans
+5. **Activer le rappel du samedi** : vérifier tridav00@gmail.com dans
    Cloudflare Email Routing, puis décommenter le bloc `[[send_email]]` de
    `wrangler.toml` et redéployer. Le code est déjà écrit et testé.
-5. **Fusionner `prepa-courses` dans `main`** et pousser, une fois la
+6. **Fusionner `prepa-courses` dans `main`** et pousser, une fois la
    production vérifiée.
 
 ## Les points ouverts, à trancher par David

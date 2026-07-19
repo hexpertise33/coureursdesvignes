@@ -55,7 +55,9 @@ describe('Worker', () => {
   it('répond sur /api/sante', async () => {
     const r = await SELF.fetch('https://prepa.test/api/sante');
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ ok: true });
+    // `configure` dit si les trois valeurs d'accès sont bien posées. Voir la
+    // suite « sonde de configuration » plus bas pour ce qu'elle protège.
+    expect(await r.json()).toEqual({ ok: true, configure: true });
   });
 
   it('renvoie 404 sur une route inconnue', async () => {
@@ -1611,5 +1613,38 @@ describe('déconnexion', () => {
       body: JSON.stringify({ code: 'coureur-test' }),
     });
     expect(r.status).not.toBe(429);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sonde de configuration
+// ---------------------------------------------------------------------------
+//
+// Un Worker privé de ses codes d'accès démarre, répond, et refuse tout le
+// monde. Le défaut est donc muet, et il s'est produit : un code posé en
+// Variable depuis le tableau de bord Cloudflare a été effacé au déploiement
+// suivant, wrangler deploy remplaçant les variables du Worker par celles de
+// wrangler.toml. L'accès encadrant a disparu sans un message.
+describe('sonde de configuration', () => {
+  it('annonce une configuration complète quand les trois valeurs sont là', async () => {
+    const r = await SELF.fetch('https://p.test/api/sante');
+    const d = await r.json();
+    expect(r.status).toBe(200);
+    expect(d.ok).toBe(true);
+    expect(d.configure).toBe(true);
+  });
+
+  it('ne publie jamais la valeur des codes, seulement leur présence', async () => {
+    const brut = await (await SELF.fetch('https://p.test/api/sante')).text();
+    for (const valeur of [env.CODE_COUREUR, env.CODE_ADMIN, env.SECRET_JETON]) {
+      if (valeur) expect(brut).not.toContain(valeur);
+    }
+    // Et pas davantage le nom de ce qui manquerait : un booléen unique.
+    expect(brut).not.toMatch(/CODE_|SECRET_/);
+  });
+
+  it('reste accessible sans session, comme toute sonde', async () => {
+    const r = await SELF.fetch('https://p.test/api/sante');
+    expect(r.status).toBe(200);
   });
 });
