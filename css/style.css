@@ -872,3 +872,29 @@ p { margin: 0 0 1rem; }
 .prepa-depart__note { margin-top: .9rem; font-size: .88rem; color: var(--muted); }
 
 @media (max-width: 760px) { .prepa-duo { grid-template-columns: 1fr; } }
+
+/* ---------- Allures personnelles ---------- */
+.prepa-champ--moyen { max-width: 220px; }
+.prepa-zone__allure { color: var(--wine); font-weight: 700; white-space: nowrap; }
+.prepa-zones__avert {
+  margin-top: 1rem; padding: .8rem 1rem;
+  background: var(--limestone-2); border-radius: var(--r-sm);
+  font-size: .89rem; color: var(--ink-soft);
+}
+
+.prepa-seance__allure {
+  display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center;
+  margin: 0 0 .8rem; padding: .55rem .8rem;
+  background: var(--limestone-2); border-radius: var(--r-sm);
+  font-size: .89rem;
+}
+.prepa-seance__allure-titre {
+  font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted);
+}
+.prepa-allure { display: inline-flex; align-items: center; gap: .4rem; }
+.prepa-allure .prepa-puce { font-size: .7rem; padding: .1rem .45rem; }
+
+@media (max-width: 640px) {
+  .prepa-zone__allure { white-space: normal; }
+}

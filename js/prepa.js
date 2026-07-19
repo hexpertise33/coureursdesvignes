@@ -158,6 +158,34 @@
 
   /* ---------- Séances ---------- */
 
+  /**
+   * Traduit les zones citées par une séance en allures propres au coureur.
+   * On lit les zones dans le texte de la séance, pas seulement sa zone
+   * principale : une endurance qui contient des lignes droites en Z5 doit
+   * donner les deux repères.
+   */
+  function allurePourSeance(s) {
+    var a = alluresPersonnelles();
+    if (!a) return '';
+
+    var citees = {};
+    if (s.zone) citees[s.zone] = true;
+    (s.zonesSecondaires || []).forEach(function (z) { citees[z] = true; });
+    var trouvees = String(s.description || '').match(/Z[1-5]/g) || [];
+    trouvees.forEach(function (z) { citees[z] = true; });
+
+    var ordre = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].filter(function (z) { return citees[z]; });
+    if (!ordre.length) return '';
+
+    return '<p class="prepa-seance__allure">' +
+      '<span class="prepa-seance__allure-titre">Pour toi</span> ' +
+      ordre.map(function (z) {
+        return '<span class="prepa-allure"><span class="prepa-puce zone-' + z + '">' + z + '</span> ' +
+          '<span class="prepa-chiffre">' + allureLisible(z) + '</span></span>';
+      }).join('') +
+    '</p>';
+  }
+
   function rendreSeance(s, semaine, validation) {
     var faite = !!validation;
     var zone = s.zone || 'Z2';
@@ -168,6 +196,7 @@
         '<span class="prepa-seance__meta">' + echapper(s.duree) + ' min</span>' +
       '</header>' +
       '<p class="prepa-seance__desc">' + echapper(s.description) + '</p>' +
+      allurePourSeance(s) +
       '<p class="prepa-seance__objectif">' + echapper(s.objectif) + '</p>' +
       '<div class="prepa-seance__actions">' +
         '<button class="btn ' + (faite ? 'btn--outline-vine' : 'btn--vine') + ' prepa-valider" data-semaine="' + semaine + '" data-seance="' + echapper(s.id) + '">' +
@@ -293,6 +322,60 @@
     '</section>';
   }
 
+  /* ---------- Allures personnelles ----------
+     Le principe du projet reste entier : les séances sont écrites en zones, et
+     c'est la sensation qui gouverne. Mais quand un coureur nous donne son temps
+     sur 10 km, on peut lui traduire chaque zone dans SES allures à lui. La
+     préparation reste la même pour tout le monde, seul le repère change. */
+
+  // Rapports de vitesse par rapport à l'allure sur 10 km, bornes basse et haute.
+  // Une valeur inférieure à 1 veut dire plus rapide que l'allure 10 km.
+  var RAPPORTS = {
+    Z1: [1.33, 1.54],
+    Z2: [1.18, 1.33],
+    Z3: [1.04, 1.09],
+    Z4: [0.98, 1.02],
+    Z5: [0.93, 0.95]
+  };
+
+  /** Accepte "48:30", "48", "0:48:30" ou "1:02:15". Renvoie des secondes. */
+  function parserTemps(brut) {
+    var t = String(brut || '').trim().replace(/\s/g, '').replace(/[hH]/g, ':').replace(/,/g, ':');
+    if (!t) return 0;
+    var parts = t.split(':').filter(function (x) { return x !== ''; }).map(Number);
+    if (parts.some(isNaN)) return 0;
+    if (parts.length === 1) return parts[0] * 60;
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return 0;
+  }
+
+  function formaterAllure(secondesParKm) {
+    var s = Math.round(secondesParKm);
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  /** Allures par zone, en secondes par kilomètre, ou null si on ne sait pas. */
+  function alluresPersonnelles() {
+    var t = Number(etat.temps10km) || 0;
+    if (t < 1500 || t > 6000) return null; // hors 25 min à 1 h 40, on ne calcule pas
+    var base = t / 10;
+    var out = {};
+    Object.keys(RAPPORTS).forEach(function (z) {
+      out[z] = { rapide: base * RAPPORTS[z][0], lent: base * RAPPORTS[z][1] };
+    });
+    out.__base = base;
+    return out;
+  }
+
+  function allureLisible(zone) {
+    var a = alluresPersonnelles();
+    if (!a || !a[zone]) return '';
+    return formaterAllure(a[zone].rapide) + ' à ' + formaterAllure(a[zone].lent) + ' par km';
+  }
+
   /** FC max retenue : celle saisie par le coureur, sinon estimée par l'âge. */
   function fcMaxRetenue() {
     if (etat.fcMax) return Number(etat.fcMax);
@@ -302,31 +385,48 @@
 
   function legendeZones(zones) {
     var fcm = fcMaxRetenue();
+    var allures = alluresPersonnelles();
+
     var lignes = Object.keys(zones).map(function (k) {
       var z = zones[k];
       var bpm = fcm
         ? '<td class="prepa-chiffre prepa-zone__bpm">' + Math.round(fcm * z.fcMin / 100) + ' à ' + Math.round(fcm * z.fcMax / 100) + ' bpm</td>'
         : '';
+      var allure = allures
+        ? '<td class="prepa-chiffre prepa-zone__allure">' + allureLisible(k) + '</td>'
+        : '';
       return '<tr>' +
         '<td><span class="prepa-puce zone-' + k + '">' + k + '</span></td>' +
         '<td class="prepa-zone__nom">' + echapper(z.nom) + '</td>' +
-        '<td class="prepa-chiffre">' + z.fcMin + ' à ' + z.fcMax + ' % FC max</td>' +
-        bpm +
+        '<td class="prepa-chiffre">' + z.fcMin + ' à ' + z.fcMax + ' %</td>' +
+        bpm + allure +
         '<td class="prepa-zone__sensation">' + echapper(z.sensation) + '</td>' +
       '</tr>';
     }).join('');
 
+    var connus = [];
+    if (fcm) connus.push('FC max <strong class="prepa-chiffre">' + fcm + ' bpm</strong>');
+    if (allures) connus.push('10 km en <strong class="prepa-chiffre">' + formaterAllure(Number(etat.temps10km)) + '</strong>');
+
     return '<details class="prepa-carte prepa-zones" open>' +
-      '<summary><strong>Les zones d\'intensité</strong> et ce qu\'elles veulent dire</summary>' +
-      '<p class="prepa-zones__intro">Toutes les séances sont écrites en zones, jamais en allure : chacun court à son rythme, dans la bonne zone. Le pourcentage se calcule sur ta fréquence cardiaque maximale.</p>' +
+      '<summary><strong>Tes zones, tes fréquences, tes allures</strong></summary>' +
+      '<p class="prepa-zones__intro">Les séances sont écrites en zones, jamais en allure imposée : c\'est ce qui permet à tout le groupe de suivre le même programme. Donne-nous tes repères et on traduit chaque zone dans <em>tes</em> chiffres à toi.</p>' +
       '<table class="prepa-table"><tbody>' + lignes + '</tbody></table>' +
-      (fcm
-        ? '<p class="prepa-zones__fcm">Calculé sur une FC max de <strong class="prepa-chiffre">' + fcm + ' bpm</strong>. <button class="prepa-lien" id="changer-fcm">Modifier</button></p>'
-        : '<div class="prepa-zones__saisie">' +
+      (allures
+        ? '<p class="prepa-zones__avert">Ces allures sont calculées depuis ton temps sur 10 km. Ce sont des repères, pas des consignes : le jour où tu es fatigué ou qu\'il fait 30 degrés, c\'est la zone et la sensation qui commandent, pas le chrono.</p>'
+        : '') +
+      (connus.length
+        ? '<p class="prepa-zones__fcm">Calculé sur : ' + connus.join(' · ') + '. <button class="prepa-lien" id="changer-fcm">Modifier mes repères</button></p>'
+        : '') +
+      (fcm && allures ? '' :
+        '<div class="prepa-zones__saisie">' +
+          (fcm ? '' :
             '<label class="prepa-champ prepa-champ--court"><span>Ton âge</span><input type="number" id="champ-age-rapide" min="10" max="99" /></label>' +
-            '<label class="prepa-champ prepa-champ--court"><span>Ou ta FC max</span><input type="number" id="champ-fcmax-rapide" min="120" max="230" placeholder="si connue" /></label>' +
-            '<button class="btn btn--outline-vine" id="calculer-fcm">Voir mes battements</button>' +
-          '</div>') +
+            '<label class="prepa-champ prepa-champ--court"><span>Ou ta FC max</span><input type="number" id="champ-fcmax-rapide" min="120" max="230" placeholder="si connue" /></label>') +
+          (allures ? '' :
+            '<label class="prepa-champ prepa-champ--moyen"><span>Ton temps sur 10 km</span><input type="text" id="champ-temps10-rapide" placeholder="par exemple 52:30" inputmode="numeric" /></label>') +
+          '<button class="btn btn--outline-vine" id="calculer-fcm">Calculer mes repères</button>' +
+        '</div>') +
     '</details>';
   }
 
@@ -491,10 +591,17 @@
     if (b.id === 'calculer-fcm') {
       var age = Number(($('champ-age-rapide') || {}).value);
       var fcm = Number(($('champ-fcmax-rapide') || {}).value);
-      if (!age && !fcm) { dire('Saisis ton âge ou ta FC max.', 'erreur'); return; }
-      etat.age = age || null;
-      etat.fcMax = fcm || null;
+      var t10 = parserTemps(($('champ-temps10-rapide') || {}).value);
+      if (!age && !fcm && !t10) { dire('Saisis au moins un repère : ton âge, ta FC max ou ton temps sur 10 km.', 'erreur'); return; }
+      if (t10 && (t10 < 1500 || t10 > 6000)) {
+        dire('Ce temps sur 10 km paraît hors du plausible. Saisis-le sous la forme 52:30.', 'erreur');
+        return;
+      }
+      if (age) etat.age = age;
+      if (fcm) etat.fcMax = fcm;
+      if (t10) etat.temps10km = t10;
       sauver();
+      dire('');
       rafraichir();
       return;
     }
@@ -502,6 +609,7 @@
     if (b.id === 'changer-fcm') {
       etat.age = null;
       etat.fcMax = null;
+      etat.temps10km = null;
       sauver();
       rafraichir();
       return;
