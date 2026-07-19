@@ -84,6 +84,7 @@ const ROUTES_ADMIN = new Set([
   '/api/admin/veto',
   '/api/admin/fusion',
   '/api/admin/coureur',
+  '/api/admin/rappel',
 ]);
 
 export function json(donnees, statut = 200, entetes = {}) {
@@ -634,8 +635,54 @@ async function routeValidation(request, env, methode, estAdmin) {
  * L'encadrant a le droit de tout voir du contenu d'entraînement, il n'a pas
  * pour autant besoin de la clé de déduplication ni des horodatages internes.
  */
+/**
+ * Prépare et envoie le rappel du samedi, et dit ce qui s'est passé.
+ *
+ * Un seul corps de fonction pour les deux appelants, le cron du samedi et le
+ * déclenchement manuel de l'encadrant. C'est la raison d'être de cette
+ * extraction : un bouton de test qui exercerait un chemin différent de celui
+ * du cron ne prouverait rien du cron.
+ *
+ * Ne lève jamais. Le rappel n'est pas la fonction du produit, et la
+ * publication d'une semaine ne l'attend pas.
+ */
+async function preparerEtEnvoyerRappel(env, maintenant = Date.now()) {
+  const semaine = semaineDuRappel(maintenant);
+
+  // Hors saison, il n'y a rien à annoncer. Le cron continue de se déclencher
+  // tous les samedis, et sans cette sortie il enverrait indéfiniment un
+  // rappel pour une semaine qui n'existe pas.
+  if (semaine === null) return { statut: 'hors-saison', semaine: null, alertes: 0 };
+
+  // Les alertes se lisent sur la dernière semaine parue, la seule sur
+  // laquelle des séances ont pu être validées. Avant l'ouverture de la
+  // semaine 1, il n'y en a aucune et alertes() rend une liste vide.
+  const listeAlertes = await alertes(env.DB, semaine - 1);
+  const message = construireRappel(semaine, listeAlertes, env.SITE_URL);
+  const statut = await envoyerRappel(env, message);
+
+  return { statut, semaine, alertes: listeAlertes.length };
+}
+
 async function routeAdmin(request, env, url, chemin, methode) {
   const maintenant = Date.now();
+
+  /**
+   * Déclenchement manuel du rappel, pour l'encadrant.
+   *
+   * Sans lui, la seule façon de savoir si le rappel part était d'attendre le
+   * samedi suivant et de regarder sa boîte. Une configuration d'e-mail se
+   * casse en silence (adresse non vérifiée, binding retiré par un
+   * déploiement) et se répare par tâtonnements : il faut pouvoir essayer.
+   *
+   * Le statut rendu vient d'envoyerRappel et distingue les cas :
+   * `envoye`, `sans-binding`, `sans-adresse`, `echec`, `hors-saison`.
+   */
+  if (chemin === '/api/admin/rappel') {
+    if (methode !== 'POST') return methodeRefusee();
+    const resultat = await preparerEtEnvoyerRappel(env, maintenant);
+    return json(resultat);
+  }
 
   if (chemin === '/api/admin/tableau') {
     if (methode !== 'GET') return methodeRefusee();
@@ -874,21 +921,8 @@ export default {
    * dépendre de la bonne santé d'un service d'e-mail.
    */
   async scheduled(event, env, ctx) {
-    const semaine = semaineDuRappel(Date.now());
-
-    // Hors saison, il n'y a rien à annoncer. Le cron continue de se déclencher
-    // tous les samedis, et sans cette sortie il enverrait indéfiniment un
-    // rappel pour une semaine qui n'existe pas.
-    if (semaine === null) return;
-
-    // Les alertes se lisent sur la dernière semaine parue, la seule sur
-    // laquelle des séances ont pu être validées. Avant l'ouverture de la
-    // semaine 1, il n'y en a aucune et alertes() rend une liste vide.
-    const listeAlertes = await alertes(env.DB, semaine - 1);
-    const message = construireRappel(semaine, listeAlertes, env.SITE_URL);
-
     // waitUntil et non await : le handler rend la main tout de suite, et
     // l'envoi dispose quand même du temps d'exécution nécessaire.
-    ctx.waitUntil(envoyerRappel(env, message));
+    ctx.waitUntil(preparerEtEnvoyerRappel(env));
   },
 };

@@ -1529,23 +1529,26 @@ describe('cron du samedi', () => {
   }
 
   it('annonce la semaine 1 le samedi qui précède son ouverture', async () => {
-    const resultats = await jouerCron(veilleDe(1));
-    expect(resultats).toEqual(['sans-binding']);
+    const [r] = await jouerCron(veilleDe(1));
+    expect(r.semaine).toBe(1);
+    expect(r.statut).toBe('sans-binding');
   });
 
   it('tourne sans échouer en cours de saison, avec des coureurs en base', async () => {
     const c = await cookie('coureur');
     await creerCoureur(c, { prenom: 'Cron', initiale: 'C', programme: 'P1', faitIzon: false });
-    const resultats = await jouerCron(veilleDe(5));
-    expect(resultats).toEqual(['sans-binding']);
+    const [r] = await jouerCron(veilleDe(5));
+    expect(r.semaine).toBe(5);
+    expect(r.statut).toBe('sans-binding');
   });
 
   it("n'envoie plus rien une fois la dernière semaine parue", async () => {
-    const resultats = await jouerCron(APRES_TOUT);
-    // Aucune tâche différée : le handler est sorti avant de construire quoi
-    // que ce soit. C'est la sortie hors saison, sans elle le cron annoncerait
-    // une semaine 18 inexistante tous les samedis, indéfiniment.
-    expect(resultats).toEqual([]);
+    const [r] = await jouerCron(APRES_TOUT);
+    // Le rappel sort sur « hors-saison » sans rien construire ni remettre au
+    // binding. Sans cette sortie, le cron annoncerait une semaine 18
+    // inexistante tous les samedis, indéfiniment.
+    expect(r.statut).toBe('hors-saison');
+    expect(r.semaine).toBeNull();
   });
 });
 
@@ -1646,5 +1649,65 @@ describe('sonde de configuration', () => {
   it('reste accessible sans session, comme toute sonde', async () => {
     const r = await SELF.fetch('https://p.test/api/sante');
     expect(r.status).toBe(200);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Déclenchement manuel du rappel
+// ---------------------------------------------------------------------------
+//
+// Sans lui, la seule façon de savoir si le rappel part était d'attendre le
+// samedi suivant et de regarder sa boîte. Une configuration d'e-mail se casse
+// en silence et se répare par tâtonnements : il faut pouvoir essayer.
+describe('rappel déclenché à la main', () => {
+  it('est réservé à l\'encadrant', async () => {
+    const r = await SELF.fetch('https://p.test/api/admin/rappel', {
+      method: 'POST', headers: entetes(await cookie('coureur')),
+    });
+    expect(r.status).toBe(403);
+  });
+
+  it('exige une session', async () => {
+    const r = await SELF.fetch('https://p.test/api/admin/rappel', { method: 'POST' });
+    expect(r.status).toBe(401);
+  });
+
+  it('refuse les autres méthodes', async () => {
+    const r = await SELF.fetch('https://p.test/api/admin/rappel', {
+      headers: entetes(await cookie('admin')),
+    });
+    expect(r.status).toBe(405);
+  });
+
+  // En test le binding e-mail n'existe pas : le statut attendu est donc
+  // 'sans-binding'. Ce qui est vérifié ici est que la route exerce bien tout
+  // le chemin, du calcul de la semaine jusqu'à la remise au binding.
+  it('rend le statut de l\'envoi et la semaine annoncée', async () => {
+    const r = await SELF.fetch('https://p.test/api/admin/rappel', {
+      method: 'POST', headers: entetes(await cookie('admin')),
+    });
+    expect(r.status).toBe(200);
+    const d = await r.json();
+    expect(['envoye', 'sans-binding', 'sans-adresse', 'echec', 'hors-saison']).toContain(d.statut);
+    expect(d).toHaveProperty('semaine');
+    expect(typeof d.alertes).toBe('number');
+  });
+
+  // Le point de cette route : exercer le même code que le cron. Un bouton de
+  // test qui suivrait un autre chemin ne prouverait rien du cron.
+  it('rend le même résultat que le cron joué au même instant', async () => {
+    const evenement = { cron: '0 7 * * 6', scheduledTime: Date.now(), noRetry() {} };
+    const taches = [];
+    const parCron = await commeSi(Date.now(), async () => {
+      await worker.scheduled(evenement, env, { waitUntil: (p) => taches.push(p), passThroughOnException() {} });
+      return (await Promise.all(taches))[0];
+    });
+
+    const r = await SELF.fetch('https://p.test/api/admin/rappel', {
+      method: 'POST', headers: entetes(await cookie('admin')),
+    });
+    const parRoute = await r.json();
+    expect(parCron.statut).toBe(parRoute.statut);
+    expect(parCron.semaine).toBe(parRoute.semaine);
   });
 });

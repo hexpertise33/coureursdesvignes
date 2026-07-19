@@ -49,6 +49,6 @@ SITE_URL = "https://coureursdesvignes.fr"
 # rend 'sans-binding' et le cron se termine normalement. On peut donc mettre en
 # ligne sans lui et l'activer ensuite, ce qui evite de faire dependre une date
 # de parution d'une verification d'adresse.
-# [[send_email]]
-# name = "EMAIL"
-# destination_address = "tridav00@gmail.com"
+[[send_email]]
+name = "EMAIL"
+destination_address = "tridav00@gmail.com"
