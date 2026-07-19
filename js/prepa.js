@@ -468,12 +468,12 @@
     if (verdict.sens === 'resserrer') {
       return '<div class="prepa-adapt prepa-adapt--vite">' +
         '<p><strong>Tes séances te paraissent faciles.</strong> Sur tes ' + verdict.nb + ' dernières séances notées, la plupart sont passées sans difficulté. Tes allures de référence sont peut-être trop prudentes.</p>' +
-        '<button class="btn btn--vine" id="resserrer-allures">Resserrer mes allures de 2 %</button>' +
+        '<button class="btn btn--vine" id="resserrer-allures">Resserrer mes allures de 1 %</button>' +
       '</div>';
     }
     return '<div class="prepa-adapt prepa-adapt--dur">' +
       '<p><strong>Tes séances te paraissent difficiles.</strong> Sur tes ' + verdict.nb + ' dernières séances notées, la plupart t\'ont coûté. Mieux vaut relâcher les allures que forcer et se blesser.</p>' +
-      '<button class="btn btn--outline-vine" id="assouplir-allures">Assouplir mes allures de 2 %</button>' +
+      '<button class="btn btn--outline-vine" id="assouplir-allures">Assouplir mes allures de 1 %</button>' +
     '</div>';
   }
 
@@ -755,7 +755,7 @@
     }
 
     if (b.id === 'resserrer-allures' || b.id === 'assouplir-allures') {
-      var f = b.id === 'resserrer-allures' ? 0.98 : 1.02;
+      var f = b.id === 'resserrer-allures' ? 0.99 : 1.01;
       // Borné à plus ou moins 10 % : au-delà, ce n'est plus un ajustement, c'est
       // que le repère de départ était faux et il faut le ressaisir.
       var nouveau = Math.min(1.1, Math.max(0.9, (Number(etat.ajustement) || 1) * f));
