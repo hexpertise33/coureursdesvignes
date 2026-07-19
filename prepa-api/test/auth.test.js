@@ -1,6 +1,8 @@
 import { env } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
-import { creerJeton, verifierJeton, roleDepuisRequete, debitDepasse, cookieJeton } from '../src/auth.js';
+import { creerJeton, verifierJeton, roleDepuisRequete, debitDepasse, cookieJeton, DUREE_JETON } from '../src/auth.js';
+import { instantPublication, lundiDeLaSemaine } from '../src/calendrier.js';
+import { NB_SEMAINES_MAX } from '../src/admin.js';
 
 const S = 'secret-de-test';
 
@@ -92,6 +94,50 @@ describe('jetons', () => {
       const j = await creerJeton(S, 'admin', 60000);
       expect(await verifierJeton(S, j)).toEqual({ role: 'admin' });
     });
+  });
+});
+
+// La durée de session est une décision de David, pas un réglage technique :
+// 120 jours, après quoi il faut ressaisir le code. Elle est verrouillée ici
+// parce qu'une constante nue se rallonge sans que personne ne s'en aperçoive,
+// et qu'une session qui survivrait à la saison viderait de son sens le fait
+// même d'avoir un code d'accès.
+describe('durée de session', () => {
+  const JOUR = 24 * 3600 * 1000;
+
+  it('vaut 120 jours', () => {
+    expect(DUREE_JETON).toBe(120 * JOUR);
+  });
+
+  // Le calage annoncé en commentaire de DUREE_JETON. Les deux bornes sont
+  // calculées depuis le calendrier réel, pas écrites en dur : si la saison
+  // se décale ou si un programme s'allonge, c'est ici que ça se verra.
+  it('couvre la saison entière sans la déborder de plus d\'une semaine', () => {
+    const ouverture = instantPublication(1);
+    // La dernière semaine du plus long programme (P5, 17 semaines) commence
+    // ce lundi-là et se termine sept jours plus tard.
+    const finDeSaison = lundiDeLaSemaine(NB_SEMAINES_MAX) + 7 * JOUR;
+    const expiration = ouverture + DUREE_JETON;
+
+    // Un coureur connecté à la parution de la semaine 1 ne doit pas être
+    // déconnecté avant la fin de sa préparation.
+    expect(expiration).toBeGreaterThanOrEqual(finDeSaison);
+    // Et sa session ne doit pas traîner longtemps après.
+    expect(expiration - finDeSaison).toBeLessThanOrEqual(7 * JOUR);
+  });
+
+  it('produit un jeton encore valide la veille du terme et périmé le lendemain', async () => {
+    const jeton = await creerJeton(S, 'coureur', DUREE_JETON);
+    const horlogeReelle = Date.now;
+    try {
+      const emission = horlogeReelle();
+      Date.now = () => emission + DUREE_JETON - 24 * 3600 * 1000;
+      expect(await verifierJeton(S, jeton)).toEqual({ role: 'coureur' });
+      Date.now = () => emission + DUREE_JETON + 24 * 3600 * 1000;
+      expect(await verifierJeton(S, jeton)).toBeNull();
+    } finally {
+      Date.now = horlogeReelle;
+    }
   });
 });
 

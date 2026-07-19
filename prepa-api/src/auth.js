@@ -4,9 +4,26 @@
 
 const encodeur = new TextEncoder();
 
-// Durée de vie par défaut du jeton : un an, pour éviter de resaisir le code
-// à chaque visite.
-export const DUREE_JETON = 365 * 24 * 3600 * 1000;
+// Durée de vie par défaut du jeton : 120 jours, puis il faut ressaisir le
+// code. La durée est écrite en jours pleins et non en mois, parce qu'un
+// « mois » n'est pas une durée fixe et qu'une expiration signée doit être un
+// nombre, pas une intention.
+//
+// C'est un compromis, et il se décide dans ce sens plutôt que dans l'autre.
+// Trop court, le coureur ressaisit le code sans arrêt et finit par l'écrire
+// quelque part, ce qui affaiblit le seul secret qui protège la prépa. Trop
+// long, une session ouverte sur un téléphone prêté ou revendu ne se referme
+// jamais.
+//
+// 120 jours est calé sur la saison. La semaine 1 paraît le 26 juillet 2026 et
+// la dernière semaine du dernier programme (P5, 17 semaines) se termine le
+// 22 novembre. Une session ouverte à la parution de la semaine 1 expire donc
+// le 23 novembre, le lendemain de la fin de saison : aucun coureur n'est
+// déconnecté pendant sa préparation, et aucune session ne survit à celle-ci.
+//
+// Ce calage se vérifie dans test/auth.test.js. Si les dates de la saison
+// changent, c'est ce test qui préviendra que la durée n'est plus la bonne.
+export const DUREE_JETON = 120 * 24 * 3600 * 1000;
 
 // Liste fermée des rôles acceptés. Un jeton correctement signé mais portant
 // un rôle en dehors de cette liste doit être rejeté.
