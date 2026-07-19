@@ -1,7 +1,7 @@
 # Application de préparation aux courses : où on en est
 
-Document de passation, 18 juillet 2026. À lire en premier par toute session
-qui reprend ce chantier.
+Document de passation, mis à jour le 19 juillet 2026. À lire en premier par
+toute session qui reprend ce chantier.
 
 ## En une phrase
 
@@ -12,12 +12,12 @@ n'est pas déployée.**
 
 ## Où est le code
 
-- **Branche `prepa-courses`**, 48 commits, non fusionnée dans `main` et non
-  poussée sur GitHub. La branche est propre.
+- **Branche `prepa-courses`**, non fusionnée dans `main` et non poussée sur
+  GitHub. La branche est propre.
 - **Front** : `prepa.html`, `js/prepa.js`, et un bloc « PRÉPA » à la fin de
   `css/style.css`.
 - **Serveur** : `prepa-api/`, un Worker Cloudflare avec base D1.
-- **541 tests** passent (`cd prepa-api && npm test`).
+- **576 tests** passent (`cd prepa-api && npm test`).
 
 ## Comment le lancer
 
@@ -33,7 +33,15 @@ Puis ouvrir `http://localhost:4599/prepa.html`.
 Codes d'accès en local (dans `prepa-api/.dev.vars`, ignoré par git) :
 code coureur et code admin, à demander à David. **Aucun code réel ne doit
 jamais être écrit dans un fichier versionné**, y compris les tests, qui
-utilisent `coureur-test` et `admin-test`.
+utilisent `coureur-test` et `admin-test`, ni dans un fichier de mémoire.
+
+Les deux codes ont été changés le 19 juillet. Le code coureur valait
+jusque-là le code postal de Montagne, qui est affiché dans le pied de page
+des dix-sept pages du site, prepa.html comprise : le secret était imprimé à
+côté de la serrure. **Ne jamais reprendre comme code une donnée que le site
+publie.** Les deux codes n'ont par ailleurs plus aucun rapport arithmétique
+entre eux : un moment où ils étaient consécutifs mettait tout adhérent à un
+incrément du back-office encadrant.
 
 ## Ce qui est fait
 
@@ -55,6 +63,22 @@ back-office encadrant (assiduité, alertes, veto, fusion, effacement).
 **Le front** : inscription, page de présentation de la prépa, semaine avec
 allures personnelles, validation et ressenti, programme complet, zones,
 vue encadrant.
+
+**Le déroulé des séances**, ajouté le 19 juillet. Chaque séance s'affiche en
+tableau, une ligne par étape : durée, zone, ce que tu fais. Le serveur découpe
+la description, personne n'a réécrit de contenu. La durée du bloc de
+fractionné, seul segment écrit en distance, se déduit du total déclaré moins
+les étapes lisibles. Voir `decouperDeroule()` dans `seances.js`.
+
+**Le rappel du samedi**, écrit et branché sur le handler `scheduled`. Il
+annonce la semaine qui part le lendemain et nomme les coureurs à surveiller.
+Le binding `send_email` reste commenté dans `wrangler.toml` : il exige que
+tridav00@gmail.com soit vérifiée dans Email Routing, et il fait échouer le
+déploiement tant que ce n'est pas fait. Sans lui le code est inoffensif,
+`envoyerRappel` rend `sans-binding` et le cron se termine normalement.
+
+**La base D1 de production** est créée (`prepa`, région WEUR) et les trois
+migrations y sont appliquées. Son identifiant est dans `wrangler.toml`.
 
 ## Les décisions à ne pas défaire
 
@@ -83,15 +107,38 @@ coureur et encadrant du club. Elles sont le produit.
    homonymes s'écraseraient sinon silencieusement.
 8. **La couleur encode l'intensité** : Z1 sauge, Z2 vert vigne, Z3 or, Z4 terre
    cuite, Z5 bordeaux. C'est la vigne qui tourne entre juillet et novembre.
+9. **Le déroulé est déduit de la description, jamais saisi à la main.** Sa
+   justesse tient à ce que le corpus reste écrit dans la forme sur laquelle le
+   découpage s'appuie : première phrase le déroulé, étapes séparées par
+   « puis », durée en tête d'étape. Un test balaie les 340 séances et vérifie
+   que la somme des étapes égale la durée déclarée de la séance. Il vérifie
+   d'un coup le découpage et le contenu : une étape mal détachée déplace du
+   temps d'une ligne à l'autre et fait tomber le total à côté.
+10. **Une session dure 120 jours**, calés sur la saison. Ouverte à la parution
+   de la semaine 1 le 26 juillet, elle expire le 23 novembre, le lendemain de
+   la fin de la dernière semaine du plus long programme. Aucun coureur n'est
+   déconnecté pendant sa préparation, aucune session ne survit à celle-ci. Un
+   test recalcule les deux bornes depuis le calendrier réel : si la saison se
+   décale, c'est lui qui préviendra.
 
 ## Ce qui reste à faire
 
-1. **La mise en ligne.** Créer la base D1 de production, poser les deux codes
-   en secrets Cloudflare, déployer le Worker, publier la page, reporter l'URL
-   du Worker dans la constante `API` de `js/prepa.js`. Compte une demi-heure.
-2. **Le rappel du samedi par e-mail** vers tridav00@gmail.com, prévu au plan,
-   pas branché. Le handler `scheduled` du Worker est encore vide.
-3. **Fusionner `prepa-courses` dans `main`** et pousser.
+**La mise en ligne**, dans cet ordre :
+
+1. ~~Créer la base D1 de production et appliquer les migrations.~~ Fait.
+2. **Poser les trois secrets Cloudflare**, par David et par lui seul :
+   `wrangler secret put CODE_COUREUR`, `CODE_ADMIN`, `SECRET_JETON`. Sans eux
+   la production démarre sans code valide. Ne pas les faire transiter par une
+   session d'assistant.
+3. **Déployer le Worker**, puis reporter son URL dans la constante `API` de
+   `js/prepa.js`, puis déployer la page. **Le Worker d'abord** : le déroulé
+   des séances se replie sur l'ancien paragraphe si le Worker déployé ne le
+   connaît pas encore, et l'inverse donnerait une page cassée.
+4. **Activer le rappel du samedi** : vérifier tridav00@gmail.com dans
+   Cloudflare Email Routing, puis décommenter le bloc `[[send_email]]` de
+   `wrangler.toml` et redéployer. Le code est déjà écrit et testé.
+5. **Fusionner `prepa-courses` dans `main`** et pousser, une fois la
+   production vérifiée.
 
 ## Les points ouverts, à trancher par David
 
