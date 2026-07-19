@@ -4,9 +4,19 @@
 (function () {
   'use strict';
 
+  // En production l'API est servie par le même domaine que cette page, sur
+  // /api/*, par une route Worker posée sur la zone. D'où la chaîne vide : les
+  // appels partent en même origine.
+  //
+  // C'est ce qui fait fonctionner la session. Le cookie est SameSite=Lax, et
+  // un navigateur ne l'envoie jamais sur une requête inter-sites : viser un
+  // sous-domaine workers.dev donnerait 200 à la connexion puis 401 partout
+  // ensuite. En local le défaut ne se voit pas, localhost:4599 et
+  // localhost:8787 étant le même site, ce qui est exactement pourquoi il
+  // fallait le chercher avant la mise en ligne et non après.
   var API = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
     ? 'http://localhost:8787'
-    : 'https://prepa-api.hexpertise33.workers.dev';
+    : '';
 
   var CLE = 'cdv-prepa';
   var etat = {};
