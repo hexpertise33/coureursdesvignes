@@ -40,6 +40,9 @@ describe('fabriques de séances', () => {
       zone: 'Z2',
       description: '40 min de course souple.',
       objectif: "Construire l'endurance de base.",
+      // La description tient en une phrase et ne cite aucun « puis » : elle
+      // donne une étape unique, qui porte tout le texte et toute la durée.
+      deroule: [{ duree: 40, zone: null, texte: '40 min de course souple' }],
     });
   });
 
@@ -83,6 +86,9 @@ describe('course objectif', () => {
       zone: null,
       description: 'Objectif de la saison.',
       objectif: 'Finir en forme.',
+      // Une course dont la description tient en une phrase n'a pas de portions
+      // à énumérer : elle garde une étape unique plutôt qu'aucune.
+      deroule: [{ duree: 240, zone: null, texte: 'Objectif de la saison' }],
     });
   });
 
@@ -1756,6 +1762,172 @@ describe.each([
       .join(' ');
     expect(textes).toMatch(/vendredi/i);
     expect(textes).toMatch(/la veille (du départ|de la course)/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Déroulé des séances
+// ---------------------------------------------------------------------------
+//
+// Le déroulé est déduit de la description, pas saisi. Sa justesse tient donc
+// entièrement à ce que le corpus reste écrit dans la forme sur laquelle le
+// découpage s'appuie. Les tests transverses ci-dessous sont là pour ça : ils
+// se déclencheront le jour où une séance sera rédigée autrement, avant que
+// l'écart n'atteigne l'écran du coureur.
+describe('déroulé des séances', () => {
+  const toutesLesSeances = () =>
+    TOUS_LES_CONTENUS.flatMap((prg) =>
+      prg.semainesContenu.flatMap((sem) =>
+        sem.seances.map((x) => ({ ref: `${prg.code} S${sem.numero} ${x.id}`, seance: x })),
+      ),
+    );
+
+  it('donne au moins une étape non vide à chaque séance du corpus', () => {
+    const fautives = [];
+    for (const { ref, seance } of toutesLesSeances()) {
+      if (!Array.isArray(seance.deroule) || seance.deroule.length === 0) fautives.push(`${ref} : aucune étape`);
+      for (const e of seance.deroule ?? []) {
+        if (typeof e.texte !== 'string' || e.texte.trim() === '') fautives.push(`${ref} : étape sans texte`);
+      }
+    }
+    expect(fautives).toEqual([]);
+  });
+
+  // Le test central. La convention de calcul des programmes impose déjà que la
+  // somme des segments d'une description égale la durée déclarée de la séance ;
+  // c'est elle qui permet au découpage de chiffrer le bloc de fractionné, écrit
+  // en distance, par simple soustraction. Vérifier la somme revient donc à
+  // vérifier d'un coup le découpage et le contenu : une étape mal détachée
+  // déplace du temps d'une ligne à l'autre et fait tomber le total à côté.
+  it('chiffre les étapes de sorte que leur somme égale la durée déclarée', () => {
+    const ecarts = [];
+    let chiffrees = 0;
+    for (const { ref, seance } of toutesLesSeances()) {
+      if (seance.code === 'COURSE') continue;
+      if (seance.deroule.some((e) => e.duree === null)) continue;
+      chiffrees += 1;
+      const somme = seance.deroule.reduce((total, e) => total + e.duree, 0);
+      if (somme !== seance.duree) ecarts.push(`${ref} : ${somme} min découpées pour ${seance.duree} déclarées`);
+    }
+    expect(ecarts).toEqual([]);
+    // Garde-fou du garde-fou : si un jour le découpage cessait de chiffrer
+    // quoi que ce soit, la boucle ci-dessus passerait sans rien vérifier.
+    expect(chiffrees).toBeGreaterThan(300);
+  });
+
+  // Les seules séances qu'on accepte de ne pas chiffrer entièrement sont des
+  // renforcements à plusieurs blocs sans durée annoncée. Le jour où une séance
+  // de course rejoint cette liste, c'est que sa rédaction a changé de forme et
+  // qu'il faut aller voir.
+  it('ne laisse sans durée que des renforcements, et pas plus de cinq', () => {
+    const sansDuree = toutesLesSeances()
+      .filter(({ seance }) => seance.code !== 'COURSE' && seance.deroule.some((e) => e.duree === null));
+    for (const { ref, seance } of sansDuree) {
+      expect(seance.code, `${ref} devrait être chiffrée`).toBe('RENFO');
+    }
+    expect(sansDuree.length).toBeLessThanOrEqual(5);
+  });
+
+  it("n'invente jamais une zone que la séance ne cite pas", () => {
+    const fautives = [];
+    for (const { ref, seance } of toutesLesSeances()) {
+      for (const e of seance.deroule) {
+        if (e.zone !== null && !seance.description.includes(e.zone)) {
+          fautives.push(`${ref} : zone ${e.zone} absente de la description`);
+        }
+      }
+    }
+    expect(fautives).toEqual([]);
+  });
+
+  it('découpe une séance à intervalles en échauffement, bloc et retour au calme', () => {
+    const s = seuil(
+      66,
+      "20 min d'échauffement en Z2, puis 5 fois 1000 m en Z4, en comptant environ 4 min par 1000 m, avec 4 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Ces 4 min sont une estimation de planification et jamais une allure à tenir.",
+      'Travailler au seuil.',
+    );
+    expect(s.deroule).toEqual([
+      { duree: 20, zone: 'Z2', texte: "20 min d'échauffement en Z2" },
+      {
+        // 66 - 20 - 10 : le bloc est écrit en distance et n'annonce pas sa
+        // durée, elle se déduit du reste et c'est la seule valeur possible.
+        duree: 36,
+        dureeDeduite: true,
+        zone: 'Z4',
+        texte: '5 fois 1000 m en Z4',
+        repere: 'en comptant environ 4 min par 1000 m',
+        recuperation: 'avec 4 min de trottinement en Z1 entre chaque',
+      },
+      { duree: 10, zone: 'Z2', texte: '10 min de retour au calme en Z2' },
+    ]);
+    expect(s.conseil).toBe('Ces 4 min sont une estimation de planification et jamais une allure à tenir.');
+  });
+
+  it('garde en une seule étape un bloc que le texte coupe par un « puis » interne', () => {
+    const s = seuil(
+      67,
+      "20 min d'échauffement en Z2, puis 2 fois 2000 m puis 2 fois 1000 m en Z4, en comptant environ 8 min 30 par 2000 m, puis 10 min de retour au calme en Z2. La pyramide descend pour une raison.",
+      'Monter au-delà de la distance de course.',
+    );
+    expect(s.deroule.map((e) => e.texte)).toEqual([
+      "20 min d'échauffement en Z2",
+      '2 fois 2000 m puis 2 fois 1000 m en Z4',
+      '10 min de retour au calme en Z2',
+    ]);
+    expect(s.deroule[1].duree).toBe(37);
+  });
+
+  // Le renforcement ne cite aucune zone : le recollage des blocs coupés ne
+  // doit pas s'y appliquer, sinon toutes ses étapes n'en feraient qu'une.
+  it('ne recolle pas les étapes d\'une séance qui ne cite aucune zone', () => {
+    const s = renfo(20, 'Gainage : 3 séries de 30 s de planche, puis 10 fentes par jambe.', 'Protéger le dos.');
+    expect(s.deroule.length).toBe(2);
+    expect(s.deroule.every((e) => e.zone === null)).toBe(true);
+  });
+
+  it('détache un préambule qui précède le vrai déroulé au lieu de le chiffrer', () => {
+    const s = ef(
+      30,
+      'Vendredi, tu ne fais rien : ni course, ni renfo. Samedi, 23 min en Z2, puis 3 min en Z2. On reste souple.',
+      'Arriver frais.',
+    );
+    expect(s.preambule).toBe('Vendredi, tu ne fais rien : ni course, ni renfo.');
+    expect(s.deroule.map((e) => e.texte)).toEqual(['Samedi, 23 min en Z2', '3 min en Z2']);
+    // Sans le préambule, l'étape « tu ne fais rien » aurait hérité par
+    // déduction des 30 minutes de la séance, ce qui était faux.
+    expect(s.deroule.map((e) => e.duree)).toEqual([23, 3]);
+  });
+
+  it("n'invente pas de préambule sur une séance ordinaire", () => {
+    const s = ef(50, '50 min en Z2 sur terrain roulant. Tu dois pouvoir tenir une conversation.', 'Poser la base.');
+    expect(s.preambule).toBeUndefined();
+    expect(s.deroule).toEqual([{ duree: 50, zone: 'Z2', texte: '50 min en Z2 sur terrain roulant' }]);
+  });
+
+  // La course objectif n'est pas rédigée en « puis » mais en phrases, une par
+  // portion du parcours, repérées en kilomètres. C'est un déroulé tout aussi
+  // réel et il se découpe autrement.
+  it('découpe la course objectif en portions de parcours', () => {
+    const c = course(
+      '10 km du village', 10, 55,
+      "Ta course. Échauffe-toi 15 min en Z2 avant le départ. Pars contenu sur les 2 premiers kilomètres, en Z3. Passe en Z4 du 3e au 8e kilomètre.",
+      'Courir juste.',
+    );
+    expect(c.deroule.map((e) => e.zone)).toEqual(['Z2', 'Z3', 'Z4']);
+    expect(c.deroule[1].texte).toBe('Pars contenu sur les 2 premiers kilomètres, en Z3');
+    // Rien n'est déduit ici : les portions sont en kilomètres, et leur prêter
+    // des minutes serait inventer une allure, ce que le projet s'interdit.
+    expect(c.deroule.every((e) => e.dureeDeduite === undefined)).toBe(true);
+  });
+
+  // Une séance qui ne se découpe pas n'a qu'une étape, et cette étape dure
+  // forcément toute la séance : c'est le cas limite de la déduction, pas une
+  // exception à celle-ci.
+  it('rend une étape unique, créditée de toute la durée, quand la description ne se découpe pas', () => {
+    const s = renfo(15, 'Mobilité générale du corps entier.', 'Se dérouiller.');
+    expect(s.deroule).toEqual([
+      { duree: 15, dureeDeduite: true, zone: null, texte: 'Mobilité générale du corps entier' },
+    ]);
   });
 });
 

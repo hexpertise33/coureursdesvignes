@@ -157,6 +157,250 @@ export function identifierSeances(seances) {
   });
 }
 
+/**
+ * Le déroulé d'une séance, étape par étape.
+ *
+ * La description d'une séance est un paragraphe rédigé. Elle se lit bien assise
+ * au calme, beaucoup moins bien en tenue devant sa montre, au moment où le
+ * coureur cherche une seule chose : combien de temps, dans quelle zone, et
+ * qu'est-ce qui vient après. Le déroulé rend cette lecture-là possible sans
+ * réécrire une ligne du contenu, qui est validé et sur lequel on ne revient pas.
+ *
+ * Le découpage s'appuie sur trois régularités du corpus, vérifiées sur les
+ * 340 séances des six programmes :
+ *
+ *   1. La première phrase est le déroulé, les suivantes sont le conseil.
+ *      « 20 min d'échauffement en Z2, puis 5 fois 1000 m en Z4 [...], puis
+ *      10 min de retour au calme en Z2. Ces 4 min sont une estimation de
+ *      planification et jamais une allure à tenir [...] »
+ *   2. Les étapes de cette phrase sont séparées par « puis ».
+ *   3. Une étape porte sa durée en tête, sa zone dans son texte, et range
+ *      derrière une virgule ses deux compléments habituels : le repère de
+ *      durée (« en comptant environ 4 min par 1000 m ») et la récupération
+ *      (« avec 4 min de trottinement en Z1 entre chaque »).
+ *
+ * Les durées retombent juste parce que le projet impose déjà que la somme des
+ * segments égale la durée déclarée (voir la convention de calcul en tête des
+ * fichiers de programme). Cette contrainte donne mieux qu'une vérification :
+ * elle donne la durée du bloc de fractionné, qui est le seul segment écrit en
+ * distance et donc le seul dont la durée ne se lit pas. Quand une étape et une
+ * seule n'affiche pas la sienne, elle vaut exactement le reste. Sur les 340
+ * séances, 336 se chiffrent ainsi entièrement, et aucune ne tombe à côté de sa
+ * durée déclarée. Les 4 autres sont des renforcements à deux blocs non
+ * chronométrés : elles gardent leurs étapes sans durée plutôt que d'en inventer.
+ *
+ * Le cas de la course objectif est différent et traité à part. Sa description
+ * s'ouvre sur « Ta course. », et la suite se découpe non pas en « puis » mais
+ * en phrases, une par portion du parcours, repérées en kilomètres et non en
+ * minutes. C'est un déroulé tout aussi réel, il se lit simplement autrement.
+ */
+const SEPARATEUR_ETAPES = /,?\s+puis\s+/;
+const PHRASE_SUIVANTE = /^(.*?[.!?])\s+(?=[A-ZÉÈÀÇ«])/s;
+
+function zoneCitee(texte) {
+  const m = texte.match(/Z[1-5]/);
+  return m ? m[0] : null;
+}
+
+/**
+ * Durée en minutes lue en tête d'étape, null si l'étape n'en annonce pas.
+ *
+ * Une étape peut s'ouvrir sur une ou plusieurs courtes incises avant
+ * d'annoncer sa durée, « Samedi, la veille de la course, 23 min en Z2 ». Une
+ * incise n'est franchie qu'à deux conditions : être brève, et ne contenir
+ * aucun chiffre. Sans cette seconde garde, « 2 séries de 6 fois 200 m en Z5,
+ * en comptant environ 45 s » verrait le 45 lu comme la durée de l'étape.
+ */
+function dureeEnTete(texte) {
+  const sansIncise = texte.replace(/^(?:[^,\d]{1,25},\s*)+/, '');
+  const heures = sansIncise.match(/^(\d+)\s*h\s*(\d{1,2})?/);
+  if (heures) return Number(heures[1]) * 60 + Number(heures[2] || 0);
+  const minutes = sansIncise.match(/^(\d+)\s*min\b/);
+  if (minutes) return Number(minutes[1]);
+  return null;
+}
+
+/** Coupe la description en deux : la première phrase, puis tout le reste. */
+function premierePhrase(description) {
+  const m = description.match(PHRASE_SUIVANTE);
+  if (!m) return [description.trim(), ''];
+  return [m[1].trim(), description.slice(m[0].length).trim()];
+}
+
+/**
+ * Une phrase ressemble-t-elle à un déroulé de séance ?
+ *
+ * Sert uniquement à repérer les préambules, voir isolerPreambule(). Le critère
+ * est délibérément étroit : une phrase enchaîne des étapes par « puis », ou
+ * bien elle annonce à la fois une durée en tête et une zone. Une consigne de
+ * renforcement (« Gainage et jambes, sans matériel : 3 séries de [...] ») ne
+ * remplit ni l'un ni l'autre si on la lit seule, et c'est voulu : ce n'est pas
+ * elle qu'on cherche à reconnaître, c'est la phrase qui suit un préambule.
+ */
+function ressembleAUnDeroule(phrase) {
+  if (/\bpuis\b/.test(phrase)) return true;
+  return zoneCitee(phrase) !== null && dureeEnTete(phrase) !== null;
+}
+
+/**
+ * Détache les phrases d'introduction qui précèdent le vrai déroulé.
+ *
+ * Une séance du corpus s'ouvre sur une consigne de repos avant d'énoncer sa
+ * séance : « Vendredi, tu ne fais rien : ni course, ni renfo, ni sortie de
+ * compensation. Samedi, 23 min en Z2, puis 4 lignes droites [...] ». Prendre
+ * la première phrase pour le déroulé y produisait une étape unique portant
+ * « tu ne fais rien » et créditée, par déduction du reste, des 30 minutes de
+ * la séance. Le découpage ne se contentait pas d'être pauvre, il affirmait
+ * quelque chose de faux.
+ *
+ * La règle ne se déclenche que sur une phrase qui n'annonce ni zone ni durée
+ * en tête, et seulement si une phrase plus loin, elle, ressemble à un déroulé.
+ * Faute de quoi on retombe sur le comportement ordinaire, première phrase en
+ * déroulé, qui est le bon pour les 339 autres séances.
+ */
+function isolerPreambule(description) {
+  const toutes = phrases(description);
+  let i = 0;
+  while (
+    i < toutes.length - 1 &&
+    !zoneCitee(toutes[i]) &&
+    dureeEnTete(toutes[i]) === null &&
+    toutes.slice(i + 1).some(ressembleAUnDeroule)
+  ) {
+    i += 1;
+  }
+  if (i === 0) return ['', description];
+  return [toutes.slice(0, i).join(' '), toutes.slice(i).join(' ')];
+}
+
+/** Toutes les phrases d'un texte, dans l'ordre. */
+function phrases(texte) {
+  const out = [];
+  let reste = texte.trim();
+  for (;;) {
+    const m = reste.match(PHRASE_SUIVANTE);
+    if (!m) { if (reste) out.push(reste); return out; }
+    out.push(m[1].trim());
+    reste = reste.slice(m[0].length);
+  }
+}
+
+/**
+ * Recolle les segments qui ne portent pas de zone au segment suivant.
+ *
+ * Une séance zonée dont un segment ne cite aucune zone n'a pas deux étapes :
+ * c'est un bloc unique coupé en son milieu par un « puis » interne. Le cas est
+ * celui de la pyramide du seuil, « 2 fois 2000 m puis 2 fois 1000 m en Z4 »,
+ * dont la première moitié se retrouverait sinon seule sur une ligne, sans
+ * zone et sans durée, ce qui ne veut rien dire.
+ *
+ * La règle ne s'applique qu'aux séances qui citent au moins une zone. Le
+ * renforcement n'en cite aucune : lui appliquer le recollage écraserait tous
+ * ses blocs en une seule étape.
+ */
+function recollerBlocsCoupes(segments, deroule) {
+  if (!zoneCitee(deroule)) return segments;
+  const out = [];
+  for (const s of segments) {
+    if (out.length > 0 && !zoneCitee(out[out.length - 1])) {
+      out[out.length - 1] += ' puis ' + s;
+    } else {
+      out.push(s);
+    }
+  }
+  return out;
+}
+
+/** Détache d'une étape ses deux compléments habituels, repère et récupération. */
+function detacherComplements(segment) {
+  let texte = segment;
+  let recuperation = '';
+  let repere = '';
+  const avec = texte.match(/,\s*(avec\s+.*)$/);
+  if (avec) {
+    recuperation = avec[1];
+    texte = texte.slice(0, avec.index);
+  }
+  const comptant = texte.match(/,\s*(en comptant\s+.*)$/);
+  if (comptant) {
+    repere = comptant[1];
+    texte = texte.slice(0, comptant.index);
+  }
+  return { texte: texte.trim(), repere, recuperation };
+}
+
+function etape(segment) {
+  const { texte, repere, recuperation } = detacherComplements(segment);
+  const e = {
+    duree: dureeEnTete(segment),
+    zone: zoneCitee(texte) || zoneCitee(segment),
+    texte,
+  };
+  if (repere) e.repere = repere;
+  if (recuperation) e.recuperation = recuperation;
+  return e;
+}
+
+/**
+ * Attribue au seul segment non chiffré le temps qui manque pour atteindre la
+ * durée déclarée. Ne fait rien si deux segments ou plus sont non chiffrés :
+ * le reste serait alors à répartir, et rien ne dit comment.
+ */
+function deduireDureeManquante(etapes, dureeTotale) {
+  const sans = etapes.filter((e) => e.duree === null);
+  if (sans.length !== 1) return;
+  const reste = dureeTotale - etapes.reduce((total, e) => total + (e.duree || 0), 0);
+  if (reste > 0) {
+    sans[0].duree = reste;
+    sans[0].dureeDeduite = true;
+  }
+}
+
+export function decouperDeroule(description, dureeTotale, code) {
+  // La course objectif se découpe en phrases, une par portion du parcours.
+  if (code === 'COURSE') {
+    const [ouverture, suite] = premierePhrase(description);
+    const etapes = phrases(suite).map((p) => ({
+      duree: dureeEnTete(p),
+      zone: zoneCitee(p),
+      texte: p.replace(/[.]$/, ''),
+    }));
+    // Une description qui ne tiendrait qu'en une phrase reste une étape.
+    if (etapes.length === 0) return { etapes: [{ duree: dureeTotale, zone: null, texte: ouverture.replace(/[.]$/, '') }], conseil: '' };
+    return { etapes, conseil: '' };
+  }
+
+  const [preambule, corps] = isolerPreambule(description);
+  const [deroule, conseil] = premierePhrase(corps);
+  const segments = recollerBlocsCoupes(
+    deroule.split(SEPARATEUR_ETAPES).map((s) => s.trim().replace(/[.,]$/, '')).filter(Boolean),
+    deroule,
+  );
+  if (segments.length === 0) throw new Error('Déroulé vide : la description ne produit aucune étape.');
+  const etapes = segments.map(etape);
+  deduireDureeManquante(etapes, dureeTotale);
+  return { etapes, conseil, preambule };
+}
+
+/**
+ * Pose le déroulé sur une séance et rend la séance.
+ *
+ * Appelée depuis les fabriques pour les séances des fichiers source, et depuis
+ * validerContenuSemaine pour celles que l'encadrant saisit au back-office. Les
+ * deux chemins passent par ici pour la même raison qui fait passer les deux par
+ * identifierSeances : une semaine remaniée doit avoir exactement la forme d'une
+ * semaine du plan, sinon la vue du coureur dépend de qui a écrit la séance.
+ */
+export function poserDeroule(seance) {
+  const { etapes, conseil, preambule } = decouperDeroule(seance.description, seance.duree, seance.code);
+  seance.deroule = Object.freeze(etapes.map((e) => Object.freeze(e)));
+  // Conseil et préambule n'existent que sur les séances qui en portent un,
+  // comme distance et zonesSecondaires : pas de champ vide sur les autres.
+  if (preambule) seance.preambule = preambule;
+  if (conseil) seance.conseil = conseil;
+  return seance;
+}
+
 function fabrique(code, titre, zone) {
   return (duree, description, objectif, options = {}) => {
     verifierTexte(description, objectif);
@@ -164,7 +408,7 @@ function fabrique(code, titre, zone) {
     const zonesSecondaires = verifierZonesSecondaires(options.zonesSecondaires, zone, description);
     const seance = { code, titre, duree, zone, description, objectif };
     if (zonesSecondaires.length > 0) seance.zonesSecondaires = Object.freeze(zonesSecondaires);
-    return seance;
+    return poserDeroule(seance);
   };
 }
 
@@ -179,7 +423,7 @@ export const renfo = fabrique('RENFO', 'Renforcement', null);
 export function course(nom, distance, duree, description, objectif) {
   verifierTexte(nom, description, objectif);
   if (!Number.isInteger(duree) || duree <= 0) throw new Error('Durée invalide.');
-  return { code: 'COURSE', titre: nom, distance, duree, zone: null, description, objectif };
+  return poserDeroule({ code: 'COURSE', titre: nom, distance, duree, zone: null, description, objectif });
 }
 
 export function semaine(numero, phase, titre, intention, seances) {

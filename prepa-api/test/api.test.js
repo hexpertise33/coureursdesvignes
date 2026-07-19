@@ -703,10 +703,28 @@ describe('confidentialité des semaines futures', () => {
       for (const s of PROGRAMMES[code].semainesContenu) {
         for (const faitIzon of [false, true]) {
           const resolue = semaineDuProgramme(code, s.numero, { faitIzon });
+          // Le déroulé, le préambule et le conseil sont du contenu de séance
+          // au même titre que la description dont ils sont tirés, et ils sont
+          // publiés séparément d'elle. Les collecter ici n'est pas une
+          // précaution de principe : sans eux, une vue qui laisserait passer
+          // les étapes d'une semaine à venir sans laisser passer sa
+          // description traverserait ce filet sans être vue.
+          //
+          // Les textes courts sont écartés. La comparaison se fait par
+          // inclusion de chaîne, et une étape comme « 3 min en Z2 » est une
+          // sous-chaîne de « 13 min en Z2 » : elle produirait des fuites
+          // imaginaires. Ce sont de toute façon les textes longs qui portent
+          // le contenu qu'on protège.
+          const etapes = resolue.seances.flatMap((x) => [
+            ...x.deroule.flatMap((e) => [e.texte, e.repere, e.recuperation]),
+            x.preambule,
+            x.conseil,
+          ]);
           const textes = [
             resolue.titre,
             resolue.intention,
             ...resolue.seances.flatMap((x) => [x.description, x.objectif]),
+            ...etapes.filter((t) => typeof t === 'string' && t.length >= 30),
           ];
           const cible = estPubliee(s.numero, maintenant) ? publies : confidentiels;
           for (const t of textes) cible.add(t);

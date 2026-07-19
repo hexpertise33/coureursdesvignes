@@ -1026,3 +1026,70 @@ p { margin: 0 0 1rem; }
 @media (max-width: 640px) {
   .prepa-course { min-height: 170px; }
 }
+
+/* =========================================================
+   PRÉPA : LE DÉROULÉ DES SÉANCES
+   La description d'une séance se lit bien assise au calme, beaucoup
+   moins bien en tenue devant sa montre. Le serveur la découpe en
+   étapes, ce tableau les pose une par ligne : combien de temps, dans
+   quelle zone, et ce qui vient après.
+   ========================================================= */
+.prepa-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+.prepa-deroule {
+  width: 100%; border-collapse: collapse;
+  margin: 0 0 .9rem; font-size: .93rem;
+}
+.prepa-deroule th {
+  font-family: var(--f-mono); font-size: .7rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+  text-align: left; padding: 0 .6rem .35rem; border-bottom: 1px solid var(--line);
+}
+.prepa-deroule td { padding: .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.prepa-deroule tbody tr:last-child td { border-bottom: none; }
+
+/* Chaque ligne porte la couleur de sa propre zone : l'intensité de la
+   séance se lit de haut en bas sans avoir à lire le texte. */
+.prepa-deroule tbody tr { background: var(--zone-tint, transparent); }
+
+.prepa-deroule__rang { width: 1.6rem; font-family: var(--f-mono); font-size: .8rem; color: var(--muted); }
+.prepa-deroule__duree { width: 5.6rem; font-family: var(--f-mono); color: var(--ink); }
+.prepa-deroule__zone { width: 3rem; }
+.prepa-deroule__quoi { line-height: 1.5; }
+.prepa-deroule__env {
+  display: block; font-size: .68rem; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted);
+}
+.prepa-deroule__sous { display: block; font-size: .85rem; color: var(--ink-soft); margin-top: .2rem; }
+
+.prepa-seance__preambule {
+  margin: 0 0 .7rem; padding: .55rem .8rem;
+  background: var(--limestone-2); border-left: 3px solid var(--muted);
+  border-radius: var(--r-sm); font-size: .9rem; color: var(--ink-soft);
+}
+.prepa-seance__conseil {
+  margin: 0 0 .8rem; padding: .6rem .85rem;
+  background: var(--limestone-2); border-radius: var(--r-sm);
+  font-size: .9rem; color: var(--ink-soft);
+}
+
+/* Sur un téléphone, quatre colonnes ne tiennent pas. La ligne devient un
+   bloc : le rang et la durée se rangent au-dessus du texte, qui garde
+   toute la largeur. Le tableau reste un tableau pour le lecteur d'écran. */
+@media (max-width: 620px) {
+  .prepa-deroule thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .prepa-deroule tbody tr {
+    display: grid; grid-template-columns: auto auto 1fr; gap: .1rem .5rem;
+    align-items: baseline; padding: .6rem .7rem; margin-bottom: .35rem;
+    border-radius: var(--r-sm); border-left: 3px solid var(--zone, var(--line));
+  }
+  .prepa-deroule td { border: none; padding: 0; }
+  .prepa-deroule__rang { grid-column: 1; }
+  .prepa-deroule__duree { width: auto; grid-column: 2; font-weight: 700; }
+  .prepa-deroule__zone { grid-column: 3; justify-self: start; }
+  .prepa-deroule__quoi { grid-column: 1 / -1; margin-top: .3rem; }
+  .prepa-deroule__env { display: inline; font-size: .72rem; }
+}

@@ -130,6 +130,12 @@ function vueSeance(s) {
     description: s.description,
     objectif: s.objectif,
   };
+  // Le déroulé est la même information que la description, découpée en étapes
+  // pour être lisible en tenue devant sa montre. Il est donc publié au même
+  // titre et sous la même garde : vueSeance n'est appelée que depuis une
+  // semaine divulguée, une semaine non parue n'en laisse rien passer.
+  vue.deroule = s.deroule.map((e) => ({ ...e }));
+  if (s.conseil) vue.conseil = s.conseil;
   // La distance n'existe que sur la course objectif, les zones secondaires
   // que sur les séances qui en déclarent : on ne fabrique pas de champ vide.
   if (s.distance != null) vue.distance = s.distance;

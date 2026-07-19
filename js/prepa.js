@@ -240,6 +240,43 @@
     '</p>';
   }
 
+  /**
+   * Le déroulé de la séance, une étape par ligne.
+   *
+   * La description reste servie par l'API et reste la source : le serveur la
+   * découpe en étapes, la page se contente de les mettre en tableau. Si le
+   * Worker déployé est plus ancien que cette page et ne connaît pas encore le
+   * déroulé, on retombe sur le paragraphe d'origine plutôt que sur du vide.
+   */
+  function rendreDeroule(s) {
+    if (!s.deroule || !s.deroule.length) {
+      return '<p class="prepa-seance__desc">' + echapper(s.description) + '</p>';
+    }
+    var lignes = s.deroule.map(function (e, i) {
+      // Une durée déduite d'un bloc écrit en distance est une estimation de
+      // planification, jamais une allure : le « environ » le dit à l'écran
+      // comme le texte de la séance le dit en toutes lettres.
+      var approx = e.dureeDeduite && e.repere;
+      var duree = e.duree
+        ? (approx ? '<span class="prepa-deroule__env">environ</span> ' : '') + echapper(e.duree) + ' min'
+        : '';
+      return '<tr class="zone-' + echapper(e.zone || (s.zone || 'Z2')) + '">' +
+        '<td class="prepa-deroule__rang">' + (i + 1) + '</td>' +
+        '<td class="prepa-deroule__duree">' + duree + '</td>' +
+        '<td class="prepa-deroule__zone">' + (e.zone ? '<span class="prepa-puce">' + echapper(e.zone) + '</span>' : '') + '</td>' +
+        '<td class="prepa-deroule__quoi">' + echapper(e.texte) +
+          (e.repere ? '<span class="prepa-deroule__sous">' + echapper(e.repere) + '</span>' : '') +
+          (e.recuperation ? '<span class="prepa-deroule__sous">' + echapper(e.recuperation) + '</span>' : '') +
+        '</td></tr>';
+    }).join('');
+    return '<table class="prepa-deroule">' +
+      '<thead><tr>' +
+        '<th scope="col"><span class="prepa-sr">Étape</span></th>' +
+        '<th scope="col">Durée</th><th scope="col">Zone</th><th scope="col">Ce que tu fais</th>' +
+      '</tr></thead>' +
+      '<tbody>' + lignes + '</tbody></table>';
+  }
+
   function rendreSeance(s, semaine, validation) {
     var faite = !!validation;
     var zone = s.zone || 'Z2';
@@ -250,8 +287,10 @@
         '<h4>' + echapper(s.titre) + '</h4>' +
         '<span class="prepa-seance__meta">' + echapper(s.duree) + ' min</span>' +
       '</header>' +
-      '<p class="prepa-seance__desc">' + echapper(s.description) + '</p>' +
+      (s.preambule ? '<p class="prepa-seance__preambule">' + echapper(s.preambule) + '</p>' : '') +
+      rendreDeroule(s) +
       allurePourSeance(s) +
+      (s.conseil ? '<p class="prepa-seance__conseil">' + echapper(s.conseil) + '</p>' : '') +
       '<p class="prepa-seance__objectif">' + echapper(s.objectif) + '</p>' +
       '<div class="prepa-seance__actions">' +
         '<button class="btn ' + (faite ? 'btn--outline-vine' : 'btn--vine') + ' prepa-valider" data-semaine="' + semaine + '" data-seance="' + echapper(s.id) + '">' +

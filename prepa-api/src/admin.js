@@ -22,7 +22,7 @@
 //      coureur pourra lire, et rien d'autre.
 
 import { PROGRAMMES, semaineDuProgramme } from './programmes/index.js';
-import { ZONES, identifierSeances } from './programmes/seances.js';
+import { ZONES, identifierSeances, poserDeroule } from './programmes/seances.js';
 import { nomAffiche } from './coureurs.js';
 
 /** Longueur du plus long programme : borne haute d'une semaine de référence. */
@@ -532,7 +532,13 @@ export function validerContenuSemaine(brut) {
       if (propres.length > 0) vue.zonesSecondaires = propres;
     }
 
-    return vue;
+    // Le déroulé se déduit de la description, exactement comme pour une séance
+    // des fichiers source. Une séance saisie au back-office s'affiche donc
+    // étape par étape sans que l'encadrant ait à saisir quoi que ce soit de
+    // plus : s'il écrit son texte dans la forme habituelle, le découpage suit,
+    // et s'il l'écrit autrement, il obtient une étape unique portant tout son
+    // texte, ce qui reste juste.
+    return poserDeroule(vue);
   });
 
   // L'identifiant est posé ici et pas ailleurs, par la même fonction que
