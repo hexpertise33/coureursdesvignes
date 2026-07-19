@@ -35,7 +35,32 @@ function base64url(octets) {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+/**
+ * Un secret de signature absent n'est pas un secret vide, c'est une panne.
+ *
+ * TextEncoder.encode(undefined) n'échoue pas : il encode la chaîne
+ * « undefined » et rend une clé HMAC parfaitement valide, connue de
+ * quiconque devine que le binding manque. Un jeton admin devient alors
+ * forgeable sans rien casser d'apparent, et l'application se comporte
+ * normalement pendant ce temps.
+ *
+ * Le cas n'est pas théorique : un Worker fraîchement déployé existe avant que
+ * ses secrets ne soient posés, puisque wrangler secret put exige que le
+ * Worker existe déjà. Cette fenêtre est courte mais réelle, et elle se
+ * rouvrira à chaque environnement neuf.
+ *
+ * On refuse donc de signer. Les appelants traitent l'absence de jeton
+ * valide comme un refus d'accès, ce qui fait échouer l'authentification en se
+ * fermant plutôt qu'en s'ouvrant.
+ */
+function secretUtilisable(secret) {
+  return typeof secret === 'string' && secret.length > 0;
+}
+
 async function signer(secret, charge) {
+  if (!secretUtilisable(secret)) {
+    throw new Error('SECRET_JETON absent ou vide : refus de signer un jeton.');
+  }
   const cle = await crypto.subtle.importKey(
     'raw', encodeur.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
   );

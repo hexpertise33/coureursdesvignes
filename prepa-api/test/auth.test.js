@@ -141,6 +141,34 @@ describe('durée de session', () => {
   });
 });
 
+// Un Worker fraichement deploye existe avant que ses secrets ne soient poses,
+// puisque wrangler secret put exige que le Worker existe deja. Pendant cette
+// fenetre, SECRET_JETON est absent. Sans garde, TextEncoder.encode(undefined)
+// encode la chaine « undefined » et rend une cle HMAC valide et devinable :
+// un jeton admin devient forgeable, sans que rien ne paraisse casse.
+describe('secret de signature absent', () => {
+  it('refuse de creer un jeton plutot que de signer avec une cle vide', async () => {
+    for (const mauvais of [undefined, null, '', 0]) {
+      await expect(creerJeton(mauvais, 'admin', 60000)).rejects.toThrow(/SECRET_JETON/);
+    }
+  });
+
+  it('refuse tout jeton a la verification, y compris un jeton bien forme', async () => {
+    // Le jeton est fabrique avec un vrai secret, puis presente a une
+    // verification qui n'en a plus : elle doit refuser, pas s'ouvrir.
+    const bon = await creerJeton(S, 'admin', 60000);
+    for (const mauvais of [undefined, null, '']) {
+      expect(await verifierJeton(mauvais, bon)).toBeNull();
+    }
+  });
+
+  it('ne laisse pas forger un jeton signe avec la cle « undefined »', async () => {
+    // Ce que fabriquerait un attaquant qui a devine que le secret manque.
+    const forge = await creerJeton('undefined', 'admin', 60000);
+    expect(await verifierJeton(undefined, forge)).toBeNull();
+  });
+});
+
 describe('cookie du jeton', () => {
   it('pose HttpOnly, Secure, SameSite=Lax, Path=/ et le Max-Age calculé', () => {
     const cookie = cookieJeton('role.exp.sig', 3600000);
