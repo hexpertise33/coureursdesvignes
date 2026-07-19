@@ -898,3 +898,19 @@ p { margin: 0 0 1rem; }
 @media (max-width: 640px) {
   .prepa-zone__allure { white-space: normal; }
 }
+
+/* ---------- Objectif et adaptation ---------- */
+.prepa-aide { font-size: .9rem; color: var(--muted); margin: .4rem 0 1rem; }
+.prepa-objectif { border-left: 5px solid var(--shoot); }
+.prepa-objectif h3 { font-size: 1.6rem; }
+
+.prepa-adapt {
+  border-radius: var(--r); padding: 1.1rem 1.3rem; margin-bottom: 1.25rem;
+  border-left: 5px solid var(--vine); background: var(--chalk); box-shadow: var(--sh-sm);
+  display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap;
+}
+.prepa-adapt p { margin: 0; flex: 1; min-width: 260px; color: var(--ink-soft); }
+.prepa-adapt strong { color: var(--ink); }
+.prepa-adapt--vite { border-left-color: var(--shoot-dark); }
+.prepa-adapt--dur { border-left-color: var(--wine); }
+.prepa-adapt .btn { padding: .6rem 1.2rem; font-size: .92rem; }

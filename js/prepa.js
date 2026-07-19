@@ -148,6 +148,20 @@
     etat.initiale = corps.initiale;
     etat.programme = corps.programme;
     etat.faitIzon = corps.faitIzon;
+
+    // Les repères sont facultatifs : on ne garde que ce qui a été saisi, et on
+    // ignore en silence une valeur aberrante plutôt que de bloquer l'inscription.
+    var t10 = parserTemps($('champ-temps10').value);
+    var obj = parserTemps($('champ-objectif').value);
+    var vma = Number($('champ-vma').value);
+    var age = Number($('champ-age').value);
+    var fcm = Number($('champ-fcmax').value);
+    if (t10 >= 1500 && t10 <= 6000) etat.temps10km = t10;
+    if (obj > 600 && obj < 25000) etat.objectif = obj;
+    if (vma >= 8 && vma <= 25) etat.vma = vma;
+    if (age >= 10 && age <= 99) etat.age = age;
+    if (fcm >= 120 && fcm <= 230) etat.fcMax = fcm;
+
     sauver();
     // On arrive sur la présentation de la prépa, pas directement dans la
     // semaine : le coureur découvre d'abord sa course, sa structure et ses
@@ -338,6 +352,19 @@
     Z5: [0.93, 0.95]
   };
 
+  // Distance réelle de chaque course objectif, pour convertir un temps visé en
+  // équivalent 10 km.
+  var KM = { P1: 10, P2: 10, P3: 21.0975, P4: 42.195, P5: 10, P6: 16 };
+
+  /**
+   * Formule de Riegel : un temps sur une distance prédit celui sur une autre.
+   * L'exposant 1,06 est la valeur usuelle, elle tient bien du 5 km au marathon.
+   */
+  function equivalent10km(tempsSec, distanceKm) {
+    if (!tempsSec || !distanceKm) return 0;
+    return tempsSec * Math.pow(10 / distanceKm, 1.06);
+  }
+
   /** Accepte "48:30", "48", "0:48:30" ou "1:02:15". Renvoie des secondes. */
   function parserTemps(brut) {
     var t = String(brut || '').trim().replace(/\s/g, '').replace(/[hH]/g, ':').replace(/,/g, ':');
@@ -357,17 +384,97 @@
     return m + ':' + (r < 10 ? '0' : '') + r;
   }
 
+  /**
+   * Allure de référence, en secondes par kilomètre, sur 10 km.
+   *
+   * Trois sources possibles, par ordre de fiabilité décroissante :
+   *   la VMA, quand le coureur la connaît, car c'est une mesure ;
+   *   un temps déjà réalisé sur 10 km, qui est une performance constatée ;
+   *   le temps qu'il vise sur sa course, converti en équivalent 10 km, qui
+   *   n'est qu'une intention mais vaut mieux que rien pour qui débute.
+   *
+   * Le facteur d'ajustement traduit les retours du coureur : s'il trouve tout
+   * facile depuis plusieurs semaines, il resserre ; si tout est difficile, il
+   * relâche. Il n'est jamais appliqué sans que le coureur l'ait accepté.
+   */
+  function referenceAllure() {
+    var ajust = Number(etat.ajustement) || 1;
+    // Une VMA de 15 km/h donne une allure 10 km autour de 90 % de la VMA, ce
+    // qui est le rapport observé sur ce niveau de pratique.
+    if (etat.vma) {
+      var v = Number(etat.vma);
+      if (v >= 8 && v <= 25) return { base: (3600 / (v * 0.90)) * ajust, source: 'vma' };
+    }
+    var t = Number(etat.temps10km) || 0;
+    if (t >= 1500 && t <= 6000) return { base: (t / 10) * ajust, source: 'temps10' };
+    var o = Number(etat.objectif) || 0;
+    if (o) {
+      var eq = equivalent10km(o, KM[etat.programme] || 10);
+      if (eq >= 1500 && eq <= 6000) return { base: (eq / 10) * ajust, source: 'objectif' };
+    }
+    return null;
+  }
+
   /** Allures par zone, en secondes par kilomètre, ou null si on ne sait pas. */
   function alluresPersonnelles() {
-    var t = Number(etat.temps10km) || 0;
-    if (t < 1500 || t > 6000) return null; // hors 25 min à 1 h 40, on ne calcule pas
-    var base = t / 10;
+    var ref = referenceAllure();
+    if (!ref) return null;
     var out = {};
     Object.keys(RAPPORTS).forEach(function (z) {
-      out[z] = { rapide: base * RAPPORTS[z][0], lent: base * RAPPORTS[z][1] };
+      out[z] = { rapide: ref.base * RAPPORTS[z][0], lent: ref.base * RAPPORTS[z][1] };
     });
-    out.__base = base;
+    out.__base = ref.base;
+    out.__source = ref.source;
     return out;
+  }
+
+  /** Allure visée sur la course objectif, si le coureur a donné un temps cible. */
+  function allureObjectif() {
+    var o = Number(etat.objectif) || 0;
+    var km = KM[etat.programme] || 0;
+    if (!o || !km) return null;
+    return { parKm: o / km, total: o, km: km };
+  }
+
+  function formaterDuree(sec) {
+    var s = Math.round(sec);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var r = s % 60;
+    if (h) return h + ' h ' + (m < 10 ? '0' : '') + m;
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  /**
+   * Lit les ressentis des dernières semaines et dit s'il faut proposer de
+   * revoir les allures. On ne touche jamais aux repères tout seul : on propose.
+   */
+  function verdictRessentis(validations, semaineCourante) {
+    var recents = (validations || []).filter(function (v) {
+      return v.ressenti && v.semaine >= semaineCourante - 2 && v.semaine <= semaineCourante;
+    });
+    // Quatre, c'est une semaine complète de retours : en dessous, le signal
+    // serait trop mince pour proposer de toucher aux allures.
+    if (recents.length < 4) return null;
+    var faciles = recents.filter(function (v) { return v.ressenti === 'facile'; }).length;
+    var difficiles = recents.filter(function (v) { return v.ressenti === 'difficile'; }).length;
+    if (faciles / recents.length >= 0.7) return { sens: 'resserrer', nb: recents.length };
+    if (difficiles / recents.length >= 0.6) return { sens: 'assouplir', nb: recents.length };
+    return null;
+  }
+
+  function banniereAdaptation(verdict) {
+    if (!verdict || !alluresPersonnelles()) return '';
+    if (verdict.sens === 'resserrer') {
+      return '<div class="prepa-adapt prepa-adapt--vite">' +
+        '<p><strong>Tes séances te paraissent faciles.</strong> Sur tes ' + verdict.nb + ' dernières séances notées, la plupart sont passées sans difficulté. Tes allures de référence sont peut-être trop prudentes.</p>' +
+        '<button class="btn btn--vine" id="resserrer-allures">Resserrer mes allures de 2 %</button>' +
+      '</div>';
+    }
+    return '<div class="prepa-adapt prepa-adapt--dur">' +
+      '<p><strong>Tes séances te paraissent difficiles.</strong> Sur tes ' + verdict.nb + ' dernières séances notées, la plupart t\'ont coûté. Mieux vaut relâcher les allures que forcer et se blesser.</p>' +
+      '<button class="btn btn--outline-vine" id="assouplir-allures">Assouplir mes allures de 2 %</button>' +
+    '</div>';
   }
 
   function allureLisible(zone) {
@@ -406,7 +513,13 @@
 
     var connus = [];
     if (fcm) connus.push('FC max <strong class="prepa-chiffre">' + fcm + ' bpm</strong>');
-    if (allures) connus.push('10 km en <strong class="prepa-chiffre">' + formaterAllure(Number(etat.temps10km)) + '</strong>');
+    if (etat.vma) connus.push('VMA <strong class="prepa-chiffre">' + Number(etat.vma) + ' km/h</strong>');
+    if (etat.temps10km) connus.push('10 km en <strong class="prepa-chiffre">' + formaterDuree(Number(etat.temps10km)) + '</strong>');
+    if (etat.objectif) connus.push('objectif <strong class="prepa-chiffre">' + formaterDuree(Number(etat.objectif)) + '</strong>');
+    var ajust = Number(etat.ajustement) || 1;
+    if (Math.abs(ajust - 1) > 0.001) {
+      connus.push('ajustées de <strong class="prepa-chiffre">' + (ajust < 1 ? '' : '+') + Math.round((ajust - 1) * 100) + ' %</strong> selon tes ressentis');
+    }
 
     return '<details class="prepa-carte prepa-zones" open>' +
       '<summary><strong>Tes zones, tes fréquences, tes allures</strong></summary>' +
@@ -424,7 +537,9 @@
             '<label class="prepa-champ prepa-champ--court"><span>Ton âge</span><input type="number" id="champ-age-rapide" min="10" max="99" /></label>' +
             '<label class="prepa-champ prepa-champ--court"><span>Ou ta FC max</span><input type="number" id="champ-fcmax-rapide" min="120" max="230" placeholder="si connue" /></label>') +
           (allures ? '' :
-            '<label class="prepa-champ prepa-champ--moyen"><span>Ton temps sur 10 km</span><input type="text" id="champ-temps10-rapide" placeholder="par exemple 52:30" inputmode="numeric" /></label>') +
+            '<label class="prepa-champ prepa-champ--moyen"><span>Ton temps sur 10 km</span><input type="text" id="champ-temps10-rapide" placeholder="52:30" inputmode="numeric" /></label>' +
+            '<label class="prepa-champ prepa-champ--court"><span>Ta VMA</span><input type="number" id="champ-vma-rapide" step="0.1" min="8" max="25" placeholder="km/h" /></label>' +
+            '<label class="prepa-champ prepa-champ--moyen"><span>Ton objectif</span><input type="text" id="champ-objectif-rapide" placeholder="1:25:00" inputmode="numeric" /></label>') +
           '<button class="btn btn--outline-vine" id="calculer-fcm">Calculer mes repères</button>' +
         '</div>') +
     '</details>';
@@ -457,6 +572,16 @@
           '<p>' + echapper(f.resume || '') + '</p>' +
         '</div>' +
       '</div>' +
+
+      (function () {
+        var o = allureObjectif();
+        if (!o) return '';
+        return '<div class="prepa-carte prepa-objectif">' +
+          '<span class="eyebrow">Ton objectif de temps</span>' +
+          '<h3>' + echapper(formaterDuree(o.total)) + ' sur ' + echapper(String(o.km).replace('.', ',')) + ' km</h3>' +
+          '<p>Soit une allure de course de <strong class="prepa-chiffre">' + formaterAllure(o.parKm) + ' par kilomètre</strong>, à tenir du départ à l\'arrivée. C\'est ce rythme que les séances en Z3 et Z4 préparent.</p>' +
+        '</div>';
+      })() +
 
       '<div class="prepa-carte">' +
         '<span class="eyebrow">Comment ça marche</span>' +
@@ -541,8 +666,11 @@
     var total = s.seances.filter(function (x) { return x.code !== 'RENFO'; }).length;
     var zones = await chargerZones();
 
+    var verdict = verdictRessentis(suivi.validations, s.numero);
+
     el.innerHTML =
       bandeauCourse() +
+      banniereAdaptation(verdict) +
       (apercu ? '<div class="prepa-message">Aperçu encadrant. Cette semaine n\'est pas encore visible par les coureurs, elle paraîtra ' + echapper(quandDisponible(s.disponibleLe || new Date().toISOString())).replace('Disponible ', '') + '.</div>' : '') +
       '<div class="prepa-entete">' +
         '<div>' +
@@ -592,14 +720,22 @@
       var age = Number(($('champ-age-rapide') || {}).value);
       var fcm = Number(($('champ-fcmax-rapide') || {}).value);
       var t10 = parserTemps(($('champ-temps10-rapide') || {}).value);
-      if (!age && !fcm && !t10) { dire('Saisis au moins un repère : ton âge, ta FC max ou ton temps sur 10 km.', 'erreur'); return; }
+      var vma = Number(($('champ-vma-rapide') || {}).value);
+      var obj = parserTemps(($('champ-objectif-rapide') || {}).value);
+      if (!age && !fcm && !t10 && !vma && !obj) {
+        dire('Saisis au moins un repère.', 'erreur');
+        return;
+      }
       if (t10 && (t10 < 1500 || t10 > 6000)) {
         dire('Ce temps sur 10 km paraît hors du plausible. Saisis-le sous la forme 52:30.', 'erreur');
         return;
       }
+      if (vma && (vma < 8 || vma > 25)) { dire('Une VMA se situe entre 8 et 25 km/h.', 'erreur'); return; }
       if (age) etat.age = age;
       if (fcm) etat.fcMax = fcm;
       if (t10) etat.temps10km = t10;
+      if (vma) etat.vma = vma;
+      if (obj) etat.objectif = obj;
       sauver();
       dire('');
       rafraichir();
@@ -610,7 +746,24 @@
       etat.age = null;
       etat.fcMax = null;
       etat.temps10km = null;
+      etat.vma = null;
+      etat.objectif = null;
+      etat.ajustement = 1;
       sauver();
+      rafraichir();
+      return;
+    }
+
+    if (b.id === 'resserrer-allures' || b.id === 'assouplir-allures') {
+      var f = b.id === 'resserrer-allures' ? 0.98 : 1.02;
+      // Borné à plus ou moins 10 % : au-delà, ce n'est plus un ajustement, c'est
+      // que le repère de départ était faux et il faut le ressaisir.
+      var nouveau = Math.min(1.1, Math.max(0.9, (Number(etat.ajustement) || 1) * f));
+      etat.ajustement = nouveau;
+      sauver();
+      dire(b.id === 'resserrer-allures'
+        ? 'Allures resserrées. Si les séances restent faciles la semaine prochaine, tu pourras recommencer.'
+        : 'Allures assouplies. Mieux vaut courir un peu trop lentement que se blesser.', 'ok');
       rafraichir();
       return;
     }
