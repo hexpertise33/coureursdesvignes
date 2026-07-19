@@ -4,14 +4,87 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  * P2, 10 km de Bordeaux. Quinze semaines de préparation plus une de
  * récupération, soit seize entrées.
  *
- * Programme destiné au coureur qui tient déjà une demi-heure de course
- * continue et qui veut, cette fois, chercher un chrono sur 10 km plutôt que
- * simplement terminer. Trois sorties par semaine, un renforcement, et toujours
- * aucune allure chiffrée : l'intensité se lit en zones 1 à 5, chacun place son
- * curseur là où sa respiration le lui dit.
+ * Programme recalibré sur le niveau réel du groupe, comme P1 avant lui.
+ * Correctif de l'encadrant : ses coureurs passent tous sous l'heure au 10 km et
+ * sortent déjà 1 h 15 le dimanche en terrain vallonné. Le calibrage précédent,
+ * écrit pour quelqu'un qui tient trente minutes de course continue, alignait
+ * des footings de 28 et 30 min et une sortie longue de 38 min : personne dans
+ * ce club ne s'entraîne comme ça. Trois séances de course par semaine, une
+ * séance de renforcement, aucune allure chiffrée, l'intensité se lit en zones 1
+ * à 5 et chacun règle son curseur sur sa propre respiration.
  *
- * Trame en cycles de trois plus une, décision de l'encadrant. Trois semaines
- * qui montent, une semaine plus douce, et on recommence :
+ * Ce qui change vraiment par rapport à la version pour débutants
+ * -------------------------------------------------------------
+ * Le volume, d'abord : 165 min en semaine 1 au lieu de 100, 215 min au pic au
+ * lieu de 162. La forme du travail de qualité, ensuite, et c'est le second
+ * correctif de l'encadrant : « ce ne sont pas des débutants, donc varie les
+ * séquences ». L'ancienne trame montait par paliers d'intensité, deux semaines
+ * de Z3 puis deux de Z4 puis la Z5, et répétait trois fois le même bloc de
+ * seuil en changeant seulement le nombre de répétitions. Cette prudence-là
+ * s'adresse à un coureur qui découvre l'intensité. Le groupe court à l'année :
+ * la règle « Z3 avant Z4 avant Z5 » ne commande plus rien ici, et la semaine 1
+ * s'ouvre directement sur des fractions de 200 m.
+ *
+ * Le menu, semaine par semaine, quinze séances et pas un doublon :
+ *   S1  bloc1     3 séries de 4 fois 200 m en Z5 ;
+ *   S2  bloc1     2 fois 12 min en Z3, effort soutenu en durée ;
+ *   S3  bloc1     9 fois 400 m en Z5 ;
+ *   S4  allégée   10 montées de 45 s en côte, entre Z4 et Z5 ;
+ *   S5  bloc2     8 fois 500 m en Z4, entrée dans l'allure de course ;
+ *   S6  bloc2     2 fois 2000 m puis 2 fois 500 m en Z4 ;
+ *   S7  bloc2     30 min en Z3 d'un seul tenant ;
+ *   S8  allégée   2 séries de 5 fois 200 m en Z5 ;
+ *   S9  bloc3     4 fois 1000 m en Z4, ou la course-test à Izon ;
+ *   S10 bloc3     2 séries de 3 fois 1000 m en Z4 ;
+ *   S11 bloc3     2 fois 2000 m puis 4 fois 500 m en Z4 ;
+ *   S12 allégée   6 fois 400 m en Z5 ;
+ *   S13 bloc3     7 fois 1000 m en Z4, la séance reine du pic ;
+ *   S14 affûtage  3 fois 1000 m puis 2 fois 500 m en Z4 ;
+ *   S15 affûtage  4 fois 500 m en Z4, rappel de la semaine de course.
+ *
+ * Durée ou distance
+ * -----------------
+ * Sur 10 km, l'essentiel du travail de qualité se repère en mètres, et le
+ * programme s'y tient : douze séances sur quinze sont écrites en distance. Les
+ * trois exceptions sont les formats qu'une distance décrirait mal, les deux
+ * blocs en Z3 de S2, le tempo continu de S7 et les montées de S4, qu'une pente
+ * rend incomparables d'un coureur à l'autre. Les 1000 m, séances reines d'une
+ * prépa 10 km, sont volontairement massés dans la seconde moitié : rien avant
+ * S9, puis cinq séances sur les sept dernières. Une distance n'est pas une
+ * allure : chacun court son 1000 m dans la zone demandée, à son rythme, et la
+ * règle « jamais d'allure en min/km ni de vitesse chiffrée » reste absolue.
+ *
+ * Repère de durée par répétition. Le projet impose que la somme des segments
+ * décrits égale exactement la durée déclarée de la séance. Une distance, elle,
+ * ne dure pas le même temps pour tout le monde. Chaque séance en distance donne
+ * donc un repère par répétition, qui sert à deux choses et à deux seulement :
+ * faire retomber le calcul juste, et permettre au coureur de savoir combien de
+ * temps prévoir. Repères retenus, cohérents avec un groupe qui passe sous
+ * l'heure au 10 km : environ 4 min pour 1000 m et 8 min 30 pour 2000 m en Z4,
+ * 2 min pour 500 m en Z4, 1 min 40 pour 400 m et 45 s pour 200 m en Z5. Chacune
+ * des douze séances en distance redit, dans ses propres mots, que ce repère est
+ * une estimation de planification et jamais une allure à tenir.
+ *
+ * Corollaire : le format retenu est celui qui fait tomber le compte juste. Les
+ * séries de S1, S8 et S10 ne sont pas décoratives, elles sont ce qui rend la
+ * séance calculable à la minute près, et elles ont par ailleurs du sens à
+ * l'entraînement. Même remarque pour les 2 min 10 de descente de la côte de S4.
+ *
+ * Garde-fou de durée, décision de l'encadrant
+ * -------------------------------------------
+ *   toute séance de course d'une semaine normale (bloc1, bloc2, bloc3,
+ *   allégée, et par extension le premier palier d'affûtage) fait au minimum
+ *   50 min ;
+ *   la sortie longue tient dans la fourchette 60 à 75 min, 1 h 15 étant leur
+ *   habitude du dimanche et le plafond utile sur un 10 km ;
+ *   deux exceptions assumées, la semaine de course (S15, et S9 pour qui prend
+ *   le dossard d'Izon) et la semaine de récupération (S16), où des séances de
+ *   30 à 45 min sont le but recherché et non un oubli. Les textes de ces
+ *   semaines-là le disent explicitement, pour qu'un coureur habitué à une heure
+ *   ne croie pas à une erreur de saisie.
+ *   Le renforcement, lui, reste entre 12 et 25 min et n'est pas concerné.
+ *
+ * Trame en cycles de trois plus une, inchangée :
  *
  *   S1 S2 S3 progressives, S4 plus douce
  *   S5 S6 S7 progressives, S8 plus douce
@@ -20,32 +93,25 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  *   S14 S15 affûtage, course le dernier jour de S15
  *   S16 récupération
  *
- * Ce découpage remplace l'ancienne trame, qui enchaînait deux semaines légères
- * consécutives en S8 et S9 et creusait la charge en plein milieu de la
- * préparation, sortie longue redescendue à 35 min comprise. Sur le parcours
- * par défaut, celui du coureur qui ne prend pas de dossard à Izon, deux
- * semaines allégées ne se suivent plus jamais.
- *
- * Le parcours avec Izon fait exception, et c'est la seule : S8 est allégée, et
- * la S9 en variante avecIzon l'est aussi, puisque le coureur court le dimanche
- * 27 septembre. Ces deux semaines-là s'enchaînent bel et bien. La différence
- * avec l'ancienne trame est qu'ici la charge n'est pas retirée mais remplacée :
- * S9 est une semaine de course-test, pas une semaine passive, et un dossard de
- * 10 km couru à fond vaut largement une séance dure.
- *
  * La liste blanche des phases ne connaît que trois étiquettes de bloc. Le
  * quatrième cycle, réduit à la seule S13, est donc étiqueté bloc3 lui aussi :
- * c'est le sommet du bloc spécifique, relancé après la respiration de S12, et
- * non un quatrième bloc distinct.
+ * c'est le sommet du bloc spécifique, relancé après la respiration de S12.
  *
  * La course a lieu le dimanche 8 novembre 2026, dernier jour de la semaine 15.
  * La semaine 9 tombe exactement sur le week-end du 10 km d'Izon, le 27
  * septembre : c'est ce qui rend la double variante possible.
  *
  * Barème de volumes, hors course objectif et hors renfo, en minutes :
- * S1 100, S2 108, S3 117, S4 96, S5 126, S6 136, S7 147, S8 122,
- * S9 132 sans Izon et 55 avec Izon, S10 140, S11 151, S12 126,
- * S13 162 (pic), S14 118, S15 55, S16 90.
+ * S1 165, S2 178, S3 190, S4 160, S5 185, S6 196, S7 205, S8 172,
+ * S9 190 sans Izon et 70 avec Izon, S10 202, S11 212, S12 175,
+ * S13 215 (pic), S14 170, S15 75, S16 120.
+ *
+ * Le plancher des 50 min contraint le barème par le bas : une semaine normale
+ * ne peut pas descendre sous 50 + 50 + 60, soit 160 min. Comme une semaine
+ * allégée doit tomber à 85 % ou moins de la précédente, aucune semaine qui en
+ * précède une plus douce ne peut valoir moins de 160 / 0,85, soit 189 min. S3
+ * est donc à 190 et S4 exactement au plancher : c'est le point le plus serré du
+ * programme, et c'est lui qui fixe la côte de S4 à 50 min tout rond.
  *
  * Phase de la semaine 9 : propre à chaque variante. Ce sont deux semaines
  * réellement différentes, elles n'ont aucune raison de porter la même
@@ -59,54 +125,43 @@ import { ef, sl, tempo, seuil, vma, recup, renfo, course, semaine } from './sean
  *
  * Les deux variantes passent le garde-fou de charge, chacune par un chemin
  * différent. Sans Izon, S9 est un bloc qui suit une semaine plus douce : sa
- * référence est le pic des blocs atteint jusque-là (147 min en S7), et S10 se
- * compare ensuite à S9. Avec Izon, S9 est allégée et se compare à S8 ; S10,
- * qui est un bloc précédé d'une semaine hors bloc, repart lui aussi du pic des
- * blocs. La règle des 10 % ne bloque donc rien : elle ne compare jamais S10 au
- * volume hors course d'une semaine qui contient la course-test.
- *
- * Progression des intensités. S1 rien, S2 et S3 Z3 pour apprendre l'effort
- * soutenu, S4 rien, S5 et S6 Z4 pour installer l'allure de course, S7 Z5 pour
- * la vitesse pure, S8 rien, S9 Z4 sur blocs longs (ou la course-test), S10 et
- * S11 Z4 en resserrant le format, S12 rien, S13 Z5 au pic de charge, S14 la
- * séance de référence du programme (3 fois 8 min en Z4), S15 un rappel très
- * court avant la course. Une seule séance dure par semaine, toujours entourée
- * de facile. Le dosage est volontairement orienté Z4 et Z5 : sur 10 km, c'est
- * là que se joue le chrono.
+ * référence est le pic des blocs atteint jusque-là (205 min en S7), et S10 se
+ * compare ensuite à S9. Avec Izon, S9 est allégée et se compare à S8 : 70 min
+ * pèsent bien moins que les 146 autorisés. S10, qui est un bloc précédé d'une
+ * semaine hors bloc, repart lui aussi du pic des blocs. La règle des 10 % ne
+ * compare donc jamais S10 au volume hors course d'une semaine qui contient la
+ * course-test.
  *
  * Lignes droites, décision de l'encadrant. Des accélérations de 15 à 20 s en
  * Z5 sont placées en fin d'endurance à partir de la fin du bloc 1, donc en S3,
  * puis entretenues en S5, S6, S9, S10, S11 et S14. Elles sont écartées des
- * semaines plus douces (S4, S8, S12), des semaines qui portent déjà une séance
- * de vitesse (S7 et S13) et de la semaine de course (S15). La variante avec
- * Izon de la semaine 9 fait exception avec quatre lignes droites la veille de
- * la course, tenues en Z4 et non en Z5 : ce sont des lignes droites de réveil,
- * pas de travail.
+ * semaines plus douces (S4, S8, S12), de la semaine du pic (S13) et de la
+ * semaine de course (S15). La variante avec Izon de la semaine 9 fait exception
+ * avec quatre lignes droites la veille de la course, tenues en Z4 et non en
+ * Z5 : ce sont des lignes droites de réveil, pas de travail.
  *
  * Convention de calcul des séances à intervalles : pour N répétitions, N-1
- * récupérations, celles qui tombent entre deux répétitions. Échauffement plus
- * répétitions plus récupérations plus retour au calme égale exactement la
- * durée déclarée. Même règle pour les lignes droites, qui se logent à
- * l'intérieur de la durée de l'endurance et ne s'y ajoutent pas : 4 lignes de
- * 15 s avec 1 min de marche entre chaque font 4 min, 6 lignes de 20 s avec
- * 1 min de marche entre chaque font 7 min.
+ * récupérations, celles qui tombent entre deux répétitions. Une séance en
+ * séries compte les récupérations courtes à l'intérieur de chaque série, plus
+ * une récupération longue entre deux séries. Échauffement plus répétitions plus
+ * récupérations plus retour au calme égale exactement la durée déclarée. Même
+ * règle pour les lignes droites, qui se logent à l'intérieur de la durée de
+ * l'endurance et ne s'y ajoutent pas : 4 lignes de 15 s avec 1 min de marche
+ * entre chaque font 4 min, 6 lignes de 20 s avec 1 min de marche entre chaque
+ * font 7 min. Pour une séance en distance, la répétition est comptée à son
+ * repère de durée.
  *
- * Échauffement progressif, décision de l'encadrant. Le standard visé est
- * 20 min d'échauffement et 10 min de retour au calme, mais on n'impose pas
- * 20 min d'échauffement pour 5 min de travail : l'échauffement grandit avec la
- * séance, donc avec le coureur. Barème appliqué aux séances TEMPO, SEUIL et
- * VMA, selon leur durée déclarée :
+ * Échauffement progressif, décision de l'encadrant. Barème appliqué aux séances
+ * TEMPO, SEUIL et VMA, en fonction de leur durée déclarée :
  *   40 min et moins   12 min d'échauffement,  7 min de retour au calme ;
  *   41 à 50 min       15 min d'échauffement,  8 min de retour au calme ;
  *   plus de 50 min    20 min d'échauffement, 10 min de retour au calme.
- * Les durées déclarées ne bougent pas, donc le barème de volumes ci-dessus est
- * inchangé : c'est le corps de séance qui absorbe la différence. Les séances
- * EF, SL, RECUP et RENFO n'ont pas d'échauffement séparé et ne sont pas
- * concernées, pas plus que le rappel d'allure de la semaine de course,
- * volontairement court.
- *
- * Sortie longue plafonnée à 1 h 15, atteinte une seule fois en S13. Au-delà,
- * un coureur de 10 km accumule de la fatigue sans rien gagner sur sa course.
+ * Treize des quinze séances de qualité dépassent 50 min et tombent donc sur le
+ * 20/10 qui est le standard de l'encadrant. Les deux autres sont les deux
+ * séances volontairement courtes du programme, la côte de la semaine allégée
+ * (50 min, palier 15/8) et le rappel de la semaine de course (33 min, palier
+ * 12/7). Les séances EF, SL, RECUP et RENFO n'ont pas d'échauffement séparé et
+ * ne sont pas concernées.
  *
  * Toute séance dont la description cite une zone plus dure que celle de sa
  * fabrique la déclare via { zonesSecondaires: [...] } : les sept endurances à
@@ -118,23 +173,23 @@ const s9SansIzon = semaine(
   9,
   'bloc3',
   'Ouverture du bloc spécifique',
-  "Pas de dossard cette semaine : le troisième cycle démarre tout de suite. Trois semaines qui montent devant toi, celle-ci en est la première marche, et le travail au seuil change de format en passant à des blocs longs.",
+  "Pas de dossard cette semaine : le troisième cycle démarre tout de suite. Trois semaines qui montent devant toi, celle-ci en est la première marche, et le travail de qualité entre enfin sur la distance de référence d'une prépa 10 km, le kilomètre.",
   [
     ef(
-      29,
-      "20 min en Z2 sur un parcours sans difficulté, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 5 min en Z2. Les lignes droites reviennent après la semaine plus douce, garde-les vives mais brèves.",
-      "Remettre de la vivacité dans une foulée qui sort d'une semaine calme, au moment précis où le bloc spécifique demande à nouveau de la fréquence d'appui.",
+      66,
+      "55 min en Z2 sur un parcours sans difficulté, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 7 min en Z2. Les lignes droites reviennent après la semaine plus douce, garde-les vives mais brèves.",
+      "Remettre de la fréquence d'appui dans une foulée qui sort d'une semaine calme, au moment précis où le bloc spécifique redemande du pied.",
       { zonesSecondaires: ['Z5'] },
     ),
     seuil(
-      45,
-      "15 min d'échauffement en Z2, puis 2 fois 9 min en Z4 avec 4 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. Le bloc 2 prenait sa Z4 en trois fois six minutes, celle-ci la prend en deux fois neuf : même temps total, mais tenu d'une traite, ce qui n'est pas du tout la même chose dans les jambes.",
-      "Reprendre le travail au seuil exactement là où le bloc 2 l'avait laissé, en allongeant la répétition plutôt qu'en en ajoutant une.",
+      58,
+      "20 min d'échauffement en Z2, puis 4 fois 1000 m en Z4, en comptant environ 4 min par 1000 m, avec 4 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Ces 4 min sont une estimation de planification et jamais une allure à tenir : si ton kilomètre sort en 4 min 30, tu es exactement où il faut du moment que tu es en Z4, c'est-à-dire à trois ou quatre mots à la fois.",
+      "Poser le kilomètre comme unité de travail avec des récupérations encore longues, pour que les quatre répétitions se ressemblent toutes et qu'aucune ne se subisse.",
     ),
     sl(
-      58,
-      "58 min en Z2, sur un parcours roulant. Cours-la entièrement facile : elle sert de contrepoids à la séance de seuil, pas de rallonge.",
-      "Relancer la sortie longue dès l'ouverture du cycle, pour qu'elle atteigne son plafond sans à-coup quatre semaines plus tard.",
+      66,
+      "1 h 06 en Z2, sur un parcours roulant. Cours-la entièrement facile : elle sert de contrepoids au kilomètre, pas de rallonge.",
+      "Relancer le dimanche dès l'ouverture du cycle, pour qu'il atteigne son plafond sans à-coup quatre semaines plus tard.",
     ),
     renfo(
       25,
@@ -147,17 +202,17 @@ const s9SansIzon = semaine(
 const s9AvecIzon = semaine(
   9,
   'allegee',
-  "Course test à Izon",
-  "Tu as un dossard dimanche 27 septembre sur le 10 km d'Izon. La semaine est réellement allégée, et c'est logique : tu cours pour de bon le dimanche. Une sortie en début de semaine, une très courte la veille, et les deux jours qui précèdent la course volontairement délestés.",
+  'Course test à Izon',
+  "Tu as un dossard dimanche 27 septembre sur le 10 km d'Izon. La semaine est réellement allégée, et c'est logique : tu cours pour de bon le dimanche. Deux sorties de 40 et 30 min là où tu tournes à une heure depuis deux mois, ce n'est pas un oubli de programmation, c'est le seul moyen d'arriver frais.",
   [
     ef(
-      30,
-      "30 min en Z2 en début de semaine, lundi ou mardi au plus tard. Aucune accélération, aucune bosse cherchée exprès.",
+      40,
+      "40 min en Z2 en début de semaine, lundi ou mardi au plus tard. Aucune accélération, aucune bosse cherchée exprès. Séance volontairement courte : cette semaine, ce qui dépasse trois quarts d'heure ne te rapporte plus rien.",
       "Rester en mouvement après le week-end précédent sans entamer la fraîcheur qui doit être intacte dimanche.",
     ),
     ef(
-      25,
-      "Vendredi, rien du tout : ni course, ni renfo, ni sortie de compensation. Samedi, la veille de la course, 18 min en Z2, puis 4 lignes droites de 15 s en Z4 avec 1 min de marche entre chaque, soit 4 min, et 3 min en Z2 pour rentrer. On reste en Z4, pas au-delà : ces lignes droites réveillent la foulée, elles ne l'entament pas.",
+      30,
+      "Vendredi, rien du tout : ni course, ni renfo, ni sortie de compensation. Samedi, la veille de la course, 23 min en Z2, puis 4 lignes droites de 15 s en Z4 avec 1 min de marche entre chaque, soit 4 min, puis 3 min en Z2 pour rentrer. On reste en Z4, pas au-delà : ces lignes droites réveillent la foulée, elles ne l'entament pas.",
       "Alléger franchement les deux jours qui précèdent le dossard, un repos la veille de la veille et une sortie minuscule la veille laissent de meilleures sensations au départ que n'importe quel entraînement de dernière minute.",
       { zonesSecondaires: ['Z4'] },
     ),
@@ -181,28 +236,29 @@ export const P2 = {
   nom: '10 km de Bordeaux',
   dateCourse: '2026-11-08',
   izon: 'option',
-  prerequis: "Savoir courir 30 minutes d'affilée sans s'arrêter.",
+  prerequis:
+    "Tenir déjà 1 h 15 de course le dimanche en terrain vallonné, et viser moins d'une heure sur 10 km.",
   semainesContenu: [
     semaine(
       1,
       'bloc1',
-      'Prendre le rythme des trois sorties',
-      "Quinze semaines devant toi, aucune raison de te presser. Cette première semaine sert seulement à caler trois créneaux dans ton agenda et à t'y tenir.",
+      'Vite tout de suite',
+      "Quinze semaines devant toi, et aucune raison de passer les trois premières à tourner en rond. La préparation s'ouvre sur les fractions les plus courtes du programme, des 200 m, parce que c'est exactement ce qui manque à un coureur qui sort trois fois par semaine sans jamais quitter son allure de confort.",
       [
         ef(
-          30,
-          "30 min en Z2, sur du plat. Le test est simple : si tu ne peux pas raconter ta journée à quelqu'un en courant, tu vas trop vite.",
+          51,
+          "51 min en Z2, sur du plat. Le test est simple : si tu ne peux pas raconter ta journée à quelqu'un en courant, tu vas trop vite.",
           "Installer le repère d'intensité qui servira de référence à tout le reste du programme.",
         ),
-        ef(
-          30,
-          "30 min en Z2, de préférence sur chemin ou en sous-bois. Un terrain souple absorbe une partie des chocs, tes tendons te remercieront en novembre.",
-          "Répartir la charge sur des surfaces variées dès le début, plutôt que d'attendre la première douleur pour y penser.",
+        vma(
+          54,
+          "20 min d'échauffement progressif en Z2, puis 3 séries de 4 fois 200 m en Z5, en comptant environ 45 s par 200 m, avec 1 min de trottinement en Z1 entre chaque et 3 min entre les séries, puis 10 min de retour au calme en Z2. Ces 45 s sont une estimation de planification et jamais une allure à tenir : le seul repère qui compte ici est la sensation, tu dois finir chaque 200 m sans pouvoir prononcer un mot.",
+          "Ouvrir la préparation par de la vitesse pure plutôt que de la réserver au dernier tiers : sur 200 m, la foulée se rouvre en une séance là où trois mois de Z2 ne la débloqueraient jamais.",
         ),
         sl(
-          40,
-          "40 min en Z2 sans t'arrêter. Pars franchement plus lentement que ton allure spontanée sur les 10 premières minutes.",
-          "Poser le plancher de la sortie longue, à partir duquel tout le programme va construire.",
+          60,
+          "1 h en Z2 sans t'arrêter. Pars franchement plus lentement que ton allure spontanée sur les 10 premières minutes.",
+          "Repartir de la sortie du dimanche que tu tiens déjà, sans l'allonger tout de suite, pour que le premier cycle s'installe sur du connu.",
         ),
         renfo(
           20,
@@ -215,23 +271,23 @@ export const P2 = {
     semaine(
       2,
       'bloc1',
-      "L'effort soutenu, première approche",
-      "La routine est prise, on ouvre le chapitre de l'intensité par le bas de l'échelle. La Z3 est une zone d'apprentissage : soutenue, mais jamais douloureuse.",
+      'Deux blocs sans respirer',
+      "Changement complet de séquence. Après les fractions les plus brèves du programme, deux efforts longs coupés d'une seule récupération. Deux semaines, deux exercices qui n'ont rien à voir : c'est la règle du jeu jusqu'au bout.",
       [
         ef(
-          30,
-          "30 min en Z2. Surveille ta respiration plutôt que ta montre, elle doit rester ample et silencieuse d'un bout à l'autre.",
-          "Fournir du volume facile autour de la première séance de qualité, le corps progresse pendant ces sorties-là.",
+          56,
+          "56 min en Z2. Surveille ta respiration plutôt que ta montre, elle doit rester ample et silencieuse d'un bout à l'autre.",
+          "Fournir du volume facile autour de la séance dure, le corps progresse pendant ces sorties-là autant que pendant l'autre.",
         ),
         tempo(
-          36,
-          "12 min d'échauffement en Z2, puis 2 fois 7 min en Z3 avec 3 min de trottinement en Z1 entre les deux, puis 7 min de retour au calme en Z2. En Z3, tu parles encore, mais par phrases courtes et on entend ton souffle.",
-          "Découvrir une intensité tenable et apprendre à la quitter au bon moment, avant que la sensation ne devienne pénible.",
+          58,
+          "20 min d'échauffement en Z2, puis 2 fois 12 min en Z3 avec 4 min de trottinement en Z1 entre les deux, puis 10 min de retour au calme en Z2. En Z3, tu parles encore, mais par phrases courtes et on entend nettement ton souffle. Les deux blocs doivent se ressembler : si le second est nettement plus dur, tu as lancé le premier trop vite.",
+          "Opposer aux fractions de la semaine passée un effort qui dure douze minutes sans coupure, seul format qui apprenne à répartir sa dépense au lieu de la subir.",
         ),
         sl(
-          42,
-          "42 min en Z2. Deux minutes de plus que la semaine dernière, pas davantage : la progression se joue sur la répétition, pas sur les grands sauts.",
-          "Allonger la sortie longue par petites marches, la seule méthode qui n'expose pas les tendons.",
+          64,
+          "1 h 04 en Z2. Choisis un parcours avec deux ou trois bosses franches et passe-les sans jamais accélérer, quitte à raccourcir beaucoup la foulée.",
+          "Allonger le dimanche de quelques minutes seulement, en gardant le relief qui fait déjà partie de ton ordinaire.",
         ),
         renfo(
           20,
@@ -244,29 +300,29 @@ export const P2 = {
     semaine(
       3,
       'bloc1',
-      'Fin du premier bloc',
-      "Semaine la plus chargée des quatre premières. On en profite pour introduire les lignes droites, quelques secondes de vitesse en fin de footing facile, histoire que les jambes n'oublient pas complètement comment aller vite.",
+      'Le premier palier',
+      "Semaine la plus chargée des quatre premières, et la plus serrée du programme : c'est elle qui fixe le plancher de la semaine plus douce qui suit. Les fractions passent de 200 à 400 m, même zone mais deux fois plus longues, et les lignes droites entrent en fin de footing facile.",
       [
         ef(
-          33,
-          "24 min en Z2 en démarrant très progressivement, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche complète entre chaque, soit 4 min, puis 5 min de retour au calme en Z2. Une ligne droite se lance en montant progressivement en vitesse et se relâche avant la fin, tu ne dois jamais finir en dette de souffle.",
+          65,
+          "54 min en Z2 en démarrant très progressivement, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 7 min de retour au calme en Z2. La marche de récupération est complète, on ne trottine pas. Une ligne droite se lance en montant progressivement en vitesse et se relâche avant la fin, tu ne dois jamais finir en dette de souffle.",
           "Rappeler à la foulée qu'elle sait s'ouvrir, sur des efforts trop brefs pour fatiguer. Ce n'est pas une séance de vitesse, c'est un footing qui se termine bien.",
           { zonesSecondaires: ['Z5'] },
         ),
-        tempo(
-          39,
-          "12 min d'échauffement en Z2, puis 2 fois 8 min en Z3 avec 4 min de trottinement en Z1 entre les deux, puis 7 min de retour au calme en Z2. Les deux blocs doivent se ressembler : si le second est nettement plus dur, tu as lancé le premier trop vite.",
-          "Apprendre à répartir un effort sur plusieurs blocs, exactement ce qu'il faudra faire sur les kilomètres du 10 km.",
+        vma(
+          57,
+          "20 min d'échauffement en Z2, puis 9 fois 400 m en Z5, en comptant environ 1 min 40 par 400 m, avec 1 min 30 de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Ce 1 min 40 est une estimation de planification et jamais une allure à tenir, il sert uniquement à savoir combien de temps prévoir sur ton créneau.",
+          "Doubler la longueur des fractions de la semaine 1 sans changer de zone : c'est sur 400 m que la foulée commence à se déformer, donc là qu'on apprend à la tenir jusqu'au bout.",
         ),
         sl(
-          45,
-          "45 min en Z2 d'une traite. Si la sortie tombe en fin de matinée, emporte de quoi boire.",
-          "Franchir les trois quarts d'heure de course continue, dernier palier avant la semaine de repos relatif.",
+          68,
+          "1 h 08 en Z2 d'une traite. Si la sortie tombe en fin de matinée, emporte de quoi boire.",
+          "Approcher par le bas le plafond utile du dimanche pour un 10 km, dernier palier avant la semaine de repos relatif.",
         ),
         renfo(
           20,
           "2 séries de : 40 s de planche ventrale, 20 fentes marchées, 15 squats, 30 s de pont fessier allongé sur le dos bassin décollé. 90 s de pause entre les séries.",
-          "Réveiller les fessiers, moteur de la propulsion et grand oublié du coureur qui débute.",
+          "Réveiller les fessiers, moteur de la propulsion et maillon faible dès que le volume hebdomadaire monte.",
         ),
       ],
     ),
@@ -274,23 +330,23 @@ export const P2 = {
     semaine(
       4,
       'allegee',
-      'Première respiration',
-      "Environ 20 % de volume en moins et aucune intensité. Tu vas trouver la semaine trop facile : c'est le signe qu'elle est bien dosée. Les progrès des trois semaines précédentes se fixent maintenant.",
+      'On lève le pied, pas le rythme',
+      "Semaine plus douce volontaire, 30 min de moins que la précédente. La charge tombe, la vivacité reste : la séance de qualité est la plus courte des quinze, dix montées de côte et rien d'autre. Les trois sorties gardent leurs cinquante minutes, on ne coupe pas les séances, on coupe la fatigue.",
       [
         ef(
-          28,
-          "28 min en Z2, sans montre si tu en es capable. Tu cours à la sensation, uniquement.",
+          50,
+          "50 min en Z2, sans montre si tu en es capable. Tu cours à la sensation, uniquement, et tu rentres avec l'impression de n'avoir presque rien fait.",
           "Rompre avec le réflexe de mesurer, une semaine de repos relatif se juge à la fraîcheur du lundi suivant.",
         ),
-        ef(
-          30,
-          "30 min en Z2, idéalement accompagné. La séance doit rester conversationnelle du premier au dernier pas.",
-          "Profiter d'une semaine sans exigence pour courir en groupe, ce qui est aussi la raison d'être du club.",
+        vma(
+          50,
+          "15 min d'échauffement en Z2 jusqu'au pied de la côte, puis 10 montées de 45 s en côte, entre Z4 et Z5 selon la pente, avec 2 min 10 de descente en marchant entre chaque, puis 8 min de retour au calme en Z2. Cherche une pente régulière et roulante, pas un mur : tu dois pouvoir courir les dix montées de la même façon, la dernière comme la première. La descente se fait au pas, complètement.",
+          "Utiliser le relief que ces coureurs pratiquent tous les dimanches comme séance à part entière : sept minutes et demie de travail seulement, assez pour muscler la poussée, trop peu pour entamer une semaine de respiration.",
         ),
         sl(
-          38,
-          "38 min en Z2, plus courte que les deux dernières. Termine en te disant que tu aurais pu continuer une demi-heure de plus.",
-          "Conserver le rendez-vous de la sortie longue tout en coupant réellement dans la charge.",
+          60,
+          "1 h en Z2, un quart d'heure de moins que ton dimanche habituel. Termine en te disant que tu aurais pu continuer longtemps.",
+          "Maintenir le rendez-vous du dimanche tout en coupant franchement la charge, c'est cette semaine-là qui fixe les progrès du cycle précédent.",
         ),
         renfo(
           18,
@@ -303,24 +359,24 @@ export const P2 = {
     semaine(
       5,
       'bloc2',
-      'On monte au seuil',
-      "Deuxième bloc, nouvelle marche. Après deux semaines à apprivoiser la Z3, on passe en Z4 : c'est l'allure que tu tiendras le 8 novembre, et il te reste dix semaines pour l'apprivoiser.",
+      "Le demi-kilomètre, porte d'entrée du seuil",
+      "Deuxième cycle, nouvelle zone. Après trois semaines de vitesse et de tempo, on entre dans la Z4, l'allure que tu chercheras le 8 novembre, et on y entre par des fractions de 500 m assez courtes pour que la séance se termine bien.",
       [
         ef(
-          34,
-          "22 min en Z2 le surlendemain du seuil, jamais la veille. Enchaîne 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, puis 5 min de retour au calme en Z2.",
-          "Faire du volume utile un jour où le corps digère encore la séance dure, et garder le pied vif pendant que le bloc 2 travaille l'endurance de vitesse.",
+          59,
+          "48 min en Z2 le surlendemain du seuil, jamais la veille, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 7 min de retour au calme en Z2.",
+          "Faire du volume utile un jour où le corps digère encore la séance dure, et garder le pied vif pendant que le cycle travaille l'allure de course.",
           { zonesSecondaires: ['Z5'] },
         ),
         seuil(
-          42,
-          "15 min d'échauffement en Z2, puis 2 fois 8 min en Z4 avec 3 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. En Z4 tu ne places plus que trois ou quatre mots à la fois, c'est nettement au-dessus des blocs en Z3 des semaines 2 et 3.",
-          "Faire connaissance avec l'allure qui décidera de ton chrono, en quantité assez faible pour que la séance reste réussie.",
+          60,
+          "20 min d'échauffement en Z2, puis 8 fois 500 m en Z4, en comptant environ 2 min par 500 m, avec 2 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Ces 2 min sont une estimation de planification et jamais une allure à tenir. En Z4 tu ne places plus que trois ou quatre mots à la fois, c'est nettement au-dessus des blocs en Z3 de la semaine 2.",
+          "Faire connaissance avec l'intensité qui décidera du chrono, sur des morceaux assez courts pour que la forme de la foulée ne se dégrade à aucun moment.",
         ),
         sl(
-          50,
-          "50 min en Z2 sur un parcours légèrement vallonné. Monte les côtes en gardant le souffle sous contrôle, quitte à ralentir beaucoup.",
-          "Habituer le corps à produire de l'effort sur terrain irrégulier, ce qui rend le plat plus facile ensuite.",
+          66,
+          "1 h 06 en Z2 sur un parcours franchement vallonné. Monte les côtes en gardant le souffle sous contrôle, quitte à ralentir beaucoup.",
+          "Durcir le dimanche par le relief plutôt que par la durée, puisque la durée, elle, ne bougera presque plus d'ici la course.",
         ),
         renfo(
           25,
@@ -333,24 +389,24 @@ export const P2 = {
     semaine(
       6,
       'bloc2',
-      'Plus de temps en Z4',
-      "Même intensité que la semaine passée, mais une répétition de plus et une sortie longue rallongée. On ajoute du temps passé à l'allure de course, jamais de la vitesse en plus.",
+      'On commence par le plus long',
+      "Même zone que la semaine passée, séquence renversée. On ouvre au-dessus de la distance de course, avec deux blocs de 2000 m, et on redescend sur des 500 m. C'est la seule séance du programme qui attaque par le morceau le plus long, et c'est ce qui la rend particulière.",
       [
         ef(
-          36,
-          "25 min en Z2 sur un parcours connu, pour n'avoir à réfléchir ni à l'itinéraire ni au dénivelé. Puis 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, et 4 min en Z2 pour finir.",
-          "Ajouter du volume facile dans une semaine qui monte déjà en charge, et entretenir la vitesse de foulée sans coûter la moindre fraîcheur.",
+          66,
+          "52 min en Z2 sur un parcours que tu connais par cœur, pour n'avoir rien à décider en courant, puis 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, puis 7 min en Z2 pour rentrer.",
+          "Ajouter du volume facile dans une semaine dense, avec des accélérations assez brèves pour ne rien retirer ni au seuil ni au dimanche.",
           { zonesSecondaires: ['Z5'] },
         ),
         seuil(
-          45,
-          "15 min d'échauffement en Z2, puis 3 fois 6 min en Z4 avec 2 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Le troisième bloc doit être aussi rapide que le premier, sinon tu es parti trop fort.",
-          "Augmenter le temps total passé à l'allure de course sans toucher à l'intensité, c'est ce dosage qui construit la tenue.",
+          60,
+          "20 min d'échauffement en Z2, puis 2 fois 2000 m puis 2 fois 500 m en Z4, en comptant environ 8 min 30 par 2000 m et 2 min par 500 m, avec 3 min de trottinement en Z1 entre chaque bloc, puis 10 min de retour au calme en Z2. Chacun de ces deux repères est une estimation de planification et jamais une allure à tenir. La descente est voulue : les deux 500 m de la fin doivent être les plus faciles à courir de la séance.",
+          "Commencer l'effort spécifique au-delà de la distance de course pour que tout le reste paraisse court ensuite, seul moment du programme où la fraction arrive en récompense et non en épreuve.",
         ),
         sl(
-          55,
-          "55 min en Z2. Bois quelques gorgées vers la 30e minute, même sans soif, pour prendre l'habitude de t'alimenter en courant.",
-          "Dépasser la durée probable de ta course, pour que le 8 novembre te paraisse court.",
+          70,
+          "1 h 10 en Z2. Bois quelques gorgées vers la 30e minute, même sans soif, pour prendre l'habitude de t'alimenter en courant sans casser ta foulée.",
+          "Franchir l'heure et dix sur un terrain calme, une semaine avant la plus lourde du cycle.",
         ),
         renfo(
           25,
@@ -363,28 +419,28 @@ export const P2 = {
     semaine(
       7,
       'bloc2',
-      'Le premier passage en Z5',
-      "Semaine la plus lourde depuis le début, et la première qui monte jusqu'en Z5. Les efforts sont très courts par choix : on cherche la fréquence d'appui, pas l'épuisement.",
+      'Une demi-heure sans coupure',
+      "Semaine la plus lourde depuis le début, et la seule qui demande trente minutes d'effort continu. Aucune récupération derrière laquelle s'abriter, aucune fraction pour découper la difficulté : c'est un exercice de patience autant que de jambes.",
       [
         ef(
-          38,
-          "38 min en Z2, sans lignes droites cette semaine : la séance de vitesse s'en charge déjà. Si tu te sens émoussé, descends la sortie entière en Z1, c'est sans conséquence.",
-          "Absorber la charge de la semaine la plus dure du bloc 2 sans y ajouter le moindre effort superflu.",
+          67,
+          "1 h 07 en Z2, sans lignes droites cette semaine : le tempo demande déjà de la fraîcheur. Si tu te sens émoussé au lendemain, descends la sortie entière en Z1, c'est sans la moindre conséquence.",
+          "Absorber la semaine la plus lourde du deuxième cycle en gardant du volume facile, seul moyen d'encaisser le tempo sans creuser la fatigue.",
         ),
-        vma(
-          44,
-          "15 min d'échauffement en Z2, puis 11 fois 1 min en Z5 avec 1 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Concentre-toi sur des appuis rapides et légers plutôt que sur de grandes foulées.",
-          "Élargir le plafond de vitesse une fois la base construite, pour que l'allure du 10 km paraisse plus confortable dans le bloc suivant.",
+        tempo(
+          64,
+          "20 min d'échauffement en Z2, puis 30 min en Z3 d'un seul tenant, sans jamais couper, puis 4 min de trottinement en Z1 pour redescendre, puis 10 min de retour au calme en Z2. Trente minutes, c'est plus long que ta course : la Z3 est justement la seule zone où cette durée reste tenable du début à la fin.",
+          "Passer une demi-heure pleine au-dessus du confort, pour que la partie centrale du 10 km, celle où personne ne relance et où tout se joue, cesse de faire peur.",
         ),
         sl(
-          65,
-          "1 h 05 en Z2. Choisis un jour où tu n'as rien de prévu derrière, et pars sans horaire de retour en tête.",
-          "Construire le fond d'endurance qui portera le dernier tiers de la course, quand la lucidité baisse.",
+          74,
+          "1 h 14 en Z2. Choisis un jour où tu n'as rien de prévu derrière, et pars sans horaire de retour en tête.",
+          "Construire le fond d'endurance qui portera le dernier tiers de la course, quand la lucidité baisse avant les jambes.",
         ),
         renfo(
           25,
           "3 séries de : 1 min de planche ventrale, 24 fentes marchées, 20 squats, 40 s de pont fessier jambes fléchies. Termine par 5 min d'étirements des mollets et des ischios.",
-          "Verrouiller le gainage avant la semaine allégée, pendant laquelle le renforcement va nettement baisser.",
+          "Amener le travail musculaire à son plus haut avant la respiration de la semaine prochaine, où il redescendra franchement.",
         ),
       ],
     ),
@@ -393,22 +449,22 @@ export const P2 = {
       8,
       'allegee',
       'Deuxième respiration',
-      "Le volume baisse d'un sixième et toute intensité disparaît. Sept semaines de travail viennent de passer, il en reste sept : c'est le moment de faire le point sur les sensations plutôt que sur les chiffres.",
+      "Le volume baisse d'un sixième et la séance de qualité devient minuscule : dix fractions de 200 m en deux séries, six minutes et demie de travail en tout. Sept semaines viennent de passer, il en reste sept, et c'est le moment de faire le point sur les sensations plutôt que sur les chiffres.",
       [
         ef(
-          30,
-          "30 min en Z2 très souples. Aucune ligne droite, aucune bosse, aucun objectif autre que de bien te sentir en rentrant.",
+          56,
+          "56 min en Z2 très souples. Aucune ligne droite, aucune bosse, aucun objectif autre que de bien te sentir en rentrant.",
           "Laisser le système nerveux récupérer, c'est lui qui fatigue le plus vite sur les semaines à intensité.",
         ),
-        ef(
-          36,
-          "36 min en Z2 sur terrain souple si tu en as un. Change de parcours par rapport à l'autre sortie de la semaine.",
-          "Entretenir la routine des trois sorties en variant les appuis, ce qui répartit la contrainte sur des muscles différents.",
+        vma(
+          52,
+          "20 min d'échauffement en Z2, puis 2 séries de 5 fois 200 m en Z5, en comptant environ 45 s par 200 m, avec 1 min 30 de trottinement en Z1 entre chaque et 2 min 30 entre les deux séries, puis 10 min de retour au calme en Z2. Ce repère de 45 s est une estimation de planification et jamais une allure à tenir. Récupérations volontairement généreuses : chaque 200 m doit être aussi vif que le premier.",
+          "Entretenir la vitesse pure avec une dose ridiculement basse, parce qu'une semaine de respiration se joue sur ce qu'on retire et pas sur ce qu'on ajoute.",
         ),
         sl(
-          56,
-          "56 min en Z2, la seule séance un peu longue de la semaine et volontairement raccourcie. Elle reste facile de bout en bout : si tu accélères sur la fin, tu as raté l'objectif.",
-          "Conserver l'acquis d'endurance pendant une semaine sans intensité, le fond ne se garde qu'en le pratiquant.",
+          64,
+          "1 h 04 en Z2, la seule séance un peu longue de la semaine. Elle reste facile de bout en bout : si tu accélères sur la fin, tu as raté l'objectif.",
+          "Conserver l'acquis d'endurance pendant une semaine sans charge, le fond ne se garde qu'en le pratiquant.",
         ),
         renfo(
           18,
@@ -438,24 +494,24 @@ export const P2 = {
     semaine(
       10,
       'bloc3',
-      'Deuxième marche, les blocs s\'allongent',
-      "Deuxième semaine du cycle, et le travail au seuil change de forme : moins de répétitions, mais nettement plus longues. C'est le format qui ressemble le plus à ce que tu vivras le 8 novembre.",
+      'Six kilomètres, mais en deux fois',
+      "Deuxième marche du cycle. Le volume au seuil passe de quatre à six kilomètres d'un coup, ce qui serait beaucoup d'une traite : on le coupe donc en deux séries, avec une vraie pause au milieu. Le découpage n'est pas une facilité, c'est ce qui rend la dose possible.",
       [
         ef(
-          31,
-          "22 min en Z2, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 5 min en Z2. Quatre suffisent cette semaine : la séance de seuil est longue, inutile d'en rajouter.",
-          "Fournir du volume facile un jour où le corps digère encore les blocs de 12 min, tout en gardant le pied vif.",
+          65,
+          "51 min en Z2, puis 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, puis 7 min en Z2. À placer à distance de la séance de seuil, jamais la veille.",
+          "Fournir du volume facile un jour où le corps digère encore les six kilomètres au seuil, tout en gardant le pied vif.",
           { zonesSecondaires: ['Z5'] },
         ),
         seuil(
-          45,
-          "15 min d'échauffement en Z2, puis 2 fois 10 min en Z4 avec 2 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. La difficulté n'est plus l'intensité, c'est la durée pendant laquelle tu la tiens : le vrai test est de finir le deuxième bloc aussi propre que le premier.",
-          "Apprendre à ne pas céder au milieu d'un effort long, ce qui se joue dans la tête bien plus que dans les jambes.",
+          67,
+          "20 min d'échauffement en Z2, puis 2 séries de 3 fois 1000 m en Z4, en comptant environ 4 min par 1000 m, avec 2 min de trottinement en Z1 entre chaque et 5 min entre les deux séries, puis 10 min de retour au calme en Z2. Ces 4 min restent une estimation de planification et jamais une allure à tenir. Le vrai test est la seconde série : elle doit sortir comme la première.",
+          "Doubler le kilométrage au seuil en le découpant, parce qu'un coureur qui n'a jamais tenu six kilomètres rapides les tient d'abord en deux morceaux avant de les tenir d'un seul.",
         ),
         sl(
-          64,
-          "1 h 04 en Z2. Aucun bloc rapide, aucune accélération finale : la sortie longue du bloc spécifique sert de contrepoids aux séances de seuil.",
-          "Faire passer la sortie longue au-dessus de l'heure, en la gardant entièrement facile pour préserver la qualité du seuil.",
+          70,
+          "1 h 10 en Z2. Aucun bloc rapide, aucune accélération finale : le dimanche du bloc spécifique sert de contrepoids aux séances au kilomètre.",
+          "Tenir la sortie longue à un niveau élevé sans jamais y ajouter d'intensité, pour que toute la fraîcheur disponible aille au travail spécifique.",
         ),
         renfo(
           25,
@@ -468,24 +524,24 @@ export const P2 = {
     semaine(
       11,
       'bloc3',
-      'Quatre blocs au seuil',
-      "Troisième et dernière marche du cycle, la plus chargée des trois. On quitte les blocs longs pour quatre répétitions plus courtes, avec des récupérations volontairement raccourcies. C'est la semaine où l'allure de course commence à devenir familière plutôt que menaçante.",
+      'Long puis court, sans temps mort',
+      "Troisième et dernière marche du cycle, la plus chargée des trois. On repart du 2000 m, mais cette fois la descente est plus longue : quatre 500 m derrière, à enchaîner alors que les jambes sont déjà chargées. C'est la semaine où l'allure de course commence à devenir familière plutôt que menaçante.",
       [
         ef(
-          34,
-          "22 min en Z2, puis 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, puis 5 min en Z2. À placer à distance de la séance de seuil, jamais la veille.",
-          "Entretenir la vitesse de foulée dans une semaine dense, sans jamais entamer la fraîcheur nécessaire aux quatre blocs de seuil.",
+          68,
+          "57 min en Z2, puis 6 lignes droites de 20 s en Z5 avec 1 min de marche entre chaque, soit 7 min, puis 4 min en Z2. À placer à distance de la séance de seuil, jamais la veille.",
+          "Entretenir la vitesse de foulée dans une semaine dense, sans jamais entamer la fraîcheur dont la longue séance de seuil a besoin.",
           { zonesSecondaires: ['Z5'] },
         ),
         seuil(
-          47,
-          "15 min d'échauffement en Z2, puis 2 fois 11 min en Z4 avec 2 min de trottinement en Z1 entre les deux, puis 8 min de retour au calme en Z2. Onze minutes d'affilée en Z4, deux fois, avec deux minutes à peine pour souffler : c'est le format le plus exigeant du programme, et le second bloc doit rester aussi propre que le premier.",
-          "Réduire le temps de récupération plutôt que d'augmenter l'intensité, ce qui rapproche la séance des conditions réelles de la course.",
+          70,
+          "20 min d'échauffement en Z2, puis 2 fois 2000 m puis 4 fois 500 m en Z4, en comptant environ 8 min 30 par 2000 m et 2 min par 500 m, avec 3 min de trottinement en Z1 entre chaque bloc, puis 10 min de retour au calme en Z2. Ces deux repères sont une estimation de planification et jamais une allure à tenir. Les quatre 500 m arrivent sur des jambes déjà lourdes, et c'est tout leur intérêt.",
+          "Placer les fractions courtes après les longues plutôt qu'avant, pour reproduire ce que sont réellement les trois derniers kilomètres d'un dossard couru à fond.",
         ),
         sl(
-          70,
-          "1 h 10 en Z2, en terrain varié. Mange quelque chose deux heures avant si la sortie est matinale.",
-          "Rapprocher progressivement la sortie longue de son plafond, sans jamais dépasser ce dont un coureur de 10 km a besoin.",
+          74,
+          "1 h 14 en Z2, en terrain varié. Mange quelque chose deux heures avant si la sortie est matinale.",
+          "Rapprocher le dimanche de son plafond sans jamais dépasser ce dont un coureur de 10 km a besoin.",
         ),
         renfo(
           25,
@@ -499,22 +555,22 @@ export const P2 = {
       12,
       'allegee',
       'Respirer avant le sommet',
-      "Troisième semaine plus douce du programme, et la dernière avant le point haut. Le volume tombe d'environ 17 % et l'intensité disparaît complètement pendant sept jours. Une semaine allégée juste avant la semaine la plus lourde n'est pas une contradiction : c'est précisément ce qui la rend tenable.",
+      "Troisième semaine plus douce du programme, et la dernière avant le point haut. Le volume tombe d'environ 17 % et le travail se réduit à six fractions de 400 m. Une semaine de respiration juste avant la semaine la plus lourde n'est pas une contradiction : c'est précisément ce qui la rend tenable.",
       [
         ef(
-          34,
-          "34 min en Z2, tranquilles. Si une douleur traîne depuis les trois semaines de seuil, c'est maintenant qu'il faut la traiter, pas dans quinze jours.",
+          56,
+          "56 min en Z2, tranquilles. Si une douleur traîne depuis les trois semaines au kilomètre, c'est maintenant qu'il faut la traiter, pas dans quinze jours.",
           "Ouvrir une fenêtre pour régler les petits pépins pendant qu'il reste du temps pour les régler.",
         ),
-        ef(
-          36,
-          "36 min en Z2, sur un parcours plat. Aucune accélération, aucune côte, aucune ligne droite : cette semaine ne contient rien de dur, et c'est délibéré.",
-          "Réduire la sollicitation nerveuse après trois semaines qui ont toutes compté du travail en Z4.",
+        vma(
+          55,
+          "20 min d'échauffement en Z2, puis 6 fois 400 m en Z5, en comptant environ 1 min 40 par 400 m, avec 3 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Ce 1 min 40 est une estimation de planification et jamais une allure à tenir. Trois minutes de récupération pour 400 m, c'est énorme, et c'est fait exprès.",
+          "Rappeler la vitesse haute une dernière fois avant le pic, avec des récupérations si longues que la séance ne coûte presque rien en fatigue.",
         ),
         sl(
-          56,
-          "56 min en Z2, un quart d'heure de moins que la semaine passée. Termine avec la sensation nette d'avoir de la marge, et surtout l'envie d'y retourner.",
-          "Entretenir le fond en le laissant reculer d'un cran, pour aborder la semaine sommet avec des jambes qui ont vraiment récupéré.",
+          64,
+          "1 h 04 en Z2, dix minutes de moins que la semaine passée. Termine avec la sensation nette d'avoir de la marge, et surtout l'envie d'y retourner.",
+          "Laisser le fond reculer d'un cran pour aborder la semaine sommet avec des jambes qui ont vraiment récupéré.",
         ),
         renfo(
           18,
@@ -527,18 +583,18 @@ export const P2 = {
     semaine(
       13,
       'bloc3',
-      'Le pic de charge',
-      "Semaine la plus lourde des quinze : le plus gros volume, la sortie longue plafond, et le retour de la Z5. Elle arrive juste après une semaine douce, c'est ce qui te permet de l'encaisser. Si tu la termines debout, le 8 novembre est déjà largement à ta portée. Ensuite, tout redescend.",
+      'Sept kilomètres au seuil',
+      "Semaine la plus lourde des quinze et séance reine du programme : sept fois mille mètres à l'allure du dossard, avec des récupérations volontairement courtes. Elle arrive juste après une semaine douce, c'est ce qui te permet de l'encaisser. Si tu la termines proprement, le 8 novembre est déjà largement à ta portée. Ensuite, tout redescend.",
       [
         ef(
-          38,
-          "38 min en Z2, sans lignes droites : la séance de fractionné couvre déjà largement le besoin de vitesse cette semaine.",
+          70,
+          "1 h 10 en Z2, sans lignes droites : la séance au kilomètre demande toute la fraîcheur disponible cette semaine. Si les jambes sont lourdes au lendemain, fais-la entièrement en Z1.",
           "Fournir du volume neutre entre les deux séances les plus exigeantes du programme, sans rien y ajouter.",
         ),
-        vma(
-          49,
-          "15 min d'échauffement en Z2, puis 7 fois 2 min en Z5 avec 2 min de trottinement en Z1 entre chaque, puis 8 min de retour au calme en Z2. Des répétitions deux fois plus longues qu'en semaine 7, à la même intensité exactement : le temps passé vite monte de onze à quatorze minutes.",
-          "Amener la vitesse maximale à son point haut du programme, assez tôt pour que ce travail ait le temps de se transformer en aisance le jour de la course.",
+        seuil(
+          70,
+          "20 min d'échauffement en Z2, puis 7 fois 1000 m en Z4, en comptant environ 4 min par 1000 m, avec 2 min de trottinement en Z1 entre chaque, puis 10 min de retour au calme en Z2. Ce repère de 4 min reste une estimation de planification et jamais une allure à tenir. Le septième kilomètre doit sortir dans le même temps que le premier : c'est le seul indicateur qui compte, et si tu perds nettement à la fin, tu as lancé le début trop fort.",
+          "Dépasser d'un kilomètre la distance de la course sur des récupérations trop brèves pour souffler complètement : c'est la séance qui dit si l'objectif est tenu.",
         ),
         sl(
           75,
@@ -556,35 +612,24 @@ export const P2 = {
     semaine(
       14,
       'affutage',
-      'La séance de référence',
-      "Début de l'affûtage. Le volume baisse encore, mais la séance de seuil, elle, atteint son format le plus abouti : 3 fois 8 min en Z4. C'est la séance qui te dira, mieux qu'aucune montre, où tu en es.",
+      'La séance de vérité',
+      "Début de l'affûtage. Le volume baisse d'un cinquième, mais la séance de qualité devient la plus spécifique du programme : trois kilomètres à l'allure exacte du dossard, puis deux 500 m pour finir vite, le tout avec deux minutes de récupération à peine. Elle te dira, mieux qu'aucune montre, où tu en es.",
       [
         ef(
-          28,
-          "20 min en Z2, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 4 min en Z2. En début de semaine, jamais la veille du seuil.",
-          "Rappeler la vitesse aux jambes en quantité volontairement réduite, quatre lignes droites suffisent largement en période d'affûtage.",
+          54,
+          "42 min en Z2 sans chercher à compenser la baisse de volume, puis 4 lignes droites de 15 s en Z5 avec 1 min de marche entre chaque, soit 4 min, puis 8 min de retour au calme en Z2. En début de semaine, jamais la veille du seuil.",
+          "Garder les trois rendez-vous hebdomadaires sans compenser la baisse de charge, et entretenir le pied avec la dose la plus faible du programme.",
           { zonesSecondaires: ['Z5'] },
         ),
-        // Exception au barème d'échauffement progressif, assumée. À 45 min,
-        // cette séance tombe dans la tranche 41 à 50 min, donc au palier
-        // 15 et 8. Mais le format de référence du programme, 3 fois 8 min en
-        // Z4, occupe déjà 24 min : avec 15 min d'échauffement et 8 min de
-        // retour au calme il ne resterait rien pour les deux récupérations, la
-        // somme des segments dépasserait la durée déclarée et le format de
-        // référence devrait être amputé. On reste donc au palier inférieur,
-        // 12 et 7, seul palier où la séance se réconcilie. Les récupérations
-        // tombent à 1 min, ce qui reste un format de seuil connu et cohérent
-        // avec l'intention de la semaine : rendre l'allure de course
-        // continue, dix jours avant Bordeaux.
         seuil(
-          45,
-          "12 min d'échauffement en Z2, puis 3 fois 8 min en Z4 avec 1 min de trottinement en Z1 entre chaque, puis 7 min de retour au calme en Z2. C'est la séance la plus spécifique du programme : 24 min passées à l'allure exacte que tu chercheras à Bordeaux, coupées d'une minute à peine. Si les trois blocs se ressemblent, tu es prêt.",
-          "Valider l'allure de course sur un volume proche de celui du 10 km, dix jours avant, quand il reste le temps de récupérer mais plus celui de progresser.",
+          54,
+          "20 min d'échauffement en Z2, puis 3 fois 1000 m puis 2 fois 500 m en Z4, en comptant environ 4 min par 1000 m et 2 min par 500 m, avec 2 min de trottinement en Z1 entre chaque bloc, puis 10 min de retour au calme en Z2. Ces deux repères sont une estimation de planification et jamais une allure à tenir. Si les cinq morceaux se ressemblent, tu es prêt, et il n'y a plus rien à prouver d'ici dimanche prochain.",
+          "Reproduire en modèle réduit le déroulé de la course, trois kilomètres réguliers puis une fin plus vive, dix jours avant, quand il reste le temps de récupérer mais plus celui de progresser.",
         ),
         sl(
-          45,
-          "45 min en Z2 seulement. Tu vas trouver ça court après les semaines à plus d'une heure, c'est exactement le but.",
-          "Couper franchement dans la sortie longue pour que la fraîcheur remonte, l'endurance acquise ne se perd pas en dix jours.",
+          62,
+          "1 h 02 en Z2 seulement. Tu vas trouver ça court après les semaines à 1 h 15, c'est exactement le but.",
+          "Couper franchement dans le dimanche pour que la fraîcheur remonte, l'endurance acquise ne se perd pas en dix jours.",
         ),
         renfo(
           15,
@@ -598,17 +643,17 @@ export const P2 = {
       15,
       'affutage',
       'Semaine de course',
-      "Le volume d'entraînement est divisé par deux. Dimanche 8 novembre, tu cours le 10 km de Bordeaux. Cette semaine n'a plus qu'une fonction : te déposer sur la ligne de départ frais et confiant.",
+      "Dimanche 8 novembre, tu cours le 10 km de Bordeaux. Les deux séances de la semaine sont volontairement courtes, 42 et 33 min là où tu tournes à une heure depuis trois mois : ce n'est pas un oubli de programmation, c'est le seul moyen d'arriver frais. Tout ce qui dépasse cette dose sert la fatigue et pas le chrono.",
       [
         ef(
-          30,
-          "30 min en Z2 en début de semaine, lundi ou mardi. Souple, sans rien chercher. Aucune ligne droite cette semaine.",
-          "Évacuer les dernières traces d'affûtage et garder le geste de course sans créer de fatigue.",
+          42,
+          "42 min en Z2 en début de semaine, lundi ou mardi. Souple, sans rien chercher, et aucune ligne droite cette semaine. Séance courte à dessein : ce qui dépasse trois quarts d'heure ne te rapporte plus rien maintenant.",
+          "Évacuer les dernières traces d'affûtage et garder le geste de course sans créer un gramme de fatigue.",
         ),
         seuil(
-          25,
-          "10 min en Z2, puis 4 fois 1 min en Z4 avec 1 min de trottinement en Z1 entre chaque, puis 8 min en Z2. À faire mercredi au plus tard, pas après.",
-          "Rappeler l'allure de dimanche aux jambes sur un volume trop petit pour coûter quoi que ce soit en récupération.",
+          33,
+          "12 min d'échauffement en Z2, puis 4 fois 500 m en Z4, en comptant environ 2 min par 500 m, avec 2 min de trottinement en Z1 entre chaque, puis 7 min de retour au calme en Z2. Ces 2 min sont une estimation de planification et jamais une allure à tenir. À placer mercredi au plus tard : quatre demi-kilomètres, c'est un rappel et pas un entraînement.",
+          "Faire retrouver aux jambes le rythme du dossard trois jours avant, sur une dose assez faible pour ne rien coûter et assez juste pour que rien ne surprenne au départ.",
         ),
         course(
           '10 km de Bordeaux',
@@ -629,22 +674,22 @@ export const P2 = {
       16,
       'recuperation',
       'La semaine que personne ne respecte',
-      "Aucune intensité, aucun chrono, aucune comparaison. Quinze semaines viennent de passer, le corps a besoin de sept jours pour encaisser vraiment. Sauter cette semaine, c'est démarrer la prochaine préparation déjà fatigué.",
+      "Aucune intensité, aucun chrono, aucune comparaison. Des sorties de 35 à 45 min seulement : après quinze semaines à une heure et plus, cette brièveté est la séance elle-même, pas un reliquat du programme. Sauter cette semaine, c'est démarrer la prochaine préparation déjà fatigué.",
       [
         recup(
-          25,
-          "25 min en Z1, deux ou trois jours après la course. Si les jambes sont encore raides, remplace par 30 min de marche, le bénéfice est le même.",
+          35,
+          "35 min en Z1, deux ou trois jours après la course. Si les jambes sont encore raides, remplace par 40 min de marche, le bénéfice est le même.",
           "Faire circuler le sang dans des jambes qui viennent de vider leurs réserves sur un 10 km couru à fond, ce qui nettoie l'effort bien plus vite que trois jours de canapé.",
         ),
         recup(
-          30,
-          "30 min en Z1 en milieu de semaine. Tu vas avoir envie d'accélérer parce que les sensations reviennent : ne le fais pas.",
+          40,
+          "40 min en Z1 en milieu de semaine. Tu vas avoir envie d'accélérer parce que les sensations reviennent : ne le fais pas.",
           "Laisser le retour des sensations se faire tout seul, sans le provoquer.",
         ),
         recup(
-          35,
-          "35 min en Z1 sur terrain souple, en fin de semaine. Choisis un parcours pour le paysage, laisse la montre à la maison.",
-          "Refermer le cycle sur une note agréable, ce qui compte autant que le reste pour repartir motivé.",
+          45,
+          "45 min en Z1 sur terrain souple, en fin de semaine. Trois quarts d'heure au lieu de l'heure et quart habituelle, et c'est le but : cette sortie referme le cycle, elle ne le prolonge pas. Choisis un parcours pour le paysage, laisse la montre à la maison.",
+          "Refermer la préparation sur une note agréable, ce qui compte autant que le reste pour repartir motivé.",
         ),
         renfo(
           15,
