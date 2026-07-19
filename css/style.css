@@ -850,3 +850,25 @@ p { margin: 0 0 1rem; }
   .prepa-zone__sensation { display: none; }
   .prepa-course__date { font-size: .85rem; }
 }
+
+/* ---------- Présentation de la prépa ---------- */
+.prepa-duo { display: grid; gap: 1.25rem; grid-template-columns: 1fr 1fr; }
+.prepa-duo .prepa-carte { margin-bottom: 0; }
+.prepa-duo h3, .prepa-carte > h3 { font-family: var(--f-display); margin: .3em 0 .5em; }
+
+.prepa-points { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .9rem; }
+.prepa-points li { padding-left: 1.6rem; position: relative; color: var(--ink-soft); line-height: 1.55; }
+.prepa-points li::before {
+  content: ''; position: absolute; left: 0; top: .55em;
+  width: 9px; height: 9px; border-radius: 2px;
+  background: var(--shoot); transform: rotate(45deg);
+}
+.prepa-points strong { color: var(--ink); }
+
+.prepa-puce--neutre { background: var(--muted); }
+
+.prepa-depart { text-align: center; padding: 1.5rem 0 .5rem; }
+.prepa-depart__btn { font-size: 1.18rem; padding: 1rem 2.6rem; }
+.prepa-depart__note { margin-top: .9rem; font-size: .88rem; color: var(--muted); }
+
+@media (max-width: 760px) { .prepa-duo { grid-template-columns: 1fr; } }

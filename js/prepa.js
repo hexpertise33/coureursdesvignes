@@ -14,7 +14,7 @@
   function sauver() { try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) {} }
 
   var $ = function (id) { return document.getElementById(id); };
-  var ECRANS = ['ecran-code', 'ecran-profil', 'ecran-semaine', 'ecran-programme', 'ecran-zones', 'ecran-admin'];
+  var ECRANS = ['ecran-code', 'ecran-profil', 'ecran-presentation', 'ecran-semaine', 'ecran-programme', 'ecran-zones', 'ecran-admin'];
 
   function montrer(id) {
     ECRANS.forEach(function (e) { $(e).hidden = e !== id; });
@@ -149,7 +149,11 @@
     etat.programme = corps.programme;
     etat.faitIzon = corps.faitIzon;
     sauver();
-    voirSemaine();
+    // On arrive sur la présentation de la prépa, pas directement dans la
+    // semaine : le coureur découvre d'abord sa course, sa structure et ses
+    // zones, puis il entre quand il est prêt.
+    voirPresentation();
+    window.scrollTo(0, 0);
   });
 
   /* ---------- Séances ---------- */
@@ -188,6 +192,66 @@
       '<button class="btn btn--outline-vine prepa-note__ok" data-semaine="' + semaine + '" data-seance="' + echapper(seanceId) + '">Enregistrer</button>' +
     '</details>';
   }
+
+  /* ---------- Fiches de course et de programme ----------
+     Ces descriptions sont pour l'instant tenues côté page. Elles devraient à
+     terme vivre avec le programme, côté serveur, pour n'avoir qu'une source.
+     Les détails de parcours sont à faire relire par l'encadrant, qui connaît
+     les courses. */
+
+  var FICHES = {
+    P1: {
+      lieu: "Izon, en bord de Dordogne", distance: '10 km',
+      profil: "Plat et roulant, sur route. Aucune difficulté de terrain, c'est un parcours à chrono.",
+      structure: '9 semaines', pic: 'environ 3 h 30 de course sur la semaine la plus chargée',
+      sortieLongue: "jusqu'à 1 h 15",
+      resume: "Une préparation courte et dense. Le travail rapide arrive dès la première semaine, puis les 1000 m prennent le relais au plus près de la course."
+    },
+    P2: {
+      lieu: 'Bordeaux', distance: '10 km',
+      profil: 'Urbain et plat, sur bitume.',
+      structure: '15 semaines', pic: 'environ 3 h 35 de course sur la semaine la plus chargée',
+      sortieLongue: "jusqu'à 1 h 15",
+      resume: "Quinze semaines pour construire large avant de spécialiser. Le 10 km d'Izon, fin septembre, peut servir de course-test à mi-parcours."
+    },
+    P3: {
+      lieu: 'Bordeaux', distance: '21,1 km',
+      profil: 'Urbain et plat, sur bitume.',
+      structure: '15 semaines', pic: 'environ 4 h 10 de course sur la semaine la plus chargée',
+      sortieLongue: "jusqu'à 1 h 45",
+      resume: "L'endurance passe devant la vitesse. Les blocs à l'allure du semi s'allongent jusqu'à deux fois vingt minutes, et la sortie longue monte à 1 h 45."
+    },
+    P4: {
+      lieu: 'Bordeaux ou Nice-Cannes', distance: '42,2 km',
+      profil: "Bordeaux est plat et urbain. Nice-Cannes longe la mer, avec quelques bosses dans la seconde moitié.",
+      structure: '15 semaines', pic: 'environ 5 h de course sur la semaine la plus chargée',
+      sortieLongue: "jusqu'à 2 h 30",
+      resume: "Le volume prend le pas sur l'intensité. Le seuil disparaît après la mi-parcours au profit de longs blocs à l'allure de course, jusqu'à trois fois vingt minutes."
+    },
+    P5: {
+      lieu: 'Paris', distance: '10 km',
+      profil: 'Urbain, sur bitume.',
+      structure: '16 semaines', pic: 'environ 3 h 35 de course sur la semaine la plus chargée',
+      sortieLongue: "jusqu'à 1 h 15",
+      resume: "Le 10 km d'Izon fait partie du programme, couru à l'objectif fin septembre, suivi d'une semaine de récupération active avant le bloc final."
+    },
+    P6: {
+      lieu: 'Andernos-les-Bains, sur le bassin d\'Arcachon', distance: '16 km',
+      profil: 'Plat, en bord de bassin.',
+      structure: '9 semaines', pic: 'environ 3 h 45 de course sur la semaine la plus chargée',
+      sortieLongue: "jusqu'à 1 h 30",
+      resume: "Entre le 10 km et le semi. Les répétitions s'allongent jusqu'au 3000 m, parce que sur seize kilomètres c'est la capacité à tenir l'allure qui décide."
+    }
+  };
+
+  var TYPES_SEANCE = [
+    ['EF', 'Endurance fondamentale', 'Z2', "La base. Tu dois pouvoir tenir une conversation du début à la fin."],
+    ['SL', 'Sortie longue', 'Z2', "La séance du dimanche. C'est la durée qui compte, jamais la vitesse."],
+    ['TEMPO', 'Tempo', 'Z3', "Effort soutenu mais tenable. L'allure de course sur les longues distances."],
+    ['SEUIL', 'Seuil', 'Z4', "Le travail qui fait progresser sur 10 et 16 km. Trois ou quatre mots à la fois."],
+    ['VMA', 'Fractionné court', 'Z5', "Répétitions brèves et rapides, pour la foulée et la cylindrée."],
+    ['RENFO', 'Renforcement', '', "Gainage et jambes, sans matériel. Facultatif, mais c'est ce qui protège des blessures."]
+  ];
 
   /* ---------- Bandeau de course et zones ---------- */
 
@@ -266,7 +330,71 @@
     '</details>';
   }
 
-  /* ---------- Écran 3 : ma semaine ---------- */
+  /* ---------- Écran 3 : présentation de la prépa ---------- */
+
+  async function voirPresentation() {
+    onglet('presentation');
+    montrer('ecran-presentation');
+    var el = $('ecran-presentation');
+    el.innerHTML = '<div class="prepa-carte"><p>Chargement...</p></div>';
+
+    var p = programmeCourant();
+    var f = FICHES[p.code] || {};
+    var zones = await chargerZones();
+
+    el.innerHTML =
+      bandeauCourse() +
+
+      '<div class="prepa-duo">' +
+        '<div class="prepa-carte">' +
+          '<span class="eyebrow">La course</span>' +
+          '<h3>' + echapper(f.distance || '') + ' à ' + echapper(f.lieu || '') + '</h3>' +
+          '<p>' + echapper(f.profil || '') + '</p>' +
+        '</div>' +
+        '<div class="prepa-carte">' +
+          '<span class="eyebrow">Ta préparation</span>' +
+          '<h3>' + echapper(f.structure || '') + '</h3>' +
+          '<p>' + echapper(f.resume || '') + '</p>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="prepa-carte">' +
+        '<span class="eyebrow">Comment ça marche</span>' +
+        '<h3>Trois séances de course par semaine, plus une de renforcement</h3>' +
+        '<ul class="prepa-points">' +
+          '<li><strong>Des blocs de 3 semaines qui montent, puis une semaine plus douce</strong>, et on recommence. C\'est cette respiration qui fait progresser sans casser.</li>' +
+          '<li><strong>Une nouvelle semaine paraît chaque dimanche à 19 h.</strong> Tu ne vois pas les suivantes avant, c\'est voulu : on suit la semaine en cours, pas le programme entier.</li>' +
+          '<li><strong>' + echapper(f.pic || '') + '</strong>, sortie longue ' + echapper(f.sortieLongue || '') + '.</li>' +
+          '<li><strong>Les deux dernières semaines sont un affûtage</strong> : le volume descend fortement, l\'intensité reste. C\'est ce qui te fait arriver frais.</li>' +
+          '<li><strong>Tu coches chaque séance faite</strong> et tu dis si c\'était facile, ok ou difficile. C\'est ce qui permet d\'alléger ta semaine suivante si tu forces trop.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      '<div class="prepa-carte">' +
+        '<span class="eyebrow">Les types de séance</span>' +
+        '<h3>Ce que tu vas trouver dans ta semaine</h3>' +
+        '<table class="prepa-table"><tbody>' +
+        TYPES_SEANCE.map(function (t) {
+          return '<tr>' +
+            '<td>' + (t[2] ? '<span class="prepa-puce zone-' + t[2] + '">' + t[2] + '</span>' : '<span class="prepa-puce prepa-puce--neutre">·</span>') + '</td>' +
+            '<td class="prepa-zone__nom">' + echapper(t[1]) + '</td>' +
+            '<td class="prepa-zone__sensation">' + echapper(t[3]) + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>' +
+      '</div>' +
+
+      legendeZones(zones) +
+
+      '<div class="prepa-depart">' +
+        '<button class="btn btn--shoot prepa-depart__btn" id="on-y-va">On y va !' +
+          '<svg class="btn__arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>' +
+        '</button>' +
+        '<p class="prepa-depart__note">Tu peux revenir sur cette page à tout moment par l\'onglet « Ma prépa ».</p>' +
+      '</div>';
+  }
+
+  /* ---------- Écran 4 : ma semaine ---------- */
 
   async function voirSemaine() {
     onglet('semaine');
@@ -358,6 +486,8 @@
       voirSemaine();
     }
 
+    if (b.id === 'on-y-va') { voirSemaine(); window.scrollTo(0, 0); return; }
+
     if (b.id === 'calculer-fcm') {
       var age = Number(($('champ-age-rapide') || {}).value);
       var fcm = Number(($('champ-fcmax-rapide') || {}).value);
@@ -365,7 +495,7 @@
       etat.age = age || null;
       etat.fcMax = fcm || null;
       sauver();
-      voirSemaine();
+      rafraichir();
       return;
     }
 
@@ -373,7 +503,7 @@
       etat.age = null;
       etat.fcMax = null;
       sauver();
-      voirSemaine();
+      rafraichir();
       return;
     }
 
@@ -519,6 +649,14 @@
 
   /* ---------- Onglets ---------- */
 
+  /** Redessine l'écran actuellement affiché, sans changer de vue. */
+  function rafraichir() {
+    if (!$('ecran-presentation').hidden) return voirPresentation();
+    if (!$('ecran-programme').hidden) return voirProgramme();
+    if (!$('ecran-zones').hidden) return voirZones();
+    return voirSemaine();
+  }
+
   function onglet(nom) {
     Array.prototype.forEach.call(document.querySelectorAll('.prepa-onglet'), function (b) {
       b.classList.toggle('is-active', b.dataset.vue === nom);
@@ -528,6 +666,7 @@
   Array.prototype.forEach.call(document.querySelectorAll('.prepa-onglet'), function (b) {
     b.addEventListener('click', function () {
       dire('');
+      if (b.dataset.vue === 'presentation') voirPresentation();
       if (b.dataset.vue === 'semaine') voirSemaine();
       if (b.dataset.vue === 'programme') voirProgramme();
       if (b.dataset.vue === 'zones') voirZones();
