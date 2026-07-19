@@ -60,9 +60,26 @@ incrément du back-office encadrant.
 authentification par deux codes partagés, validation des séances avec ressenti,
 back-office encadrant (assiduité, alertes, veto, fusion, effacement).
 
-**Le front** : inscription, page de présentation de la prépa, semaine avec
-allures personnelles, validation et ressenti, programme complet, zones,
-vue encadrant.
+**Le front** : catalogue des courses, inscription, page de présentation de la
+prépa, semaine avec allures personnelles, validation et ressenti, programme
+complet, zones, vue encadrant.
+
+**Le parcours d'entrée**, refait le 19 juillet. L'onglet Prépa ouvre sur les
+six courses, sans code : date, distance, lieu, durée, résumé et prérequis,
+triées par date de course et groupées par jour. Le coureur clique sur sa
+course, et c'est seulement là que le code est demandé, puis son prénom et son
+initiale. La course choisie est retenue avant la saisie du code, pour qu'elle
+survive à un aller-retour de dix minutes.
+
+**La déconnexion**, dans une barre sous les onglets qui dit aussi qui est
+connecté. Elle passe par `POST /api/deconnexion` : le cookie est HttpOnly,
+donc seul le serveur peut le fermer. La route est ouverte sans session, parce
+que celui dont le jeton vient d'expirer est précisément celui qui a un cookie
+mort dont il ne peut pas se débarrasser.
+
+**L'encadrant lit les six prépas** depuis un sélecteur dans cette même barre.
+Il pilote les vues sans jamais toucher à sa fiche : consulter le marathon ne
+réinscrit pas au marathon.
 
 **Le déroulé des séances**, ajouté le 19 juillet. Chaque séance s'affiche en
 tableau, une ligne par étape : durée, zone, ce que tu fais. Le serveur découpe
@@ -105,47 +122,80 @@ coureur et encadrant du club. Elles sont le produit.
    ne descend sous 50 minutes.
 7. **L'identité d'un coureur est prénom plus initiale du nom**, parce que deux
    homonymes s'écraseraient sinon silencieusement.
-8. **La couleur encode l'intensité** : Z1 sauge, Z2 vert vigne, Z3 or, Z4 terre
+8. **Le catalogue des courses est public, le contenu des séances ne l'est
+   jamais.** Ce qui sort sans code tient en une phrase : ce que le club
+   prépare, quand, et pour qui. Aucune séance, aucune semaine, aucun nom de
+   coureur. Décision de David du 19 juillet, prise en connaissance de
+   l'alternative.
+9. **La couleur encode l'intensité** : Z1 sauge, Z2 vert vigne, Z3 or, Z4 terre
    cuite, Z5 bordeaux. C'est la vigne qui tourne entre juillet et novembre.
-9. **Le déroulé est déduit de la description, jamais saisi à la main.** Sa
+10. **Le déroulé est déduit de la description, jamais saisi à la main.** Sa
    justesse tient à ce que le corpus reste écrit dans la forme sur laquelle le
    découpage s'appuie : première phrase le déroulé, étapes séparées par
    « puis », durée en tête d'étape. Un test balaie les 340 séances et vérifie
    que la somme des étapes égale la durée déclarée de la séance. Il vérifie
    d'un coup le découpage et le contenu : une étape mal détachée déplace du
    temps d'une ligne à l'autre et fait tomber le total à côté.
-10. **Une session dure 120 jours**, calés sur la saison. Ouverte à la parution
+11. **Une session dure 120 jours**, calés sur la saison. Ouverte à la parution
    de la semaine 1 le 26 juillet, elle expire le 23 novembre, le lendemain de
    la fin de la dernière semaine du plus long programme. Aucun coureur n'est
    déconnecté pendant sa préparation, aucune session ne survit à celle-ci. Un
    test recalcule les deux bornes depuis le calendrier réel : si la saison se
    décale, c'est lui qui préviendra.
 
+## L'application est en ligne
+
+**https://coureursdesvignes.fr/prepa**, depuis le 19 juillet 2026.
+
+- Le Worker est déployé et sert l'API sur `coureursdesvignes.fr/api/*`, par une
+  route posée sur la zone. **Pas sur workers.dev**, et ce n'est pas un détail :
+  le cookie de session est `SameSite=Lax` et un navigateur ne l'envoie jamais
+  sur une requête inter-sites. Servir l'API depuis un autre domaine donnerait
+  200 à la connexion puis 401 partout ensuite.
+- La base D1 de production existe, migrée. Le projet Pages sert le site, la
+  branche de production est `main`.
+- Les trois valeurs d'accès sont posées **en Secret**. `GET /api/sante` renvoie
+  `{ ok, configure }` ; `configure` à faux signale qu'il en manque une.
+
+### Déployer une modification
+
+```
+cd prepa-api && npm test && npx wrangler deploy     # le Worker d'abord
+cd .. && cp *.html dist/ && cp -R css js assets dist/
+npx wrangler pages deploy dist --project-name coureurs-des-vignes --branch main
+```
+
+Trois pièges, tous rencontrés :
+
+1. **Le Worker avant la page.** Le déroulé des séances se replie sur l'ancien
+   paragraphe si le Worker déployé ne le connaît pas encore ; l'inverse
+   donnerait une page cassée.
+2. **Incrémenter les numéros de version** de `css/style.css?v=` et
+   `js/prepa.js?v=` dans `prepa.html`. Sans cela un navigateur qui a déjà vu la
+   page réutilise l'ancien script et ne voit aucun changement.
+3. **Jamais de Variable pour un code d'accès**, toujours un Secret :
+   `wrangler deploy` remplace les variables du Worker par celles de
+   `wrangler.toml` et efface les autres. Le cas s'est produit, l'accès
+   encadrant a disparu sans un message.
+
+### Le développement en local
+
+La page est sur le port 4599 et l'API sur 8787, donc deux origines, alors qu'en
+production tout est en même origine. Le cookie ne se comporte pas pareil et la
+connexion échoue dans un navigateur. Pour un test de bout en bout, passer par un
+relais qui sert le site et transmet `/api/*` au Worker depuis un seul port.
+
+Penser aussi à `npx wrangler d1 migrations apply prepa --local` : la base locale
+de Miniflare est indexée sur le `database_id`, et celui-ci a changé quand la
+base de production a été créée.
+
 ## Ce qui reste à faire
 
-**La mise en ligne**, dans cet ordre :
-
-1. ~~Créer la base D1 de production et appliquer les migrations.~~ Fait.
-2. **Poser les trois secrets Cloudflare**, par David et par lui seul :
-   `wrangler secret put CODE_COUREUR`, `CODE_ADMIN`, `SECRET_JETON`. Sans eux
-   la production démarre sans code valide. Ne pas les faire transiter par une
-   session d'assistant.
-3. **Poser les valeurs en Secret et jamais en Variable.** Une valeur posée en
-   Variable depuis le tableau de bord Cloudflare est effacée au déploiement
-   suivant : `wrangler deploy` remplace les variables du Worker par celles de
-   `wrangler.toml`. Le cas s'est produit le 19 juillet, l'accès encadrant a
-   disparu sans un message. `GET /api/sante` renvoie désormais
-   `{ ok, configure }` : `configure` à faux signale qu'il manque au moins une
-   des trois valeurs.
-4. **Déployer le Worker**, puis reporter son URL dans la constante `API` de
-   `js/prepa.js`, puis déployer la page. **Le Worker d'abord** : le déroulé
-   des séances se replie sur l'ancien paragraphe si le Worker déployé ne le
-   connaît pas encore, et l'inverse donnerait une page cassée.
-5. **Activer le rappel du samedi** : vérifier tridav00@gmail.com dans
-   Cloudflare Email Routing, puis décommenter le bloc `[[send_email]]` de
-   `wrangler.toml` et redéployer. Le code est déjà écrit et testé.
-6. **Fusionner `prepa-courses` dans `main`** et pousser, une fois la
-   production vérifiée.
+**Le rappel du samedi**, seul point en attente et non bloquant. Le code est
+écrit, testé et déployé, mais inerte : `envoyerRappel` rend `sans-binding` et le
+cron se termine normalement. Pour l'activer, vérifier tridav00@gmail.com dans
+Cloudflare Email Routing (lien de confirmation à cliquer par David), puis
+décommenter le bloc `[[send_email]]` de `wrangler.toml` et redéployer.
 
 ## Les points ouverts, à trancher par David
 
