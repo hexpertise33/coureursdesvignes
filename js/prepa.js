@@ -90,19 +90,19 @@
   /* ---------- Écran 2 : profil ---------- */
 
   var PROGRAMMES = [
-    { code: 'P1', nom: "10 km d'Izon", date: 'dimanche 27 septembre', duree: '9 semaines',
+    { code: 'P1', nom: "10 km d'Izon", date: 'dimanche 27 septembre', dateISO: '2026-09-27', duree: '9 semaines',
       prerequis: "Courir déjà environ 1 h 15 le dimanche sur terrain vallonné et viser moins d'une heure au 10 km.", izon: false },
-    { code: 'P2', nom: '10 km de Bordeaux', date: 'dimanche 8 novembre', duree: '15 semaines',
+    { code: 'P2', nom: '10 km de Bordeaux', date: 'dimanche 8 novembre', dateISO: '2026-11-08', duree: '15 semaines',
       prerequis: "Tenir déjà 1 h 15 de course le dimanche en terrain vallonné, et viser moins d'une heure sur 10 km.", izon: true },
-    { code: 'P3', nom: 'Semi-marathon de Bordeaux', date: 'dimanche 8 novembre', duree: '15 semaines',
+    { code: 'P3', nom: 'Semi-marathon de Bordeaux', date: 'dimanche 8 novembre', dateISO: '2026-11-08', duree: '15 semaines',
       prerequis: "Sortir déjà 1 h 15 le dimanche en terrain vallonné et boucler le 10 km en moins d'une heure. Le semi demande en plus d'accepter de monter jusqu'à 1 h 45 de course d'une traite.", izon: true },
-    { code: 'P4', nom: 'Marathon', date: 'dimanche 8 novembre', duree: '15 semaines',
+    { code: 'P4', nom: 'Marathon', date: 'dimanche 8 novembre', dateISO: '2026-11-08', duree: '15 semaines',
       prerequis: "Tenir déjà 1 h 15 le dimanche sur terrain vallonné et courir le 10 km en moins d'une heure. Le marathon demande en plus d'encaisser cinq heures de course par semaine au plus fort de la préparation, sortie de 2 h 30 comprise.", izon: true, variante: true },
-    { code: 'P5', nom: '10 km HOKA de Paris', date: 'dimanche 15 novembre', duree: '16 semaines',
+    { code: 'P5', nom: '10 km HOKA de Paris', date: 'dimanche 15 novembre', dateISO: '2026-11-15', duree: '16 semaines',
       prerequis: "Sortir déjà 1 h 15 le dimanche en terrain vallonné et passer sous l'heure sur un 10 km. Le 10 km d'Izon fait partie du programme.", izon: false },
     // P6 se court le même jour que le 10 km d'Izon : aucune course-test ne peut
     // s'y ajouter, d'où izon: false et l'absence de variante de course.
-    { code: 'P6', nom: "16 km d'Andernos", date: 'dimanche 27 septembre', duree: '9 semaines',
+    { code: 'P6', nom: "16 km d'Andernos", date: 'dimanche 27 septembre', dateISO: '2026-09-27', duree: '9 semaines',
       prerequis: "Courir déjà environ 1 h 15 le dimanche sur terrain vallonné et viser les 16 km d'une traite.", izon: false }
   ];
 
@@ -189,6 +189,83 @@
     '</details>';
   }
 
+  /* ---------- Bandeau de course et zones ---------- */
+
+  // Les zones sont servies par l'API, jamais redéfinies ici : une fourchette
+  // corrigée côté serveur doit changer partout d'un coup.
+  var zonesCache = null;
+  async function chargerZones() {
+    if (!zonesCache) {
+      var r = await appel('/api/zones');
+      zonesCache = r.zones || {};
+    }
+    return zonesCache;
+  }
+
+  function programmeCourant() {
+    return PROGRAMMES.filter(function (p) { return p.code === etat.programme; })[0] || {};
+  }
+
+  /** Nombre de jours qui séparent aujourd'hui du jour de course. */
+  function joursAvant(iso) {
+    var jour = 86400000;
+    var course = new Date(iso + 'T00:00:00+02:00').getTime();
+    var aujourdhui = new Date();
+    var minuit = Date.UTC(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate());
+    return Math.round((course - minuit) / jour);
+  }
+
+  function bandeauCourse() {
+    var p = programmeCourant();
+    if (!p.code) return '';
+    var j = p.dateISO ? joursAvant(p.dateISO) : null;
+    var compte = j === null ? '' : j > 1 ? 'J moins ' + j
+      : j === 1 ? "C'est demain" : j === 0 ? "C'est aujourd'hui" : 'Course passée';
+    return '<section class="prepa-course">' +
+      '<span class="eyebrow">Ton objectif</span>' +
+      '<h2 class="prepa-course__nom">' + echapper(p.nom) + '</h2>' +
+      '<p class="prepa-course__date">' + echapper(p.date) + ' 2026' +
+        (compte ? ' <strong class="prepa-course__compte">' + echapper(compte) + '</strong>' : '') + '</p>' +
+    '</section>';
+  }
+
+  /** FC max retenue : celle saisie par le coureur, sinon estimée par l'âge. */
+  function fcMaxRetenue() {
+    if (etat.fcMax) return Number(etat.fcMax);
+    if (etat.age) return Math.round(208 - 0.7 * Number(etat.age));
+    return 0;
+  }
+
+  function legendeZones(zones) {
+    var fcm = fcMaxRetenue();
+    var lignes = Object.keys(zones).map(function (k) {
+      var z = zones[k];
+      var bpm = fcm
+        ? '<td class="prepa-chiffre prepa-zone__bpm">' + Math.round(fcm * z.fcMin / 100) + ' à ' + Math.round(fcm * z.fcMax / 100) + ' bpm</td>'
+        : '';
+      return '<tr>' +
+        '<td><span class="prepa-puce zone-' + k + '">' + k + '</span></td>' +
+        '<td class="prepa-zone__nom">' + echapper(z.nom) + '</td>' +
+        '<td class="prepa-chiffre">' + z.fcMin + ' à ' + z.fcMax + ' % FC max</td>' +
+        bpm +
+        '<td class="prepa-zone__sensation">' + echapper(z.sensation) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    return '<details class="prepa-carte prepa-zones" open>' +
+      '<summary><strong>Les zones d\'intensité</strong> et ce qu\'elles veulent dire</summary>' +
+      '<p class="prepa-zones__intro">Toutes les séances sont écrites en zones, jamais en allure : chacun court à son rythme, dans la bonne zone. Le pourcentage se calcule sur ta fréquence cardiaque maximale.</p>' +
+      '<table class="prepa-table"><tbody>' + lignes + '</tbody></table>' +
+      (fcm
+        ? '<p class="prepa-zones__fcm">Calculé sur une FC max de <strong class="prepa-chiffre">' + fcm + ' bpm</strong>. <button class="prepa-lien" id="changer-fcm">Modifier</button></p>'
+        : '<div class="prepa-zones__saisie">' +
+            '<label class="prepa-champ prepa-champ--court"><span>Ton âge</span><input type="number" id="champ-age-rapide" min="10" max="99" /></label>' +
+            '<label class="prepa-champ prepa-champ--court"><span>Ou ta FC max</span><input type="number" id="champ-fcmax-rapide" min="120" max="230" placeholder="si connue" /></label>' +
+            '<button class="btn btn--outline-vine" id="calculer-fcm">Voir mes battements</button>' +
+          '</div>') +
+    '</details>';
+  }
+
   /* ---------- Écran 3 : ma semaine ---------- */
 
   async function voirSemaine() {
@@ -234,8 +311,10 @@
 
     var faites = s.seances.filter(function (x) { return x.code !== 'RENFO' && validations[x.id]; }).length;
     var total = s.seances.filter(function (x) { return x.code !== 'RENFO'; }).length;
+    var zones = await chargerZones();
 
     el.innerHTML =
+      bandeauCourse() +
       (apercu ? '<div class="prepa-message">Aperçu encadrant. Cette semaine n\'est pas encore visible par les coureurs, elle paraîtra ' + echapper(quandDisponible(s.disponibleLe || new Date().toISOString())).replace('Disponible ', '') + '.</div>' : '') +
       '<div class="prepa-entete">' +
         '<div>' +
@@ -245,7 +324,8 @@
         '</div>' +
         '<div class="prepa-compteur"><strong>' + faites + '</strong><span>sur ' + total + ' séances</span></div>' +
       '</div>' +
-      s.seances.map(function (x) { return rendreSeance(x, s.numero, validations[x.id]); }).join('');
+      s.seances.map(function (x) { return rendreSeance(x, s.numero, validations[x.id]); }).join('') +
+      legendeZones(zones);
   }
 
   /* ---------- Actions de validation ---------- */
@@ -278,6 +358,25 @@
       voirSemaine();
     }
 
+    if (b.id === 'calculer-fcm') {
+      var age = Number(($('champ-age-rapide') || {}).value);
+      var fcm = Number(($('champ-fcmax-rapide') || {}).value);
+      if (!age && !fcm) { dire('Saisis ton âge ou ta FC max.', 'erreur'); return; }
+      etat.age = age || null;
+      etat.fcMax = fcm || null;
+      sauver();
+      voirSemaine();
+      return;
+    }
+
+    if (b.id === 'changer-fcm') {
+      etat.age = null;
+      etat.fcMax = null;
+      sauver();
+      voirSemaine();
+      return;
+    }
+
     if (b.classList.contains('prepa-note__ok')) {
       var zone = b.parentNode.querySelector('textarea');
       await appel('/api/validation', {
@@ -308,6 +407,7 @@
     var faites = r.semaineCourante || 0;
 
     el.innerHTML =
+      bandeauCourse() +
       '<div class="prepa-carte">' +
         '<span class="eyebrow">' + echapper(r.programme.nom) + '</span>' +
         '<h2>' + total + ' semaines</h2>' +

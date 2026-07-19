@@ -786,3 +786,67 @@ p { margin: 0 0 1rem; }
 .prepa-onglets[hidden], .prepa-carte[hidden], .prepa-ligne[hidden],
 .prepa-case[hidden], .prepa-message[hidden], .prepa-seance[hidden] { display: none !important; }
 .prepa-apercu { color: var(--wine); font-weight: 700; }
+
+/* ---------- Bandeau de course ---------- */
+.prepa-course {
+  background: var(--vine-deep);
+  color: var(--chalk);
+  border-radius: var(--r-lg);
+  padding: clamp(1.5rem, 4vw, 2.6rem);
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.prepa-course .eyebrow { color: var(--shoot); }
+.prepa-course__nom {
+  font-family: var(--f-display);
+  font-size: clamp(1.9rem, 6vw, 3.4rem);
+  line-height: 1.02;
+  color: var(--chalk);
+  margin: .25em 0 .3em;
+  letter-spacing: -.02em;
+}
+.prepa-course__date {
+  font-family: var(--f-mono);
+  font-size: .95rem;
+  color: rgba(250, 248, 241, .78);
+  margin: 0;
+  display: flex;
+  gap: .9rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.prepa-course__compte {
+  background: var(--shoot);
+  color: var(--vine-deep);
+  padding: .22rem .8rem;
+  border-radius: var(--r-pill);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+/* ---------- Légende des zones ---------- */
+.prepa-zones summary {
+  cursor: pointer;
+  font-family: var(--f-body);
+  font-size: 1.02rem;
+  margin-bottom: .3rem;
+}
+.prepa-zones summary strong { font-family: var(--f-display); }
+.prepa-zones__intro { color: var(--ink-soft); font-size: .93rem; margin: .8rem 0 0; }
+.prepa-zones .prepa-table td { vertical-align: middle; }
+.prepa-zone__nom { font-weight: 600; white-space: nowrap; }
+.prepa-zone__bpm { color: var(--vine); font-weight: 700; white-space: nowrap; }
+.prepa-zone__sensation { color: var(--ink-soft); font-size: .9rem; }
+.prepa-zones__saisie { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-top: 1rem; }
+.prepa-zones__fcm { margin-top: 1rem; color: var(--ink-soft); font-size: .92rem; }
+.prepa-lien {
+  background: none; border: none; padding: 0;
+  font-family: var(--f-body); font-size: inherit; color: var(--vine);
+  text-decoration: underline; cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .prepa-zone__sensation { display: none; }
+  .prepa-course__date { font-size: .85rem; }
+}
