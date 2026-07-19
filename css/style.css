@@ -771,7 +771,30 @@ p { margin: 0 0 1rem; }
 @media (max-width: 640px) {
   .prepa-entete { flex-direction: column; }
   .prepa-compteur { text-align: left; }
-  .prepa-table { display: block; overflow-x: auto; }
+  /* Un tableau en display:block perd sa mise en page interne et se comprime
+     au lieu de defiler : la regle d'origine declarait l'intention sans que
+     rien ne l'applique. « 50 a 60 % » s'empilait sur quatre lignes et l'entete
+     « % FC max » sur trois. La largeur minimale rend le defilement reel, et
+     les colonnes retrouvent une largeur lisible. */
+  .prepa-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .prepa-table thead, .prepa-table tbody { display: table; width: 100%; min-width: 30rem; }
+  .prepa-table th, .prepa-table td { white-space: nowrap; }
+  /* Sauf la derniere colonne, qui porte les phrases et doit se replier. */
+  .prepa-table th:last-child, .prepa-table td:last-child { white-space: normal; min-width: 12rem; }
+
+  /* Un tableau qui defile sans le dire se lit comme un tableau tronque : on
+     voit « 50 a 6... » et on croit a un defaut d'affichage. Ces quatre
+     degrades posent une ombre sur le bord qui cache encore du contenu, et
+     elle disparait quand on a atteint ce bord. Les deux premiers voyagent
+     avec le contenu (attachement local), les deux autres restent colles au
+     cadre : c'est leur superposition qui fait l'effet. */
+  .prepa-table {
+    background:
+      linear-gradient(to right, var(--chalk) 30%, rgba(250, 248, 241, 0)) left center / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, var(--chalk) 30%, rgba(250, 248, 241, 0)) right center / 2.5rem 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgba(26, 34, 28, .14), rgba(26, 34, 28, 0)) left center / .9rem 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgba(26, 34, 28, .14), rgba(26, 34, 28, 0)) right center / .9rem 100% no-repeat scroll;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .prepa-onglet, .prepa-programme, .prepa-ressenti__btn { transition: none; }
@@ -1198,3 +1221,23 @@ p { margin: 0 0 1rem; }
 }
 .prepa-choisie strong { color: var(--ink); }
 
+
+/* =========================================================
+   PRÉPA : CIBLES TACTILES
+   Un doigt n'est pas un curseur. Les liens d'action de la page
+   faisaient 18 px de haut, ce qui se rate une fois sur deux sur un
+   téléphone. On ne grossit pas le texte, on élargit la zone qu'on
+   peut toucher, ce qui ne change rien à l'apparence.
+   ========================================================= */
+@media (max-width: 640px) {
+  .prepa-lien {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .prepa-barre__select { min-height: 40px; }
+  .prepa-onglet { min-height: 42px; }
+  /* Les boutons de ressenti se touchent séance après séance, souvent en
+     tenue et parfois avec les mains froides. */
+  .prepa-ressenti__btn { min-height: 42px; }
+}
