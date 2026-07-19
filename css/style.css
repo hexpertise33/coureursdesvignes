@@ -727,11 +727,6 @@ p { margin: 0 0 1rem; }
   padding: .18rem .62rem; border-radius: var(--r-pill);
   background: var(--zone, var(--vine)); color: var(--chalk);
 }
-.zone-Z1 { --zone: var(--muted); }
-.zone-Z2 { --zone: var(--vine); }
-.zone-Z3 { --zone: var(--shoot-dark); }
-.zone-Z4 { --zone: var(--wine); }
-.zone-Z5 { --zone: var(--wine-2); }
 
 .prepa-ressenti { display: flex; gap: .4rem; flex-wrap: wrap; }
 .prepa-ressenti__btn {
@@ -914,3 +909,120 @@ p { margin: 0 0 1rem; }
 .prepa-adapt--vite { border-left-color: var(--shoot-dark); }
 .prepa-adapt--dur { border-left-color: var(--wine); }
 .prepa-adapt .btn { padding: .6rem 1.2rem; font-size: .92rem; }
+
+/* =========================================================
+   PRÉPA : LA VIGNE QUI TOURNE
+   La préparation court de juillet à novembre, le moment où la vigne
+   passe du vert à l'or puis au bordeaux. Cette bascule devient le
+   langage de l'intensité : plus l'effort monte, plus la couleur mûrit.
+   ========================================================= */
+:root {
+  --sauge: #8fa887;      /* Z1, la feuille au printemps */
+  --or-vigne: #d9a441;   /* Z3, la feuille qui tourne */
+  --or-vigne-2: #b8862c;
+  --terre: #b8663a;      /* Z4, le sol de septembre */
+  --terre-2: #96502c;
+}
+
+/* La rampe d'intensité, du vert tendre à la vendange. */
+.zone-Z1 { --zone: var(--sauge);     --zone-tint: rgba(143, 168, 135, .10); }
+.zone-Z2 { --zone: var(--vine);      --zone-tint: rgba(46, 107, 62, .09); }
+.zone-Z3 { --zone: var(--or-vigne-2); --zone-tint: rgba(217, 164, 65, .16); }
+.zone-Z4 { --zone: var(--terre);     --zone-tint: rgba(184, 102, 58, .13); }
+.zone-Z5 { --zone: var(--wine);      --zone-tint: rgba(110, 26, 42, .10); }
+
+/* ---------- Les séances portent leur couleur ---------- */
+.prepa-seance {
+  border-left-width: 6px;
+  position: relative;
+}
+.prepa-seance.est-validee {
+  border-left-color: var(--shoot-dark);
+}
+.prepa-seance__tete { gap: .65rem; }
+.prepa-seance__tete h4 { color: var(--zone, var(--ink)); }
+.prepa-seance.est-validee .prepa-seance__tete h4 { color: var(--vine-2); }
+
+.prepa-glyphe {
+  width: 30px; height: 30px; flex: 0 0 30px;
+  color: var(--zone, var(--vine));
+}
+.prepa-glyphe svg { width: 100%; height: 100%; display: block; }
+
+/* ---------- L'en-tête de semaine s'allège ----------
+   Deux blocs vert foncé empilés écrasaient la page : le bandeau de
+   course reste le seul ancrage sombre, la semaine passe en clair et
+   prend la couleur de sa phase. */
+.prepa-entete {
+  background: var(--chalk);
+  color: var(--ink);
+  border-top: 6px solid var(--phase, var(--vine));
+  box-shadow: var(--sh);
+  align-items: center;
+}
+.prepa-entete h2 { color: var(--ink); }
+.prepa-entete .eyebrow { color: var(--phase, var(--vine)); }
+.prepa-entete .prepa-intention { color: var(--ink-soft); }
+
+.phase-bloc1 { --phase: var(--vine); }
+.phase-bloc2 { --phase: var(--or-vigne-2); }
+.phase-bloc3 { --phase: var(--terre); }
+.phase-allegee { --phase: var(--sauge); }
+.phase-recuperation-active { --phase: var(--sauge); }
+.phase-affutage { --phase: var(--wine); }
+.phase-recuperation { --phase: var(--muted); }
+
+/* ---------- L'anneau de progression remplace le chiffre nu ---------- */
+.prepa-anneau { position: relative; width: 108px; height: 108px; flex: 0 0 108px; }
+.prepa-anneau svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.prepa-anneau__fond { fill: none; stroke: var(--limestone-2); stroke-width: 9; }
+.prepa-anneau__arc {
+  fill: none; stroke: var(--phase, var(--vine)); stroke-width: 9; stroke-linecap: round;
+  transition: stroke-dasharray .6s var(--ease);
+}
+.prepa-anneau__texte {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+  font-family: var(--f-mono); line-height: 1.1;
+}
+.prepa-anneau__texte strong { font-size: 1.9rem; color: var(--phase, var(--vine)); }
+.prepa-anneau__texte span { font-size: .68rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { .prepa-anneau__arc { transition: none; } }
+
+/* ---------- Le bandeau de course prend la photo ----------
+   Voile global léger pour que la vigne reste lisible, contraste obtenu
+   par un dégradé local sous le texte plutôt qu'en noircissant l'image. */
+.prepa-course {
+  background:
+    linear-gradient(100deg, rgba(20, 51, 30, .88) 0%, rgba(20, 51, 30, .72) 45%, rgba(20, 51, 30, .28) 100%),
+    linear-gradient(rgba(20, 51, 30, .10), rgba(20, 51, 30, .10)),
+    url('../assets/photo-entrainement.jpg') center 62% / cover no-repeat;
+  min-height: 210px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.prepa-course__nom { text-shadow: 0 2px 18px rgba(15, 39, 23, .45); }
+
+/* ---------- Le lavis de zone tient toute la carte ----------
+   Une couleur ne peut pas se superposer a une autre en background : la
+   teinte passe par un degrade plat, seule facon d'empiler un calque. */
+.prepa-seance {
+  background: linear-gradient(var(--zone-tint, transparent), var(--zone-tint, transparent)), var(--chalk);
+}
+.prepa-seance.est-validee {
+  background: linear-gradient(rgba(169, 206, 60, .18), rgba(169, 206, 60, .18)), var(--chalk);
+}
+
+/* ---------- Le bandeau d'allure prend la couleur de la séance ---------- */
+.prepa-seance__allure {
+  background: var(--chalk);
+  border: 1px solid var(--zone, var(--line));
+  border-left: 4px solid var(--zone, var(--vine));
+}
+.prepa-seance__allure-titre { color: var(--zone, var(--muted)); font-weight: 700; }
+
+/* ---------- Les onglets respirent la même rampe ---------- */
+.prepa-onglet.is-active { background: var(--vine-deep); border-color: var(--vine-deep); }
+
+@media (max-width: 640px) {
+  .prepa-course { min-height: 170px; }
+}

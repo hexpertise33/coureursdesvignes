@@ -170,6 +170,46 @@
     window.scrollTo(0, 0);
   });
 
+  /* ---------- Glyphes de séance ----------
+     Chaque type de séance a son tracé, dessiné dans le même trait que les
+     parcours du site. La forme dit l'effort avant même qu'on lise le titre :
+     une ondulation douce pour l'endurance, un dénivelé pour la côte, une
+     dent de scie pour le fractionné. */
+
+  var GLYPHES = {
+    EF: '<path d="M2 16c4 0 4-5 8-5s4 5 8 5 4-5 8-5"/>',
+    SL: '<path d="M2 20c5 0 6-9 12-9s7 9 12 9"/><circle cx="22" cy="7" r="3.2" fill="currentColor" stroke="none" opacity=".55"/>',
+    TEMPO: '<path d="M4 22V15"/><path d="M11 22V11"/><path d="M18 22V7"/><path d="M25 22V13"/>',
+    SEUIL: '<path d="M2 21c6 0 8-3 11-9s5-6 13-6"/><path d="M2 14h24" stroke-dasharray="3 3" opacity=".45"/>',
+    VMA: '<path d="M3 20l5-11 5 8 5-13 5 16 4-7"/>',
+    RECUP: '<path d="M2 15h6l3-4 4 8 3-4h8"/>',
+    RENFO: '<rect x="3" y="11" width="5" height="8" rx="1.6"/><rect x="20" y="11" width="5" height="8" rx="1.6"/><path d="M8 15h12"/>',
+    COURSE: '<rect x="5" y="5" width="18" height="18" rx="2.5"/><path d="M10 12h8M10 17h5"/>'
+  };
+
+  function glyphe(code) {
+    var d = GLYPHES[code] || GLYPHES.EF;
+    return '<span class="prepa-glyphe" aria-hidden="true">' +
+      '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round">' + d + '</svg></span>';
+  }
+
+  /** Anneau de progression : la part de séances faites dans la semaine. */
+  function anneau(faites, total) {
+    var r = 46;
+    var circonference = 2 * Math.PI * r;
+    var part = total ? faites / total : 0;
+    return '<div class="prepa-anneau">' +
+      '<svg viewBox="0 0 108 108" aria-hidden="true">' +
+        '<circle class="prepa-anneau__fond" cx="54" cy="54" r="' + r + '"/>' +
+        '<circle class="prepa-anneau__arc" cx="54" cy="54" r="' + r + '" ' +
+          'stroke-dasharray="' + (part * circonference).toFixed(1) + ' ' + circonference.toFixed(1) + '"/>' +
+      '</svg>' +
+      '<span class="prepa-anneau__texte"><strong>' + faites + '</strong>' +
+        '<span>sur ' + total + '</span></span>' +
+    '</div>';
+  }
+
   /* ---------- Séances ---------- */
 
   /**
@@ -205,6 +245,7 @@
     var zone = s.zone || 'Z2';
     return '<article class="prepa-seance zone-' + echapper(zone) + (faite ? ' est-validee' : '') + '" data-seance="' + echapper(s.id) + '">' +
       '<header class="prepa-seance__tete">' +
+        glyphe(s.code) +
         '<span class="prepa-puce">' + echapper(s.zone || (s.code === 'RENFO' ? 'RENFO' : 'COURSE')) + '</span>' +
         '<h4>' + echapper(s.titre) + '</h4>' +
         '<span class="prepa-seance__meta">' + echapper(s.duree) + ' min</span>' +
@@ -672,13 +713,13 @@
       bandeauCourse() +
       banniereAdaptation(verdict) +
       (apercu ? '<div class="prepa-message">Aperçu encadrant. Cette semaine n\'est pas encore visible par les coureurs, elle paraîtra ' + echapper(quandDisponible(s.disponibleLe || new Date().toISOString())).replace('Disponible ', '') + '.</div>' : '') +
-      '<div class="prepa-entete">' +
+      '<div class="prepa-entete phase-' + echapper(s.phase) + '">' +
         '<div>' +
           '<span class="eyebrow">Semaine ' + s.numero + ' · ' + echapper(PHASES[s.phase] || s.phase) + '</span>' +
           '<h2>' + echapper(s.titre) + '</h2>' +
           '<p class="prepa-intention">' + echapper(s.intention) + '</p>' +
         '</div>' +
-        '<div class="prepa-compteur"><strong>' + faites + '</strong><span>sur ' + total + ' séances</span></div>' +
+        anneau(faites, total) +
       '</div>' +
       s.seances.map(function (x) { return rendreSeance(x, s.numero, validations[x.id]); }).join('') +
       legendeZones(zones);
