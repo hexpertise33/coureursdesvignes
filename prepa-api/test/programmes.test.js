@@ -486,21 +486,56 @@ describe("P1, 10 km d'Izon", () => {
         observees.push(seance.duree);
       }
     }
-    expect(observees).toEqual([55, 60, 65, 68, 68, 55, 40]);
+    // Les durées du second bloc et de la semaine de course ont bougé de
+    // quelques minutes avec le passage au fractionné en distance : une séance
+    // en distance ne tombe juste que sur certaines durées déclarées (5 fois
+    // 1000 m à 4 min plus 4 fois 4 min de récupération plus 30 min
+    // d'échauffement et de retour font 66 min, pas 65). L'endurance
+    // fondamentale de la semaine a absorbé l'écart, le barème de volumes est
+    // inchangé et vérifié plus haut.
+    expect(observees).toEqual([55, 60, 66, 69, 72, 55, 37]);
   });
 
   // Convention impérative : N répétitions donnent N-1 récupérations, et la
   // somme des segments décrits égale exactement la durée déclarée. Même
   // contrôle que sur P4 et P5.
+  //
+  // Le fractionné en distance ne desserre pas cette règle, il la rend
+  // seulement moins évidente : un 1000 m ne dure pas le même temps pour tout
+  // le monde. La séance donne donc un repère de durée par répétition, et c'est
+  // ce repère qui est compté ici. Le calcul se fait en secondes pour absorber
+  // les repères du type « 1 min 40 » sans arrondi : un repère qui ne
+  // retomberait pas sur un compte juste (10 fois 400 m à 1 min 40, soit
+  // 16 min 40 s) fait échouer ce test, et c'est voulu, c'est ce qui force le
+  // choix du nombre de répétitions.
   it('réconcilie exactement la durée déclarée avec les segments décrits', () => {
     const intervalles =
       /(\d+) min[^.]*?en Z2, puis (\d+) fois (\d+) min en Z[1-5] avec (\d+) min[^.]*?entre (?:chaque|les deux), puis (\d+) min/;
+    // La distance est reprise par référence arrière (\3) dans le repère : une
+    // séance ne peut pas annoncer des 1000 m et chiffrer des 400 m.
+    const distances =
+      /(\d+) min[^.]*?en Z2, puis (\d+) fois (\d+) m en Z[1-5], en comptant environ (\d+) min(?: (\d+))? par \3 m, avec (\d+) min de trottinement en Z1 entre chaque, puis (\d+) min/;
     const lignes =
       /(\d+) min[^.]*? puis (\d+) lignes droites de (\d+) s en Z[45] avec 1 min de marche entre chaque, soit (\d+) min, puis (\d+) min/;
 
     let intervallesVerifies = 0;
+    let distancesVerifiees = 0;
     let lignesVerifiees = 0;
     for (const seance of P1.semainesContenu.flatMap((s) => s.seances)) {
+      const d = seance.description.match(distances);
+      if (d) {
+        const ech = Number(d[1]);
+        const n = Number(d[2]);
+        const repereSecondes = Number(d[4]) * 60 + Number(d[5] ?? 0);
+        const recuperation = Number(d[6]);
+        const retour = Number(d[7]);
+        expect(
+          ech * 60 + n * repereSecondes + (n - 1) * recuperation * 60 + retour * 60,
+          `${seance.code} ${seance.duree} min : segments décrits incohérents dans « ${seance.description} »`,
+        ).toBe(seance.duree * 60);
+        distancesVerifiees++;
+        continue;
+      }
       const i = seance.description.match(intervalles);
       if (i) {
         const [, ech, n, duree, recuperation, retour] = i.map(Number);
@@ -524,9 +559,102 @@ describe("P1, 10 km d'Izon", () => {
         lignesVerifiees++;
       }
     }
-    // Ancres de sécurité : si le parsing cassait, la boucle ne vérifierait rien.
-    expect(intervallesVerifies).toBe(7);
+    // Ancres de sécurité : si le parsing cassait, la boucle ne vérifierait
+    // rien. Les 7 séances de qualité se répartissent en 2 séances en durée
+    // (les tempos en Z3 des semaines 2 et 3) et 5 en distance.
+    expect(intervallesVerifies).toBe(2);
+    expect(distancesVerifiees).toBe(5);
+    expect(intervallesVerifies + distancesVerifiees).toBe(
+      P1.semainesContenu.flatMap((s) => s.seances).filter((x) => ['TEMPO', 'SEUIL', 'VMA'].includes(x.code)).length,
+    );
     expect(lignesVerifiees).toBe(4);
+  });
+
+  // Manque signalé par l'encadrant : le programme ne connaissait que le
+  // fractionné en durée alors que, sur 10 km, l'essentiel du travail de
+  // qualité se repère en mètres (« l'équivalent des 5 fois 1000, 6 fois 1000,
+  // 10 fois 400 m, 12 fois 200 m »). Ces tests verrouillent le partage retenu
+  // pour qu'une réécriture ultérieure ne ramène pas tout en minutes.
+  describe('fractionné en distance', () => {
+    const QUALITE = new Set(['TEMPO', 'SEUIL', 'VMA']);
+    const seancesQualite = P1.semainesContenu.flatMap((s) =>
+      s.seances.filter((x) => QUALITE.has(x.code)).map((x) => ({ semaine: s.numero, phase: s.phase, seance: x })),
+    );
+    const enDistance = ({ seance }) => /\d+ fois \d+ m en Z[1-5]/.test(seance.description);
+    const repetitions = (description) => {
+      const m = description.match(/(\d+) fois (\d+) m en Z([1-5])/);
+      return m ? { n: Number(m[1]), metres: Number(m[2]), zone: `Z${m[3]}` } : null;
+    };
+
+    it('travaille bien en distance et pas seulement en durée', () => {
+      const distance = seancesQualite.filter(enDistance);
+      expect(
+        distance.length,
+        'Aucune séance de qualité en distance : le manque signalé par l\'encadrant est revenu.',
+      ).toBeGreaterThanOrEqual(4);
+      // Le travail soutenu en Z3 reste en minutes : un bloc de tempo ne se
+      // pense pas en mètres.
+      for (const { seance } of seancesQualite.filter((q) => q.seance.zone === 'Z3')) {
+        expect(
+          enDistance({ seance }),
+          `P1 ${seance.code} : le travail en Z3 doit rester en durée, pas en distance.`,
+        ).toBe(false);
+      }
+    });
+
+    it('place les séances de 1000 m en Z4 dans le second bloc, jamais avant', () => {
+      const mille = seancesQualite.filter((q) => repetitions(q.seance.description)?.metres === 1000);
+      // Séances reines d'une prépa 10 km : elles doivent exister.
+      expect(mille.length).toBeGreaterThanOrEqual(2);
+      for (const { semaine, phase, seance } of mille) {
+        expect(seance.zone, `P1 S${semaine} : un 1000 m se court en Z4.`).toBe('Z4');
+        expect(
+          ['bloc2', 'affutage'].includes(phase),
+          `P1 S${semaine} : séance de 1000 m en phase "${phase}", elle doit tomber dans le second bloc ou après.`,
+        ).toBe(true);
+      }
+      const premierBloc2 = Math.min(
+        ...P1.semainesContenu.filter((s) => s.phase === 'bloc2').map((s) => s.numero),
+      );
+      expect(Math.min(...mille.map((q) => q.semaine))).toBe(premierBloc2);
+      // Progression du second bloc : 5 fois 1000 m puis 6 fois 1000 m.
+      const dansBloc2 = mille
+        .filter((q) => q.phase === 'bloc2')
+        .sort((a, b) => a.semaine - b.semaine)
+        .map((q) => repetitions(q.seance.description).n);
+      expect(dansBloc2).toEqual([5, 6]);
+    });
+
+    it('réserve le travail court et rapide en Z5 à la distance', () => {
+      const rapides = seancesQualite.filter((q) => q.seance.zone === 'Z5');
+      expect(rapides.length).toBeGreaterThanOrEqual(1);
+      for (const q of rapides) {
+        const r = repetitions(q.seance.description);
+        expect(r, `P1 S${q.semaine} : la séance en Z5 doit être décrite en distance.`).not.toBeNull();
+        expect(r.zone).toBe('Z5');
+        expect(r.metres).toBeLessThanOrEqual(500);
+      }
+    });
+
+    it('présente le repère de durée comme une estimation et jamais comme une allure imposée', () => {
+      const distance = seancesQualite.filter(enDistance);
+      // Chaque séance en distance porte son repère, sinon le calcul de durée
+      // ne tomberait pas juste.
+      for (const { semaine, seance } of distance) {
+        expect(
+          seance.description,
+          `P1 S${semaine} : séance en distance sans repère de durée par répétition.`,
+        ).toMatch(/en comptant environ \d+ min( \d+)? par \d+ m/);
+      }
+      // Et au moins une le dit noir sur blanc, pour qu'un coureur plus lent ne
+      // se croie pas en faute.
+      const textes = distance.map((q) => q.seance.description).join(' ');
+      expect(textes).toMatch(/estimation/);
+      expect(textes).toMatch(/jamais une allure/);
+      // La règle absolue du projet tient toujours.
+      expect(textes).not.toMatch(/min\/km/);
+      expect(textes).not.toMatch(/km\/h/);
+    });
   });
 
   // Décision de l'encadrant : la Z3 est la marche intermédiaire entre
