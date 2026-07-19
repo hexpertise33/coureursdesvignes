@@ -6,8 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "prepa"
-# Valeur provisoire, la vraie base sera créée et l'identifiant reporté ici a la tâche 16 (mise en ligne).
-database_id = "local-dev-placeholder"
+database_id = "65ca6d93-b8e0-47be-bbea-e75a97e75829"
 migrations_dir = "migrations"
 
 [triggers]
