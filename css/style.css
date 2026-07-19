@@ -1093,3 +1093,101 @@ p { margin: 0 0 1rem; }
   .prepa-deroule__quoi { grid-column: 1 / -1; margin-top: .3rem; }
   .prepa-deroule__env { display: inline; font-size: .72rem; }
 }
+
+/* =========================================================
+   PRÉPA : LA BARRE DE SESSION
+   Qui est connecté, quelle prépa on lit, et par où sortir.
+   ========================================================= */
+/* L'attribut hidden pose display:none via la feuille du navigateur, qu'une
+   regle display de la page ecrase silencieusement : sans cette ligne, la barre
+   masquee garde sa place et laisse un bandeau vide au-dessus du catalogue. */
+.prepa-barre[hidden] { display: none; }
+
+.prepa-barre {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.2rem;
+  margin: -1rem 0 1.6rem; padding: .6rem .9rem;
+  background: var(--limestone-2); border-radius: var(--r-sm);
+  font-size: .9rem; color: var(--ink-soft);
+}
+.prepa-barre__qui { display: inline-flex; align-items: center; gap: .5rem; }
+.prepa-barre__role {
+  font-family: var(--f-mono); font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: .16rem .5rem; border-radius: var(--r-pill);
+  background: var(--vine-deep); color: var(--chalk);
+}
+.prepa-barre__bloc { display: inline-flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.prepa-barre__etiquette {
+  font-family: var(--f-mono); font-size: .68rem; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted);
+}
+.prepa-barre__select {
+  font-family: var(--f-body); font-size: .88rem; color: var(--ink);
+  padding: .3rem .6rem; border-radius: var(--r-sm);
+  border: 1px solid var(--line); background: var(--chalk); cursor: pointer;
+}
+.prepa-barre__select:hover { border-color: var(--vine); }
+.prepa-barre__izon { display: inline-flex; align-items: center; gap: .35rem; font-size: .86rem; }
+
+/* La sortie est poussée à droite : elle se trouve toujours au même endroit,
+   sans jamais tomber sous la main au moment de choisir une prépa. */
+.prepa-barre__sortie { margin-left: auto; }
+
+@media (max-width: 620px) {
+  .prepa-barre { gap: .5rem .8rem; }
+  /* Sur un téléphone, « auto » rejetterait la sortie seule sur une ligne en
+     laissant un grand vide : elle reprend sa place dans le flux. */
+  .prepa-barre__sortie { margin-left: 0; }
+  .prepa-barre__select { max-width: 100%; }
+}
+
+/* =========================================================
+   PRÉPA : LE CATALOGUE DES COURSES
+   La porte d'entrée, visible sans code. Elle dit ce que le club
+   prépare, jamais ce que contient une séance.
+   ========================================================= */
+.prepa-carte--intro { margin-bottom: 1.5rem; }
+.prepa-reprise {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
+  justify-content: space-between; margin-bottom: 1.5rem;
+  border-left: 5px solid var(--shoot);
+}
+.prepa-reprise p { margin: 0; color: var(--ink-soft); }
+
+.prepa-catalogue {
+  display: grid; gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+.prepa-course-carte {
+  display: flex; flex-direction: column; gap: .55rem;
+  background: var(--chalk); border: 1px solid var(--line);
+  border-left: 5px solid var(--vine);
+  border-radius: var(--r); padding: 1.3rem 1.4rem;
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.prepa-course-carte:hover { border-color: var(--vine); box-shadow: var(--sh-sm); }
+.prepa-course-carte h3 { margin: 0; font-family: var(--f-display); font-size: 1.25rem; }
+.prepa-course-carte__meta {
+  margin: 0; font-family: var(--f-mono); font-size: .82rem; color: var(--muted);
+}
+.prepa-course-carte__resume { margin: .2rem 0 0; color: var(--ink-soft); line-height: 1.55; }
+.prepa-course-carte__profil,
+.prepa-course-carte__prerequis {
+  margin: 0; font-size: .89rem; color: var(--ink-soft); line-height: 1.5;
+}
+.prepa-course-carte__prerequis { font-style: italic; }
+/* Le bouton est poussé en bas : dans une grille, six cartes de hauteurs
+   différentes alignent malgré tout leur appel à l'action. */
+.prepa-course-carte .btn { margin-top: auto; align-self: flex-start; }
+
+/* Rappel de la course choisie, sur l'écran du code et celui de l'identité. */
+.prepa-choisie {
+  padding: .6rem .9rem; margin: 0 0 1rem;
+  background: var(--limestone-2); border-radius: var(--r-sm);
+  font-size: .92rem; color: var(--ink-soft);
+}
+.prepa-choisie strong { color: var(--ink); }
+
+@media (max-width: 640px) {
+  .prepa-catalogue { grid-template-columns: 1fr; }
+}

@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
-import { creerJeton, verifierJeton, roleDepuisRequete, debitDepasse, cookieJeton, DUREE_JETON } from '../src/auth.js';
+import { creerJeton, verifierJeton, roleDepuisRequete, debitDepasse, cookieJeton, cookieEfface, DUREE_JETON } from '../src/auth.js';
 import { instantPublication, lundiDeLaSemaine } from '../src/calendrier.js';
 import { NB_SEMAINES_MAX } from '../src/admin.js';
 
@@ -178,6 +178,34 @@ describe('cookie du jeton', () => {
     expect(cookie).toContain('SameSite=Lax');
     expect(cookie).toContain('Path=/');
     expect(cookie).toContain('Max-Age=3600');
+  });
+});
+
+// Le cookie est HttpOnly : la page ne peut pas l'effacer, seul le serveur le
+// peut. Un navigateur n'efface un cookie que si le Set-Cookie d'effacement
+// porte exactement les memes attributs que celui qui l'a pose. Une seule
+// divergence et la session survit sans que rien ne le signale, ce qui est le
+// pire des cas pour une deconnexion : l'utilisateur se croit sorti.
+describe('effacement du cookie', () => {
+  it('reprend les attributs de cookieJeton, Max-Age mis a part', () => {
+    const pose = cookieJeton('role.exp.sig', 60000);
+    const efface = cookieEfface();
+    const attributs = (c) => c.split(';').slice(1).map((x) => x.trim())
+      .filter((x) => !x.startsWith('Max-Age'));
+    expect(attributs(efface)).toEqual(attributs(pose));
+  });
+
+  it('vide la valeur et met Max-Age a zero', () => {
+    const c = cookieEfface();
+    expect(c.startsWith('prepa=;')).toBe(true);
+    expect(c).toContain('Max-Age=0');
+  });
+
+  it('reste HttpOnly et Secure, pour ne pas devenir lisible en s\'effacant', () => {
+    const c = cookieEfface();
+    expect(c).toContain('HttpOnly');
+    expect(c).toContain('Secure');
+    expect(c).toContain('Path=/');
   });
 });
 

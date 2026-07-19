@@ -143,6 +143,23 @@ export function cookieJeton(jeton, dureeMs = DUREE_JETON) {
   return `prepa=${jeton}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${Math.floor(dureeMs / 1000)}`;
 }
 
+/**
+ * En-tête Set-Cookie qui efface la session.
+ *
+ * Le cookie est HttpOnly : la page ne peut pas l'effacer elle-même, et un
+ * simple vidage du stockage local laisserait la session ouverte côté serveur.
+ * Seul le serveur peut la fermer, d'où cette fonction et la route qui
+ * l'utilise.
+ *
+ * Les attributs sont repris à l'identique de cookieJeton, Max-Age mis à part.
+ * Un navigateur n'efface un cookie que si le Set-Cookie d'effacement porte les
+ * mêmes Path et attributs que celui qui l'a posé : une seule divergence et le
+ * cookie d'origine survit, sans que rien ne le signale.
+ */
+export function cookieEfface() {
+  return 'prepa=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0';
+}
+
 // Nombre de tentatives tolérées par adresse IP et par heure sur la saisie du
 // code. Seuil unique du projet : index.js et les tests l'importent d'ici au
 // lieu d'en garder une copie, deux copies finissant tôt ou tard par diverger.

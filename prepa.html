@@ -54,11 +54,19 @@
         <button class="prepa-onglet" data-vue="admin" id="onglet-admin" hidden>Encadrant</button>
       </nav>
 
+      <!-- Qui est connecté, et par où sortir. Rempli par js/prepa.js. -->
+      <div class="prepa-barre" id="barre-session" hidden></div>
+
       <div id="message" class="prepa-message" hidden></div>
+
+      <!-- Écran 0 : le catalogue des courses. Public, sans code : il ne dit
+           que ce que le club prépare, jamais le contenu d'une séance. -->
+      <section id="ecran-courses" hidden></section>
 
       <!-- Écran 1 : code d'accès -->
       <section id="ecran-code" class="prepa-carte prepa-carte--etroite" hidden>
         <h2>Code d'accès</h2>
+        <p id="code-course" class="prepa-choisie" hidden></p>
         <p>Saisis le code que l'association t'a communiqué.</p>
         <form id="form-code" autocomplete="off">
           <label class="prepa-champ">
@@ -85,8 +93,9 @@
             </label>
           </div>
 
-          <h3>Quelle course prépares-tu ?</h3>
-          <div id="choix-programmes" class="prepa-programmes"></div>
+          <!-- La course est déjà choisie : on la rappelle, on ne la redemande
+               pas. Le lien permet d'en changer sans perdre sa saisie. -->
+          <p class="prepa-choisie" id="profil-course"></p>
 
           <div id="bloc-variante" hidden>
             <h3>Quel marathon ?</h3>

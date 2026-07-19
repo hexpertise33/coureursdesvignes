@@ -24,13 +24,26 @@
   function sauver() { try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) {} }
 
   var $ = function (id) { return document.getElementById(id); };
-  var ECRANS = ['ecran-code', 'ecran-profil', 'ecran-presentation', 'ecran-semaine', 'ecran-programme', 'ecran-zones', 'ecran-admin'];
+  var ECRANS = ['ecran-courses', 'ecran-code', 'ecran-profil', 'ecran-presentation', 'ecran-semaine', 'ecran-programme', 'ecran-zones', 'ecran-admin'];
+
+  // Écrans que l'on peut voir sans session ouverte. Le catalogue en fait
+  // partie : il annonce ce que le club prépare, ce qui est une information de
+  // vitrine, et ne contient aucun contenu de séance.
+  var ECRANS_LIBRES = ['ecran-courses', 'ecran-code', 'ecran-profil'];
 
   function montrer(id) {
     ECRANS.forEach(function (e) { $(e).hidden = e !== id; });
-    var connecte = id !== 'ecran-code' && id !== 'ecran-profil';
+    var connecte = ECRANS_LIBRES.indexOf(id) === -1;
     $('onglets').hidden = !connecte;
     $('onglet-admin').hidden = etat.role !== 'admin';
+    // La barre de session apparaît dès qu'une session existe, y compris sur
+    // l'écran du profil : on y est connecté sans être encore inscrit, et la
+    // sortie doit rester offerte à qui s'est trompé de code.
+    if (!etat.role || id === 'ecran-courses' || id === 'ecran-code') {
+      $('barre-session').hidden = true;
+    } else {
+      rendreBarreSession();
+    }
   }
 
   function dire(texte, type) {
@@ -56,7 +69,19 @@
       body: options.body ? JSON.stringify(options.body) : undefined
     });
     if (reponse.status === 401) { etat.role = null; sauver(); montrer('ecran-code'); throw new Error('session'); }
-    var donnees = await reponse.json().catch(function () { return {}; });
+
+    // Une réponse dont le corps ne se lit pas n'est pas une réponse vide, c'est
+    // un échec. Le rendre comme un objet vide sur un statut 200 faisait passer
+    // une panne pour un succès : la page enregistrait un rôle indéfini, se
+    // croyait connectée, et le défaut ne se voyait que plusieurs écrans plus
+    // loin sous une forme incompréhensible. On le signale ici, à sa source.
+    var donnees = null;
+    try {
+      donnees = await reponse.json();
+    } catch (e) {
+      throw new Error('reponse illisible');
+    }
+    if (donnees === null || typeof donnees !== 'object') throw new Error('reponse inattendue');
     donnees.__statut = reponse.status;
     return donnees;
   }
@@ -93,7 +118,10 @@
       etat.role = r.role;
       sauver();
       $('champ-code').value = '';
-      demarrer();
+      // On enchaîne sur l'identité pour la course qui vient d'être choisie,
+      // plutôt que de renvoyer au catalogue celui qui a déjà choisi.
+      if (etat.courseChoisie && !etat.prenom) { rendreEcranProfil(); montrer('ecran-profil'); return; }
+      demarrer(true);
     } catch (e) { dire('Connexion impossible. Réessaie dans un instant.', 'erreur'); }
   });
 
@@ -116,35 +144,132 @@
       prerequis: "Courir déjà environ 1 h 15 le dimanche sur terrain vallonné et viser les 16 km d'une traite.", izon: false }
   ];
 
-  function rendreChoixProgrammes() {
-    $('choix-programmes').innerHTML = PROGRAMMES.map(function (p) {
-      return '<label class="prepa-programme">' +
-        '<input type="radio" name="programme" value="' + p.code + '" />' +
-        '<span class="prepa-programme__corps">' +
-          '<span class="prepa-programme__nom">' + echapper(p.nom) + '</span>' +
-          '<span class="prepa-programme__meta">' + echapper(p.date) + ' · ' + echapper(p.duree) + '</span>' +
-          '<span class="prepa-programme__prerequis">' + echapper(p.prerequis) + '</span>' +
-        '</span></label>';
-    }).join('');
+  /* ---------- Écran 0 : le catalogue des courses ---------- */
 
-    $('choix-programmes').addEventListener('change', function () {
-      var code = (document.querySelector('input[name=programme]:checked') || {}).value;
-      var p = PROGRAMMES.filter(function (x) { return x.code === code; })[0];
-      $('bloc-variante').hidden = !(p && p.variante);
-      $('bloc-izon').hidden = !(p && p.izon);
+  /**
+   * Les six courses que le club prépare, visibles sans code.
+   *
+   * C'est la porte d'entrée. Auparavant l'onglet Prépa ouvrait sur une
+   * demande de code, ce qui ne disait rien à qui ne savait pas encore de quoi
+   * il s'agissait, et obligeait le coureur à choisir sa course au milieu d'un
+   * formulaire d'inscription.
+   *
+   * Ce qui est public ici tient en une phrase : ce que le club prépare, quand,
+   * et pour qui. Aucune séance, aucune semaine, aucun nom de coureur. Le
+   * verrou du produit porte sur le contenu de l'entraînement, et il reste
+   * entier : le code est demandé dès qu'on veut entrer dans une prépa.
+   */
+  function rendreCatalogue() {
+    var reprise = (etat.role && etat.prenom && etat.programme)
+      ? '<div class="prepa-carte prepa-reprise">' +
+          '<p>Tu as déjà une préparation en cours.</p>' +
+          '<button class="btn btn--vine" id="btn-reprendre">Reprendre ma prépa</button>' +
+        '</div>'
+      : '';
+
+    $('ecran-courses').innerHTML =
+      '<div class="prepa-carte prepa-carte--intro">' +
+        '<span class="eyebrow">Les préparations du club</span>' +
+        '<h2>Quelle course prépares-tu ?</h2>' +
+        '<p class="prepa-intention">Six préparations, toutes construites sur le même principe : trois séances de course par semaine et une de renforcement, écrites en zones d\'intensité et jamais en allure imposée, pour que tout le groupe puisse suivre le même programme quel que soit son niveau.</p>' +
+      '</div>' +
+      reprise +
+      '<div class="prepa-catalogue">' +
+      PROGRAMMES.map(function (p) {
+        var f = FICHES[p.code] || {};
+        return '<article class="prepa-course-carte">' +
+          '<span class="eyebrow">' + echapper(p.date) + '</span>' +
+          '<h3>' + echapper(p.nom) + '</h3>' +
+          '<p class="prepa-course-carte__meta">' +
+            echapper(f.distance || '') + (f.lieu ? ' · ' + echapper(f.lieu) : '') +
+            ' · ' + echapper(p.duree) +
+          '</p>' +
+          (f.resume ? '<p class="prepa-course-carte__resume">' + echapper(f.resume) + '</p>' : '') +
+          (f.profil ? '<p class="prepa-course-carte__profil"><strong>Le parcours.</strong> ' + echapper(f.profil) + '</p>' : '') +
+          '<p class="prepa-course-carte__prerequis"><strong>Pour qui.</strong> ' + echapper(p.prerequis) + '</p>' +
+          '<button class="btn btn--vine prepa-choisir" data-code="' + p.code + '">Préparer cette course</button>' +
+        '</article>';
+      }).join('') +
+      '</div>';
+
+    var reprendre = $('btn-reprendre');
+    if (reprendre) reprendre.addEventListener('click', function () { demarrer(true); });
+
+    Array.prototype.forEach.call($('ecran-courses').querySelectorAll('.prepa-choisir'), function (b) {
+      b.addEventListener('click', function () { choisirCourse(b.dataset.code); });
     });
+  }
+
+  /**
+   * Le coureur a choisi sa course. On l'emmène là où il en est.
+   *
+   * Le choix est retenu avant toute demande de code, pour qu'il survive à la
+   * saisie : quelqu'un qui doit aller chercher le code du club et revient dix
+   * minutes plus tard ne doit pas avoir à rechoisir sa course.
+   */
+  function choisirCourse(code) {
+    if (!PROGRAMMES.some(function (p) { return p.code === code; })) return;
+    etat.courseChoisie = code;
+    sauver();
+    dire('');
+    if (!etat.role) { rendreEcranCode(); montrer('ecran-code'); return; }
+    if (!etat.prenom) { rendreEcranProfil(); montrer('ecran-profil'); return; }
+    // Déjà inscrit : changer de course revient à mettre sa fiche à jour, ce
+    // que fait l'écran du profil, prérempli.
+    if (etat.programme !== code) { rendreEcranProfil(); montrer('ecran-profil'); return; }
+    voirSemaine();
+  }
+
+  /** Rappelle sur l'écran du code quelle course vient d'être choisie. */
+  function rendreEcranCode() {
+    var p = PROGRAMMES.filter(function (x) { return x.code === etat.courseChoisie; })[0];
+    var el = $('code-course');
+    if (!p) { el.hidden = true; return; }
+    el.innerHTML = 'Tu prépares <strong>' + echapper(p.nom) + '</strong>. ' +
+      '<button class="prepa-lien" id="lien-retour-courses">Changer de course</button>';
+    el.hidden = false;
+    $('lien-retour-courses').addEventListener('click', function () {
+      rendreCatalogue(); montrer('ecran-courses');
+    });
+  }
+
+  /** Prépare l'écran d'identité pour la course choisie. */
+  function rendreEcranProfil() {
+    var code = etat.courseChoisie || etat.programme;
+    var p = PROGRAMMES.filter(function (x) { return x.code === code; })[0];
+    $('bloc-variante').hidden = !(p && p.variante);
+    $('bloc-izon').hidden = !(p && p.izon);
+
+    var el = $('profil-course');
+    el.innerHTML = p
+      ? 'Tu prépares <strong>' + echapper(p.nom) + '</strong>, ' + echapper(p.date) + '. ' +
+        '<button class="prepa-lien" id="lien-changer-course">Changer de course</button>'
+      : '';
+    var lien = $('lien-changer-course');
+    if (lien) {
+      lien.addEventListener('click', function () { rendreCatalogue(); montrer('ecran-courses'); });
+    }
+
+    // Une saisie déjà faite est reproposée : celui qui revient corrige, il ne
+    // recommence pas. C'est aussi ce qui lui fait retrouver sa fiche, puisque
+    // l'identité est le couple prénom plus initiale.
+    if (etat.prenom) $('champ-prenom').value = etat.prenom;
+    if (etat.initiale) $('champ-initiale').value = etat.initiale;
+    $('champ-izon').checked = !!etat.faitIzon;
   }
 
   $('form-profil').addEventListener('submit', async function (ev) {
     ev.preventDefault();
     dire('');
-    var choisi = document.querySelector('input[name=programme]:checked');
-    if (!choisi) { dire('Choisis la course que tu prépares.', 'erreur'); return; }
+    // La course a été choisie au catalogue, avant même le code d'accès. Ce
+    // formulaire ne la redemande donc pas, il ne recueille que l'identité.
+    var choisi = etat.courseChoisie || etat.programme;
+    if (!choisi) { rendreCatalogue(); montrer('ecran-courses'); return; }
     var variante = document.querySelector('input[name=variante]:checked');
     var corps = {
       prenom: $('champ-prenom').value.trim(),
       initiale: $('champ-initiale').value.trim(),
-      programme: choisi.value,
+      programme: choisi,
       varianteCourse: $('bloc-variante').hidden ? null : (variante ? variante.value : null),
       faitIzon: !$('bloc-izon').hidden && $('champ-izon').checked
     };
@@ -399,8 +524,34 @@
     return zonesCache;
   }
 
+  /**
+   * Le programme actuellement affiché, qui n'est pas toujours celui du coureur.
+   *
+   * L'encadrant prépare une course comme les autres, et sa fiche porte donc un
+   * programme. Mais il doit pouvoir relire les six, sans que consulter le
+   * marathon ne le réinscrive au marathon. La vue en cours est donc une notion
+   * séparée de l'inscription : `etat.vueProgramme` n'est jamais envoyé à
+   * /api/coureur, n'entre pas dans le corps du formulaire de profil, et
+   * n'existe que pour le rôle encadrant. Sa persistance éventuelle dans le
+   * stockage local est sans conséquence, puisque seule la fiche du serveur
+   * décide de ce à quoi le coureur est inscrit.
+   *
+   * Un coureur n'en a pas et voit toujours son propre programme.
+   */
+  function programmeAffiche() {
+    if (etat.role === 'admin' && etat.vueProgramme) return etat.vueProgramme;
+    return etat.programme;
+  }
+
+  /** Idem pour la variante Izon, qui change le contenu de P2, P3 et P4. */
+  function izonAffiche() {
+    if (etat.role === 'admin' && etat.vueProgramme) return !!etat.vueIzon;
+    return !!etat.faitIzon;
+  }
+
   function programmeCourant() {
-    return PROGRAMMES.filter(function (p) { return p.code === etat.programme; })[0] || {};
+    var code = programmeAffiche();
+    return PROGRAMMES.filter(function (p) { return p.code === code; })[0] || {};
   }
 
   /** Nombre de jours qui séparent aujourd'hui du jour de course. */
@@ -717,7 +868,7 @@
     var el = $('ecran-semaine');
     el.innerHTML = '<div class="prepa-carte"><p>Chargement...</p></div>';
 
-    var base = '/api/semaine?programme=' + encodeURIComponent(etat.programme) + '&izon=' + (etat.faitIzon ? 1 : 0);
+    var base = '/api/semaine?programme=' + encodeURIComponent(programmeAffiche()) + '&izon=' + (izonAffiche() ? 1 : 0);
     var r = await appel(base);
     var apercu = false;
 
@@ -881,7 +1032,7 @@
     var el = $('ecran-programme');
     el.innerHTML = '<div class="prepa-carte"><p>Chargement...</p></div>';
 
-    var r = await appel('/api/programme?programme=' + encodeURIComponent(etat.programme) + '&izon=' + (etat.faitIzon ? 1 : 0));
+    var r = await appel('/api/programme?programme=' + encodeURIComponent(programmeAffiche()) + '&izon=' + (izonAffiche() ? 1 : 0));
     if (!r.semaines) { el.innerHTML = '<div class="prepa-carte"><p>' + echapper(r.erreur || 'Rien à afficher.') + '</p></div>'; return; }
 
     var total = r.semaines.length;
@@ -1008,6 +1159,106 @@
     return voirSemaine();
   }
 
+  /* ---------- Barre de session ---------- */
+
+  /**
+   * Qui est connecté, et par où sortir.
+   *
+   * Il n'y avait aucun moyen de se déconnecter : une fois le code saisi, on
+   * restait connecté 120 jours, et le seul recours était de vider les données
+   * du site depuis les réglages du navigateur. Sur un téléphone prêté, ou
+   * simplement pour corriger un prénom mal saisi, c'était sans issue.
+   *
+   * La barre porte aussi, pour l'encadrant seul, le choix du programme lu.
+   * Le serveur lui sert déjà les six prépas et leurs semaines non parues ; il
+   * ne manquait que de quoi le demander.
+   */
+  function rendreBarreSession() {
+    var barre = $('barre-session');
+    if (!etat.role) { barre.hidden = true; return; }
+
+    var qui = etat.prenom
+      ? echapper(etat.prenom) + (etat.initiale ? ' ' + echapper(etat.initiale) + '.' : '')
+      : 'Session ouverte';
+
+    var selecteur = '';
+    if (etat.role === 'admin') {
+      var courant = programmeAffiche();
+      var p = PROGRAMMES.filter(function (x) { return x.code === courant; })[0];
+      selecteur =
+        '<span class="prepa-barre__bloc">' +
+          '<label class="prepa-barre__etiquette" for="vue-programme">Prépa lue</label>' +
+          '<select id="vue-programme" class="prepa-barre__select">' +
+            PROGRAMMES.map(function (x) {
+              return '<option value="' + x.code + '"' + (x.code === courant ? ' selected' : '') + '>' +
+                echapper(x.nom) + '</option>';
+            }).join('') +
+          '</select>' +
+          (p && p.izon
+            ? '<label class="prepa-barre__izon"><input type="checkbox" id="vue-izon"' +
+              (izonAffiche() ? ' checked' : '') + ' /> avec Izon</label>'
+            : '') +
+        '</span>';
+    }
+
+    barre.innerHTML =
+      '<span class="prepa-barre__qui">' +
+        (etat.role === 'admin' ? '<span class="prepa-barre__role">Encadrant</span> ' : '') +
+        qui +
+      '</span>' +
+      selecteur +
+      '<button class="prepa-lien prepa-barre__sortie" id="btn-deconnexion">Se déconnecter</button>';
+    barre.hidden = false;
+
+    $('btn-deconnexion').addEventListener('click', deconnecter);
+
+    var sel = $('vue-programme');
+    if (sel) {
+      sel.addEventListener('change', function () {
+        etat.vueProgramme = sel.value;
+        // La variante Izon d'un programme ne dit rien de celle du suivant :
+        // on repart à zéro plutôt que de traîner la case d'un autre programme.
+        etat.vueIzon = false;
+        rendreBarreSession();
+        rafraichir();
+      });
+    }
+    var izon = $('vue-izon');
+    if (izon) {
+      izon.addEventListener('change', function () {
+        etat.vueIzon = izon.checked;
+        rafraichir();
+      });
+    }
+  }
+
+  /**
+   * Ferme la session, côté serveur puis côté page.
+   *
+   * L'ordre compte. Le cookie est HttpOnly : seul le serveur peut l'effacer,
+   * et vider le stockage local sans l'appeler laisserait une session ouverte
+   * que le prochain visiteur du même téléphone rouvrirait sans code.
+   *
+   * L'échec réseau n'empêche pas la sortie locale. Rester coincé sur un écran
+   * dont on demande à sortir serait le pire des comportements, et le cookie
+   * finira de toute façon par expirer.
+   */
+  async function deconnecter() {
+    try {
+      await appel('/api/deconnexion', { method: 'POST' });
+    } catch (e) {
+      // Sans importance : on sort quand même.
+    }
+    etat = {};
+    sauver();
+    $('barre-session').hidden = true;
+    dire('');
+    // Retour au catalogue et non à l'écran du code : la page redevient ce
+    // qu'elle est pour un visiteur, la liste de ce que le club prépare.
+    rendreCatalogue();
+    montrer('ecran-courses');
+  }
+
   function onglet(nom) {
     Array.prototype.forEach.call(document.querySelectorAll('.prepa-onglet'), function (b) {
       b.classList.toggle('is-active', b.dataset.vue === nom);
@@ -1027,14 +1278,23 @@
 
   /* ---------- Démarrage ---------- */
 
-  function demarrer() {
-    if (!etat.role) { montrer('ecran-code'); return; }
+  /**
+   * Où atterrit-on en arrivant sur la page.
+   *
+   * Le catalogue est le point d'entrée par défaut, y compris pour quelqu'un
+   * de déjà connecté : c'est lui qui répond à la question « qu'est-ce que le
+   * club prépare », et il porte un bouton de reprise pour ceux qui savent
+   * déjà où ils vont. `reprendre` force ce raccourci.
+   */
+  function demarrer(reprendre) {
+    if (!etat.role) { rendreCatalogue(); montrer('ecran-courses'); return; }
     // L'encadrant passe par le même écran : il court lui aussi, et le choix
     // d'un programme lui permet de relire n'importe quelle semaine en aperçu.
-    if (!etat.prenom || !etat.programme) { rendreChoixProgrammes(); montrer('ecran-profil'); return; }
-    voirSemaine();
+    if (!etat.prenom || !etat.programme) { rendreEcranProfil(); montrer('ecran-profil'); return; }
+    if (reprendre) { voirSemaine(); return; }
+    rendreCatalogue();
+    montrer('ecran-courses');
   }
 
-  rendreChoixProgrammes();
   demarrer();
 })();

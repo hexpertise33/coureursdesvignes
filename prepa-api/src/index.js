@@ -23,6 +23,7 @@
 import {
   creerJeton,
   cookieJeton,
+  cookieEfface,
   roleDepuisRequete,
   debitDepasse,
   oublierTentative,
@@ -738,6 +739,20 @@ async function router(request, env, methode) {
   if (chemin === '/api/session') {
     if (methode !== 'POST') return methodeRefusee();
     return routeSession(request, env);
+  }
+
+  // La déconnexion est volontairement placée avant le contrôle de rôle, et
+  // n'exige donc aucune session valide. Se déconnecter quand on est déjà
+  // déconnecté doit réussir, pas répondre 401 : c'est précisément l'état où
+  // se trouve quelqu'un dont le jeton vient d'expirer, et lui refuser
+  // l'effacement du cookie le laisserait coincé avec un cookie mort que la
+  // page ne peut pas retirer elle-même.
+  //
+  // Elle ne consomme pas non plus de tentative auprès du contrôle de débit :
+  // aucun secret n'est présenté, il n'y a rien à forcer par ici.
+  if (chemin === '/api/deconnexion') {
+    if (methode !== 'POST') return methodeRefusee();
+    return json({ ok: true }, 200, { 'set-cookie': cookieEfface() });
   }
 
   if (!ROUTES_PROTEGEES.has(chemin) && !ROUTES_ADMIN.has(chemin)) {

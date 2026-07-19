@@ -1546,3 +1546,70 @@ describe('cron du samedi', () => {
     expect(resultats).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Déconnexion
+// ---------------------------------------------------------------------------
+//
+// Le cookie de session est HttpOnly : la page ne peut pas l'effacer elle-même.
+// Sans cette route, le seul moyen de sortir était de vider les données du site
+// depuis les réglages du navigateur, et la session restait valide 120 jours.
+describe('déconnexion', () => {
+  it('efface le cookie et rend une réponse simple', async () => {
+    const r = await SELF.fetch('https://p.test/api/deconnexion', {
+      method: 'POST',
+      headers: entetes(await cookie('coureur')),
+    });
+    expect(r.status).toBe(200);
+    const pose = r.headers.get('set-cookie');
+    expect(pose).toContain('prepa=;');
+    expect(pose).toContain('Max-Age=0');
+  });
+
+  // Le cas qui compte le plus : quelqu'un dont le jeton a expiré est déjà
+  // « déconnecté » du point de vue du serveur, mais garde un cookie mort que
+  // la page ne peut pas retirer. Lui répondre 401 le laisserait coincé.
+  it('réussit même sans session valide', async () => {
+    const r = await SELF.fetch('https://p.test/api/deconnexion', { method: 'POST' });
+    expect(r.status).toBe(200);
+    expect(r.headers.get('set-cookie')).toContain('Max-Age=0');
+  });
+
+  it('ferme réellement la session : le cookie effacé ne rouvre rien', async () => {
+    const c = await cookie('admin');
+    // La session fonctionne avant.
+    const avant = await SELF.fetch('https://p.test/api/admin/tableau', { headers: entetes(c) });
+    expect(avant.status).toBe(200);
+
+    // Après déconnexion, le navigateur ne renvoie plus le jeton : c'est ce
+    // que simule l'absence de cookie sur la requête suivante.
+    await SELF.fetch('https://p.test/api/deconnexion', { method: 'POST', headers: entetes(c) });
+    const apres = await SELF.fetch('https://p.test/api/admin/tableau');
+    expect(apres.status).toBe(401);
+  });
+
+  it('refuse les autres méthodes', async () => {
+    for (const methode of ['GET', 'DELETE', 'PUT']) {
+      const r = await SELF.fetch('https://p.test/api/deconnexion', { method: methode });
+      expect(r.status).toBe(405);
+    }
+  });
+
+  // La déconnexion ne présente aucun secret : elle n'a rien à faire compter
+  // par la limitation de débit, qui protège la saisie du code.
+  it('ne consomme pas de tentative de la limitation de débit', async () => {
+    const ip = '203.0.113.77';
+    for (let i = 0; i < LIMITE_TENTATIVES + 5; i++) {
+      await SELF.fetch('https://p.test/api/deconnexion', {
+        method: 'POST', headers: { 'cf-connecting-ip': ip },
+      });
+    }
+    // La saisie du code depuis la même IP doit rester possible.
+    const r = await SELF.fetch('https://p.test/api/session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'cf-connecting-ip': ip },
+      body: JSON.stringify({ code: 'coureur-test' }),
+    });
+    expect(r.status).not.toBe(429);
+  });
+});
