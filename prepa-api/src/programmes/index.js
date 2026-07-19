@@ -3,12 +3,13 @@ import { P2 } from './p2-10km-bordeaux.js';
 import { P3 } from './p3-semi-bordeaux.js';
 import { P4 } from './p4-marathon.js';
 import { P5 } from './p5-10km-paris.js';
+import { P6 } from './p6-16km-andernos.js';
 
 /**
- * Registre des cinq programmes, clés P1 à P5 dans cet ordre. C'est le point
+ * Registre des six programmes, clés P1 à P6 dans cet ordre. C'est le point
  * d'entrée que le Worker interroge pour servir une semaine à un coureur.
  */
-export const PROGRAMMES = { P1, P2, P3, P4, P5 };
+export const PROGRAMMES = { P1, P2, P3, P4, P5, P6 };
 
 /**
  * Retourne le programme demandé, ou lève une erreur explicite si le code est
@@ -45,6 +46,12 @@ export function programme(code) {
  * la semaine porteuse (celle de la variante sansIzon, exposée par défaut dans
  * le champ `seances` de la semaine) coller à tort sur la variante avecIzon,
  * ce qui étiquetterait une semaine allégée comme une semaine de bloc.
+ *
+ * P1, P5 et P6 n'ont aucune semaine à variantes et traversent donc cette
+ * fonction sans jamais entrer dans la branche de résolution, quelle que soit la
+ * valeur de faitIzon. Pour P6, c'est structurel et non un oubli : les 16 km
+ * d'Andernos se courent le dimanche 27 septembre, le jour même du 10 km d'Izon,
+ * on ne peut pas faire les deux, d'où son champ `izon` à 'aucune'.
  *
  * La semaine résolue n'expose plus le champ `variantes` : le coureur ne voit
  * que la version qui le concerne, et cette donnée est destinée à une réponse

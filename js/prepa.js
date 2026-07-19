@@ -99,7 +99,11 @@
     { code: 'P4', nom: 'Marathon', date: 'dimanche 8 novembre', duree: '15 semaines',
       prerequis: 'Courir déjà environ 30 km par semaine depuis 2 mois.', izon: true, variante: true },
     { code: 'P5', nom: '10 km HOKA de Paris', date: 'dimanche 15 novembre', duree: '16 semaines',
-      prerequis: "Savoir courir 30 minutes d'affilée sans s'arrêter. Le 10 km d'Izon fait partie du programme.", izon: false }
+      prerequis: "Savoir courir 30 minutes d'affilée sans s'arrêter. Le 10 km d'Izon fait partie du programme.", izon: false },
+    // P6 se court le même jour que le 10 km d'Izon : aucune course-test ne peut
+    // s'y ajouter, d'où izon: false et l'absence de variante de course.
+    { code: 'P6', nom: "16 km d'Andernos", date: 'dimanche 27 septembre', duree: '9 semaines',
+      prerequis: "Courir déjà environ 1 h 15 le dimanche sur terrain vallonné et viser les 16 km d'une traite.", izon: false }
   ];
 
   function rendreChoixProgrammes() {

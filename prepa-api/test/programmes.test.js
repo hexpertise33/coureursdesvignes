@@ -6,6 +6,7 @@ import { P2 } from '../src/programmes/p2-10km-bordeaux.js';
 import { P3 } from '../src/programmes/p3-semi-bordeaux.js';
 import { P4 } from '../src/programmes/p4-marathon.js';
 import { P5 } from '../src/programmes/p5-10km-paris.js';
+import { P6 } from '../src/programmes/p6-16km-andernos.js';
 // P1 à P3 restent importés nommément pour les tests qui leur sont propres. Les
 // contrôles transverses, eux, passent par le registre découvert plus bas : les
 // imports de modules un par un ont disparu avec lui.
@@ -1048,9 +1049,17 @@ describe('identité des séances dans la semaine', () => {
     // semaines de récupération finale à trois footings (P1, P3, P4 pour ce qui
     // les concerne, plus P2 et P5), lues deux fois chacune, et les deux
     // variantes à dossard de P3 et P4, lues une seule fois.
-    expect(semainesBalayees).toBe(150);
-    expect(semainesAHomonymes).toBe(17);
-    expect(seancesBalayees).toBe(600);
+    //
+    // L'arrivée de P6 ajoute 10 semaines de plan, soit 20 résolutions et 80
+    // séances de plus. P6 n'ayant aucune semaine à variante, ses dix semaines
+    // sont simplement lues deux fois à l'identique. Une seule d'entre elles
+    // porte des séances homonymes, sa récupération finale à trois footings,
+    // d'où deux résolutions supplémentaires à homonymes : toutes ses semaines
+    // de préparation alignent une endurance, une séance de qualité, une sortie
+    // longue et un renfo, quatre codes distincts.
+    expect(semainesBalayees).toBe(170);
+    expect(semainesAHomonymes).toBe(19);
+    expect(seancesBalayees).toBe(680);
     expect(collisions).toEqual([]);
   });
 
@@ -1091,7 +1100,7 @@ describe('registre des programmes', () => {
 
     // Les programmes importés nommément en tête de fichier doivent être
     // exactement les objets que la découverte trouve.
-    for (const p of [P1, P2, P3, P4]) expect(PROGRAMMES).toContain(p);
+    for (const p of [P1, P2, P3, P4, P5, P6]) expect(PROGRAMMES).toContain(p);
     // Cette liste suit mécaniquement les programmes à double parcours : P4
     // ajoute sa propre variante de S9, elle doit apparaître ici sous peine que
     // les contrôles transverses la laissent hors de leur champ sans rien dire.
@@ -3363,10 +3372,535 @@ it('P5 est la plus longue préparation du projet et reste au format 10 km de P2'
 // que le Worker interroge pour servir une semaine à un coureur : PROGRAMMES,
 // programme(code) et semaineDuProgramme(code, numero, { faitIzon }).
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// P6, 16 km d'Andernos
+// ---------------------------------------------------------------------------
+//
+// Sixième programme, et le seul qui entre en collision de calendrier avec le
+// 10 km d'Izon : les deux courses tombent le dimanche 27 septembre. C'est ce
+// qui explique l'absence totale de variante de semaine 9 et le champ `izon` à
+// 'aucune' plutôt qu'à 'option'. Le reste de la trame est celle de P1, mais le
+// calibrage vise une distance intermédiaire, entre le 10 km et le semi.
+describe("P6, 16 km d'Andernos", () => {
+  const QUALITE = new Set(['TEMPO', 'SEUIL', 'VMA']);
+  const qualiteDe = (s) => s.seances.filter((x) => QUALITE.has(x.code));
+
+  it('respecte les règles de progression', () => {
+    expect(verifierProgramme(P6)).toBe(true);
+  });
+
+  it('compte 9 semaines de prépa plus une de récupération', () => {
+    expect(P6.semainesContenu).toHaveLength(10);
+    expect(P6.semainesContenu[8].phase).toBe('affutage');
+    expect(P6.semainesContenu[9].phase).toBe('recuperation');
+  });
+
+  it('place la course le dernier jour de S9, comme le 10 km d\'Izon', () => {
+    const s9 = P6.semainesContenu[8];
+    expect(s9.seances.some((s) => s.code === 'COURSE')).toBe(true);
+    expect(P6.dateCourse).toBe(P1.dateCourse); // même dimanche, d'où l'absence de variante.
+  });
+
+  it("porte l'identité attendue et n'ouvre aucune option Izon", () => {
+    expect(P6.code).toBe('P6');
+    expect(P6.nom).toBe("16 km d'Andernos");
+    expect(P6.dateCourse).toBe('2026-09-27');
+    // Ni 'objectif' (P1), ni 'integree' (P5), ni 'option' (P2 à P4) : sur P6, la
+    // question d'Izon ne se pose pas, la course a lieu le même jour.
+    expect(P6.izon).toBe('aucune');
+    expect(P6.prerequis).toMatch(/1 h 15/);
+    expect(P6.prerequis).toMatch(/16 km/);
+    expect(P6.prerequis).not.toMatch(/30 minutes/);
+  });
+
+  it('suit la trame de P1, S1 à S3 bloc 1, S4 allégée, S5 à S7 bloc 2', () => {
+    expect(P6.semainesContenu.map((s) => s.phase)).toEqual([
+      'bloc1', 'bloc1', 'bloc1', 'allegee', 'bloc2', 'bloc2', 'bloc2', 'affutage', 'affutage', 'recuperation',
+    ]);
+    expect(P6.semainesContenu.map((s) => s.numero)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
+
+  it('respecte le barème de volumes hors course et hors renfo', () => {
+    // Le point serré est le couple S3 / S4 : une semaine allégée doit tomber à
+    // 85 % ou moins de la précédente, et 200 x 0,85 fait exactement 170. S4
+    // vaut donc 170 tout rond, ce qui fixe à lui seul la côte à 55 min et
+    // l'endurance de la semaine à 50 min pile.
+    expect(P6.semainesContenu.map(volumeHorsCourse)).toEqual([175, 185, 200, 170, 202, 215, 225, 178, 80, 125]);
+    expect(Math.max(...P6.semainesContenu.map(volumeHorsCourse))).toBe(225); // pic en S7.
+  });
+
+  // Le calibrage demandé : 16 km, c'est entre le 10 km et le semi. Le contrôle
+  // porte sur les sept semaines de bloc, les seules comparables d'un programme
+  // à l'autre (les semaines d'affûtage et de récupération dépendent de la
+  // longueur totale de la prépa, qui n'est pas la même).
+  it('se situe partout entre P1 (10 km) et P3 (semi) sur les semaines de bloc', () => {
+    const septPremieres = (p) => p.semainesContenu.slice(0, 7).map(volumeHorsCourse);
+    const [dix, seize, semi] = [septPremieres(P1), septPremieres(P6), septPremieres(P3)];
+    expect(dix).toEqual([165, 175, 190, 160, 192, 200, 208]);
+    expect(seize).toEqual([175, 185, 200, 170, 202, 215, 225]);
+    expect(semi).toEqual([185, 195, 207, 175, 210, 222, 233]);
+    for (let i = 0; i < 7; i++) {
+      expect(seize[i], `S${i + 1} : P6 doit peser plus qu'une prépa 10 km.`).toBeGreaterThan(dix[i]);
+      expect(seize[i], `S${i + 1} : P6 doit peser moins qu'une prépa semi.`).toBeLessThan(semi[i]);
+    }
+  });
+
+  it('tient le plancher de 50 min hors semaine de course et de récupération', () => {
+    const EXCEPTIONS = new Set([9, 10]);
+    let verifiees = 0;
+    for (const s of P6.semainesContenu) {
+      if (EXCEPTIONS.has(s.numero)) continue;
+      for (const seance of s.seances.filter((x) => x.code !== 'RENFO')) {
+        expect(
+          seance.duree,
+          `P6 S${s.numero} ${seance.id} : ${seance.duree} min, sous le plancher de 50 min.`,
+        ).toBeGreaterThanOrEqual(50);
+        verifiees++;
+      }
+    }
+    expect(verifiees).toBe(24); // 8 semaines normales x 3 séances de course.
+  });
+
+  it('tient la sortie longue entre 65 et 90 min, sans jamais reculer dans un cycle', () => {
+    const longues = P6.semainesContenu.flatMap((s) => s.seances).filter((x) => x.code === 'SL');
+    expect(longues.map((x) => x.duree)).toEqual([65, 70, 75, 65, 80, 85, 90, 68]);
+    for (const x of longues) {
+      expect(x.duree).toBeGreaterThanOrEqual(65);
+      expect(x.duree).toBeLessThanOrEqual(90); // 1 h 30, plafond utile sur 16 km.
+    }
+    // Elle grimpe à l'intérieur de chaque cycle et ne redescend qu'au passage
+    // d'une semaine plus douce (S4) ou de l'affûtage (S8).
+    const CYCLES = [[0, 1, 2], [4, 5, 6]];
+    for (const cycle of CYCLES) {
+      for (let i = 1; i < cycle.length; i++) {
+        expect(longues[cycle[i]].duree).toBeGreaterThan(longues[cycle[i - 1]].duree);
+      }
+    }
+    // Bornes réelles : elle part de l'habitude du dimanche et finit à 1 h 30.
+    expect(longues[0].duree).toBe(65);
+    expect(Math.max(...longues.map((x) => x.duree))).toBe(90);
+  });
+
+  it('assume par écrit la brièveté des séances de la semaine de course et de la récupération', () => {
+    for (const numero of [9, 10]) {
+      const s = P6.semainesContenu[numero - 1];
+      const textes = [s.intention, ...s.seances.map((x) => x.description)].join(' ');
+      expect(
+        /but|voulu|dessein|exactement|pas un oubli|volontairement/i.test(textes),
+        `P6 S${numero} : rien n'explique au coureur pourquoi les séances sont courtes.`,
+      ).toBe(true);
+    }
+  });
+
+  it("applique le barème d'échauffement à toutes les séances de qualité", () => {
+    const palier = (duree) => (duree <= 40 ? [12, 7] : duree <= 50 ? [15, 8] : [20, 10]);
+    const observees = [];
+    for (const s of P6.semainesContenu) {
+      for (const seance of qualiteDe(s)) {
+        const m = seance.description.match(
+          /^(\d+) min[^.]*?en Z2[^.]*?, puis .*?, puis (\d+) min de retour au calme/,
+        );
+        expect(m, `P6 S${s.numero} ${seance.code} : échauffement illisible.`).not.toBeNull();
+        expect(
+          [Number(m[1]), Number(m[2])],
+          `P6 S${s.numero} ${seance.code} (${seance.duree} min) : palier d'échauffement hors barème.`,
+        ).toEqual(palier(seance.duree));
+        observees.push(seance.duree);
+      }
+    }
+    // Huit des neuf séances passent 50 min et tombent sur le 20/10 standard ;
+    // la neuvième est le rappel de la semaine de course, au palier 12/7.
+    expect(observees).toEqual([60, 63, 68, 55, 69, 74, 69, 57, 37]);
+  });
+
+  // Convention impérative du projet : N répétitions donnent N-1 récupérations,
+  // et la somme des segments décrits égale exactement la durée déclarée. Le
+  // calcul se fait en secondes pour absorber les repères du type « 1 min 40 »
+  // et « 8 min 30 » sans arrondi.
+  it('réconcilie exactement la durée déclarée avec les segments décrits', () => {
+    const REPERE = String.raw`\d+ min(?: \d+)?|\d+ s`;
+    const enSecondes = (texte) => {
+      const m = texte.trim().match(/^(?:(\d+) min(?: (\d+))?|(\d+) s)$/);
+      expect(m, `Repère de durée illisible : « ${texte} »`).not.toBeNull();
+      return m[3] !== undefined ? Number(m[3]) : Number(m[1]) * 60 + Number(m[2] ?? 0);
+    };
+
+    // La distance est reprise par référence arrière dans le repère : une séance
+    // ne peut pas annoncer des 2000 m et chiffrer des 400 m.
+    const series = new RegExp(
+      String.raw`^(\d+) min[^.]*?en Z2, puis 2 séries de (\d+) fois (\d+) m en Z[1-5], ` +
+        String.raw`en comptant environ (${REPERE}) par \3 m, avec (${REPERE}) de trottinement en Z1 ` +
+        String.raw`entre chaque et (\d+) min entre les deux séries, puis (\d+) min de retour au calme`,
+    );
+    const mixte = new RegExp(
+      String.raw`^(\d+) min[^.]*?en Z2, puis (\d+) fois (\d+) m puis (\d+) fois (\d+) m en Z[1-5], ` +
+        String.raw`en comptant environ (${REPERE}) par \3 m et (${REPERE}) par \5 m, ` +
+        String.raw`avec (\d+) min de trottinement en Z1 entre chaque bloc, puis (\d+) min de retour au calme`,
+    );
+    const blocsZ3 = new RegExp(
+      String.raw`^(\d+) min[^.]*?en Z2, puis (\d+) fois (\d+) min en Z3, ` +
+        String.raw`avec (\d+) min de trottinement en Z1 entre chaque, puis (\d+) min de retour au calme`,
+    );
+    const cotes =
+      /^(\d+) min[^.]*?en Z2[^.]*?, puis (\d+) montées de (\d+) min en côte[^.]*?, avec (\d+) min de descente en marchant entre chaque, puis (\d+) min de retour au calme/;
+    const lignes =
+      /(\d+) min[^.]*? puis (\d+) lignes droites de (\d+) s en Z[45] avec 1 min de marche entre chaque, soit (\d+) min, puis (\d+) min/;
+
+    const comptes = { series: 0, mixte: 0, blocsZ3: 0, cotes: 0, lignes: 0 };
+    const exact = (secondes, seance) =>
+      expect(
+        secondes,
+        `${seance.code} ${seance.duree} min : segments décrits incohérents dans « ${seance.description} »`,
+      ).toBe(seance.duree * 60);
+
+    for (const seance of P6.semainesContenu.flatMap((s) => s.seances)) {
+      // Deux séries de N répétitions : 2(N-1) récupérations courtes, plus une
+      // seule récupération longue entre les deux séries.
+      const s = seance.description.match(series);
+      if (s) {
+        const n = Number(s[2]);
+        exact(
+          Number(s[1]) * 60 +
+            2 * n * enSecondes(s[4]) +
+            2 * (n - 1) * enSecondes(s[5]) +
+            Number(s[6]) * 60 +
+            Number(s[7]) * 60,
+          seance,
+        );
+        comptes.series++;
+        continue;
+      }
+      const p = seance.description.match(mixte);
+      if (p) {
+        const total = Number(p[2]) + Number(p[4]);
+        exact(
+          Number(p[1]) * 60 +
+            Number(p[2]) * enSecondes(p[6]) +
+            Number(p[4]) * enSecondes(p[7]) +
+            (total - 1) * Number(p[8]) * 60 +
+            Number(p[9]) * 60,
+          seance,
+        );
+        comptes.mixte++;
+        continue;
+      }
+      const b = seance.description.match(blocsZ3);
+      if (b) {
+        const n = Number(b[2]);
+        exact(
+          (Number(b[1]) + n * Number(b[3]) + (n - 1) * Number(b[4]) + Number(b[5])) * 60,
+          seance,
+        );
+        comptes.blocsZ3++;
+        continue;
+      }
+      const k = seance.description.match(cotes);
+      if (k) {
+        const n = Number(k[2]);
+        exact(
+          (Number(k[1]) + n * Number(k[3]) + (n - 1) * Number(k[4]) + Number(k[5])) * 60,
+          seance,
+        );
+        comptes.cotes++;
+        continue;
+      }
+      const l = seance.description.match(lignes);
+      if (l) {
+        const [, ech, n, secondes, bloc, retour] = l.map(Number);
+        // Le bloc de lignes droites est logé À L'INTÉRIEUR de la durée déclarée.
+        expect((n * secondes) / 60 + (n - 1)).toBe(bloc);
+        expect(
+          ech + bloc + retour,
+          `${seance.code} ${seance.duree} min : lignes droites mal logées dans « ${seance.description} »`,
+        ).toBe(seance.duree);
+        comptes.lignes++;
+      }
+    }
+
+    // Ancres de sécurité : si le parsing cassait, la boucle ne vérifierait
+    // rien. Les 9 séances de qualité se répartissent en 2 séances en deux
+    // séries (S1 et S6), 4 blocs mixtes en distance (S3, S5, S7, S9), 2 séances
+    // de blocs en Z3 (S2, S8) et 1 séance de côte (S4).
+    expect(comptes).toEqual({ series: 2, mixte: 4, blocsZ3: 2, cotes: 1, lignes: 4 });
+    expect(comptes.series + comptes.mixte + comptes.blocsZ3 + comptes.cotes).toBe(
+      P6.semainesContenu.flatMap((s) => s.seances).filter((x) => QUALITE.has(x.code)).length,
+    );
+  });
+
+  describe('fractionné en distance', () => {
+    const seancesQualite = P6.semainesContenu.flatMap((s) =>
+      s.seances.filter((x) => QUALITE.has(x.code)).map((x) => ({ semaine: s.numero, phase: s.phase, seance: x })),
+    );
+    const enDistance = ({ seance }) => /\d+ fois \d+ m en Z[1-5]/.test(seance.description);
+    const distancesCitees = (description) =>
+      [...description.matchAll(/(\d+) fois (\d+) m/g)].map((m) => Number(m[2]));
+
+    it('fait dominer le fractionné en distance sur le fractionné en durée', () => {
+      const distance = seancesQualite.filter(enDistance);
+      expect(distance.map((q) => q.semaine)).toEqual([1, 3, 5, 6, 7, 9]);
+      expect(distance.length).toBeGreaterThan(seancesQualite.length - distance.length);
+      // Le travail à l'allure spécifique reste en minutes : un bloc tenu en Z3
+      // ne se pense pas en mètres.
+      for (const { seance } of seancesQualite.filter((q) => q.seance.zone === 'Z3')) {
+        expect(
+          enDistance({ seance }),
+          `P6 ${seance.code} : le travail en Z3 doit rester en durée, pas en distance.`,
+        ).toBe(false);
+      }
+    });
+
+    it('porte le seuil sur 1000, 2000 et 3000 m, et garde 200 et 400 m pour la vivacité', () => {
+      const parSemaine = new Map(seancesQualite.map((q) => [q.semaine, q]));
+      // Les longues répétitions au seuil, adaptées à 16 km : le 3000 m arrive
+      // au pic de charge, jamais avant.
+      const auSeuil = seancesQualite.filter((q) => q.seance.zone === 'Z4');
+      expect(auSeuil.map((q) => q.semaine)).toEqual([3, 5, 7, 9]);
+      for (const q of auSeuil) {
+        for (const metres of distancesCitees(q.seance.description)) {
+          expect([500, 1000, 2000, 3000]).toContain(metres);
+        }
+      }
+      expect(distancesCitees(parSemaine.get(7).seance.description)).toContain(3000);
+      expect(distancesCitees(parSemaine.get(5).seance.description)).toContain(2000);
+      expect(distancesCitees(parSemaine.get(3).seance.description)).toContain(1000);
+
+      // Le travail rapide reste court : 200 m et 400 m, jamais au-delà.
+      const rapides = seancesQualite.filter((q) => q.seance.zone === 'Z5');
+      expect(rapides.map((q) => q.semaine)).toEqual([1, 4, 6]);
+      for (const q of rapides) {
+        const metres = distancesCitees(q.seance.description);
+        if (metres.length > 0) {
+          for (const m of metres) expect(m).toBeLessThanOrEqual(400);
+          continue;
+        }
+        // Seule exception assumée : la côte de la semaine allégée. Une pente ne
+        // se décrit pas en mètres, elle ne coûte pas le même effort d'un
+        // coureur et d'un profil à l'autre.
+        expect(
+          q.semaine,
+          `P6 S${q.semaine} : une séance en Z5 doit être décrite en distance, sauf la côte de S4.`,
+        ).toBe(4);
+        expect(q.seance.description).toMatch(/\d+ montées de \d+ min en côte/);
+        expect(q.seance.description).toMatch(/descente en marchant/);
+      }
+    });
+
+    it("travaille l'allure spécifique en blocs de Z3, ce que 16 km demande plus que 10", () => {
+      const enZ3 = seancesQualite.filter((q) => q.seance.zone === 'Z3');
+      expect(enZ3.map((q) => q.semaine)).toEqual([2, 8]);
+      for (const q of enZ3) {
+        expect(q.seance.description).toMatch(/\d+ fois \d+ min en Z3/);
+      }
+      // Deux séances de Z3 sur neuf là où P1 n'en compte qu'une sur neuf :
+      // c'est la différence de nature entre les deux distances.
+      const z3DeP1 = P1.semainesContenu
+        .flatMap((s) => s.seances)
+        .filter((x) => QUALITE.has(x.code) && x.zone === 'Z3');
+      expect(enZ3.length).toBeGreaterThan(z3DeP1.length);
+    });
+
+    it('présente le repère de durée comme une estimation et jamais comme une allure imposée', () => {
+      const distance = seancesQualite.filter(enDistance);
+      expect(distance.map((q) => q.semaine)).toEqual([1, 3, 5, 6, 7, 9]);
+      for (const { semaine, seance } of distance) {
+        expect(
+          seance.description,
+          `P6 S${semaine} : séance en distance sans repère de durée par répétition.`,
+        ).toMatch(/en comptant environ (?:\d+ min(?: \d+)?|\d+ s) par \d+ m/);
+        expect(
+          seance.description,
+          `P6 S${semaine} : le repère de durée n'est pas présenté comme une estimation.`,
+        ).toMatch(/estimation de planification/);
+        expect(
+          seance.description,
+          `P6 S${semaine} : le repère de durée n'est pas démenti comme allure à tenir.`,
+        ).toMatch(/jamais une allure à tenir/);
+      }
+      // Les repères employés sont exactement ceux du référentiel du projet.
+      const REFERENCE = { 200: '45 s', 400: '1 min 40', 500: '2 min', 1000: '4 min', 2000: '8 min 30', 3000: '13 min' };
+      for (const { semaine, seance } of distance) {
+        for (const [, repere, metres] of seance.description.matchAll(
+          /environ (\d+ min(?: \d+)?|\d+ s) par (\d+) m/g,
+        )) {
+          expect(
+            repere,
+            `P6 S${semaine} : repère hors référentiel pour ${metres} m.`,
+          ).toBe(REFERENCE[metres]);
+        }
+      }
+      const textes = distance.map((q) => q.seance.description).join(' ');
+      expect(textes).not.toMatch(/min\/km/);
+      expect(textes).not.toMatch(/km\/h/);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Variété des séances de qualité
+  // -------------------------------------------------------------------------
+  const MENU_QUALITE = [
+    { semaine: 1, phase: 'bloc1', code: 'VMA', zone: 'Z5', duree: 60, forme: '2 séries de 8 fois 200 m en Z5' },
+    { semaine: 2, phase: 'bloc1', code: 'TEMPO', zone: 'Z3', duree: 63, forme: '2 fois 14 min en Z3' },
+    { semaine: 3, phase: 'bloc1', code: 'SEUIL', zone: 'Z4', duree: 68, forme: '4 fois 1000 m puis 4 fois 500 m en Z4' },
+    { semaine: 4, phase: 'allegee', code: 'VMA', zone: 'Z5', duree: 55, forme: '9 montées de 1 min en côte' },
+    { semaine: 5, phase: 'bloc2', code: 'SEUIL', zone: 'Z4', duree: 69, forme: '2 fois 2000 m puis 5 fois 500 m en Z4' },
+    { semaine: 6, phase: 'bloc2', code: 'VMA', zone: 'Z5', duree: 74, forme: '2 séries de 6 fois 400 m en Z5' },
+    { semaine: 7, phase: 'bloc2', code: 'SEUIL', zone: 'Z4', duree: 69, forme: '2 fois 3000 m puis 2 fois 500 m en Z4' },
+    { semaine: 8, phase: 'affutage', code: 'TEMPO', zone: 'Z3', duree: 57, forme: '2 fois 11 min en Z3' },
+    { semaine: 9, phase: 'affutage', code: 'SEUIL', zone: 'Z4', duree: 37, forme: '2 fois 1000 m puis 2 fois 500 m en Z4' },
+  ];
+
+  it('programme une séance de qualité par semaine, de la première à la dernière', () => {
+    for (const s of P6.semainesContenu.slice(0, 9)) {
+      expect(
+        qualiteDe(s).length,
+        `P6 S${s.numero} : ${qualiteDe(s).length} séance(s) de qualité, il en faut exactement une.`,
+      ).toBe(1);
+    }
+    expect(qualiteDe(P6.semainesContenu[9])).toEqual([]);
+  });
+
+  it('aligne neuf séances de qualité, neuf formats distincts, sans jamais répéter une séquence', () => {
+    const observees = P6.semainesContenu.slice(0, 9).map((s) => {
+      const [seance] = qualiteDe(s);
+      return { semaine: s.numero, phase: s.phase, code: seance.code, zone: seance.zone, duree: seance.duree };
+    });
+    expect(observees).toEqual(MENU_QUALITE.map(({ forme, ...reste }) => reste));
+
+    for (const attendue of MENU_QUALITE) {
+      const [seance] = qualiteDe(P6.semainesContenu[attendue.semaine - 1]);
+      expect(
+        seance.description,
+        `P6 S${attendue.semaine} : la séance ne décrit pas la séquence attendue « ${attendue.forme} ».`,
+      ).toContain(attendue.forme);
+    }
+    expect(new Set(MENU_QUALITE.map((q) => q.forme)).size).toBe(9);
+    const descriptions = P6.semainesContenu.slice(0, 9).map((s) => qualiteDe(s)[0].description);
+    expect(new Set(descriptions).size).toBe(9);
+    expect(new Set(MENU_QUALITE.map((q) => q.zone))).toEqual(new Set(['Z3', 'Z4', 'Z5']));
+  });
+
+  it("n'attend pas pour employer le travail rapide : la Z5 arrive dès la semaine 1", () => {
+    const numeroPremiereZone = (zone) =>
+      P6.semainesContenu.find((s) => s.seances.some((x) => QUALITE.has(x.code) && x.zone === zone))?.numero;
+    expect(numeroPremiereZone('Z5')).toBe(1);
+    expect(numeroPremiereZone('Z5')).toBeLessThan(numeroPremiereZone('Z3'));
+    expect(numeroPremiereZone('Z3')).toBeLessThan(numeroPremiereZone('Z4'));
+    // Le premier bloc emploie à lui seul les trois zones de travail.
+    const bloc1 = P6.semainesContenu.filter((s) => s.phase === 'bloc1').flatMap(qualiteDe);
+    expect(new Set(bloc1.map((x) => x.zone))).toEqual(new Set(['Z3', 'Z4', 'Z5']));
+  });
+
+  it('donne à chaque séance de qualité un objectif qui lui est propre', () => {
+    const objectifs = P6.semainesContenu.slice(0, 9).map((s) => qualiteDe(s)[0].objectif);
+    expect(new Set(objectifs).size).toBe(9);
+    const motsPleins = (texte) =>
+      new Set(
+        texte
+          .toLowerCase()
+          .split(/[^a-zà-öø-ÿ0-9]+/)
+          .filter((mot) => mot.length > 5),
+      );
+    for (let i = 0; i < objectifs.length; i++) {
+      for (let j = i + 1; j < objectifs.length; j++) {
+        const [a, b] = [motsPleins(objectifs[i]), motsPleins(objectifs[j])];
+        const communs = [...a].filter((mot) => b.has(mot));
+        const recouvrement = communs.length / Math.min(a.size, b.size);
+        expect(
+          recouvrement,
+          `P6 S${i + 1} et S${j + 1} : objectifs trop proches (${communs.join(', ')}).`,
+        ).toBeLessThan(0.5);
+      }
+    }
+  });
+
+  it('introduit des lignes droites en Z5 à la fin du bloc 1, puis les entretient', () => {
+    const estLigneDroite = (x) =>
+      /lignes droites/.test(x.description) && zonesSecondairesDe(x).includes('Z5');
+    const semainesAvecLignes = P6.semainesContenu
+      .filter((s) => s.seances.some(estLigneDroite))
+      .map((s) => s.numero);
+
+    const finBloc1 = Math.max(
+      ...P6.semainesContenu.filter((s) => s.phase === 'bloc1').map((s) => s.numero),
+    );
+    expect(finBloc1).toBe(3);
+    expect(semainesAvecLignes).toEqual([3, 5, 6, 8]);
+    expect(semainesAvecLignes.every((n) => n >= finBloc1)).toBe(true);
+    expect(semainesAvecLignes).not.toContain(9); // jamais la semaine de course.
+    expect(semainesAvecLignes).not.toContain(7); // ni la semaine au pic de charge.
+
+    for (const s of P6.semainesContenu) {
+      for (const seance of s.seances.filter(estLigneDroite)) {
+        expect(seance.code).toBe('EF');
+        expect(seance.description).toMatch(/[456] lignes droites de (15|20) s en Z5/);
+        expect(seance.description).toMatch(/marche/);
+      }
+    }
+  });
+
+  it("n'emploie jamais de tiret cadratin ni d'allure chiffrée dans les textes affichés", () => {
+    const textes = P6.semainesContenu.flatMap((s) => [
+      s.titre,
+      s.intention,
+      ...s.seances.flatMap((x) => [x.titre, x.description, x.objectif]),
+    ]);
+    expect(textes.join(' ')).not.toContain('—');
+    expect(textes.join(' ')).not.toMatch(/min\/km/);
+    expect(textes.join(' ')).not.toMatch(/km\/h/);
+  });
+
+  it('donne à chaque séance une description exécutable et un objectif rédigé', () => {
+    for (const s of P6.semainesContenu) {
+      for (const seance of s.seances) {
+        expect(seance.description.length).toBeGreaterThan(30);
+        expect(seance.objectif.length).toBeGreaterThan(15);
+      }
+    }
+  });
+
+  it("varie les textes, aucune description n'est copiée d'une semaine à l'autre", () => {
+    const descriptions = P6.semainesContenu.flatMap((s) => s.seances.map((x) => x.description));
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+  });
+});
+
 describe('registre (src/programmes/index.js)', () => {
-  it('expose les cinq programmes, dans l\'ordre P1 à P5', () => {
-    expect(Object.keys(REGISTRE_PROGRAMMES)).toEqual(['P1', 'P2', 'P3', 'P4', 'P5']);
-    expect(REGISTRE_PROGRAMMES).toEqual({ P1, P2, P3, P4, P5 });
+  it('expose les six programmes, dans l\'ordre P1 à P6', () => {
+    expect(Object.keys(REGISTRE_PROGRAMMES)).toEqual(['P1', 'P2', 'P3', 'P4', 'P5', 'P6']);
+    expect(REGISTRE_PROGRAMMES).toEqual({ P1, P2, P3, P4, P5, P6 });
+  });
+
+  // P6 est servi par le registre exactement comme les cinq autres : c'est la
+  // seule voie par laquelle le Worker lit un contenu, et un programme qui n'y
+  // serait pas inscrit resterait invisible du coureur même si son fichier est
+  // parfaitement écrit.
+  it('sert P6 par le registre, de la première à la dernière semaine', () => {
+    expect(programme('P6')).toBe(P6);
+    const s1 = semaineDuProgramme('P6', 1, {});
+    expect(s1).not.toBeNull();
+    expect(s1.numero).toBe(1);
+    expect(s1.phase).toBe('bloc1');
+    expect(s1.seances).toHaveLength(4);
+    for (let n = 1; n <= 10; n++) {
+      expect(semaineDuProgramme('P6', n, {}), `P6 S${n} : semaine absente du registre.`).not.toBeNull();
+    }
+    expect(semaineDuProgramme('P6', 11, {})).toBeNull();
+  });
+
+  it("sur P6, l'option faitIzon est sans effet : Andernos tombe le jour d'Izon", () => {
+    expect(P6.izon).toBe('aucune');
+    for (let n = 1; n <= 10; n++) {
+      expect(semaineDuProgramme('P6', n, { faitIzon: true })).toEqual(
+        semaineDuProgramme('P6', n, { faitIzon: false }),
+      );
+    }
+    // Aucune semaine ne porte de variante, et la seule séance COURSE du
+    // programme est celle d'Andernos, en S9.
+    expect(P6.semainesContenu.some((s) => s.variantes)).toBe(false);
+    const courses = P6.semainesContenu.flatMap((s) =>
+      s.seances.filter((x) => x.code === 'COURSE').map((x) => ({ semaine: s.numero, titre: x.titre })),
+    );
+    expect(courses).toEqual([{ semaine: 9, titre: "16 km d'Andernos" }]);
   });
 
   it('programme() lève une erreur en français sur un code inconnu', () => {
