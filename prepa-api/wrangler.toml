@@ -1,0 +1,54 @@
+name = "prepa-api"
+main = "src/index.js"
+compatibility_date = "2026-07-18"
+compatibility_flags = ["nodejs_compat"]
+
+# L'API est servie sur le domaine du site, et non sur workers.dev.
+#
+# Ce n'est pas une preference d'esthetique d'URL, c'est ce qui fait
+# fonctionner la session. Le cookie de session est SameSite=Lax, et un
+# navigateur n'envoie jamais un cookie Lax sur une requete inter-sites : une
+# page servie depuis coureursdesvignes.fr appelant prepa-api.workers.dev
+# aurait obtenu 200 a la connexion puis 401 sur tous les appels suivants.
+# En local le defaut est invisible, localhost:4599 et localhost:8787 etant le
+# meme site.
+#
+# Passer le cookie en SameSite=None reglerait le symptome et en creerait un
+# pire : ce serait un cookie tiers, bloque par defaut par Safari et Firefox,
+# donc par une bonne part des telephones du club.
+#
+# Le motif ne couvre que /api/*, ou le site statique n'a rien. Tout le reste
+# du domaine continue d'etre servi par le projet Pages.
+routes = [
+  { pattern = "coureursdesvignes.fr/api/*", zone_name = "coureursdesvignes.fr" },
+  { pattern = "www.coureursdesvignes.fr/api/*", zone_name = "coureursdesvignes.fr" },
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "prepa"
+database_id = "65ca6d93-b8e0-47be-bbea-e75a97e75829"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["0 7 * * 6"]
+
+[vars]
+EMAIL_ADMIN = "tridav00@gmail.com"
+EMAIL_EXPEDITEUR = "prepa@coureursdesvignes.fr"
+SITE_URL = "https://coureursdesvignes.fr"
+
+# Binding d'envoi du rappel du samedi.
+#
+# Il exige que l'adresse de destination soit verifiee dans Cloudflare Email
+# Routing, ce qui passe par un lien de confirmation envoye a tridav00@gmail.com
+# et cliquable par David seul. Tant que ce n'est pas fait, le binding fait
+# echouer le deploiement.
+#
+# Le code, lui, est deja en place et inoffensif sans le binding : envoyerRappel
+# rend 'sans-binding' et le cron se termine normalement. On peut donc mettre en
+# ligne sans lui et l'activer ensuite, ce qui evite de faire dependre une date
+# de parution d'une verification d'adresse.
+# [[send_email]]
+# name = "EMAIL"
+# destination_address = "tridav00@gmail.com"

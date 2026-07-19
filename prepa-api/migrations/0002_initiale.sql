@@ -1,0 +1,20 @@
+-- Ajoute l'initiale du nom a l'identite du coureur. Jusqu'ici seul le
+-- prenom normalise servait de cle : deux adherents homonymes (deux
+-- "Julien" par exemple) s'ecrasaient silencieusement, le second remplacant
+-- le programme, la variante de course et le statut Izon du premier. Decision
+-- de l'encadrant du 18/07 : prenom et initiale sont desormais demandes
+-- d'emblee, tous les deux obligatoires, et l'initiale fait partie de la cle
+-- normalisee (voir src/coureurs.js) pour distinguer "Julien B" de
+-- "Julien M".
+--
+-- Colonne separee plutot que composition dans le champ "prenom" existant :
+-- rien n'est encore deploye (une migration de plus ne coute rien) et une
+-- colonne dediee permet a l'ecran d'administration a venir de filtrer,
+-- trier ou afficher l'initiale sans reparser le prenom.
+--
+-- DEFAULT '' requis par SQLite pour ajouter une colonne NOT NULL par ALTER
+-- TABLE ; sans donnees existantes (rien n'est deploye), il ne sert qu'a
+-- satisfaire la contrainte de schema. En pratique creerOuTrouver() valide
+-- toujours l'initiale avant insertion, aucune ligne ne conserve la valeur
+-- par defaut.
+ALTER TABLE coureurs ADD COLUMN initiale TEXT NOT NULL DEFAULT '';

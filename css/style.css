@@ -633,3 +633,463 @@ p { margin: 0 0 1rem; }
   .hero__media img { animation: none; transform: scale(1.04); }
   .quote-band { background-attachment: scroll; }
 }
+
+/* =========================================================
+   PRÉPA AUX COURSES
+   Reprend les jetons du design system, aucune couleur nouvelle.
+   ========================================================= */
+
+.prepa-onglets {
+  display: flex; flex-wrap: wrap; gap: .5rem;
+  margin-bottom: 2rem; padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.prepa-onglet {
+  font-family: var(--f-body); font-size: .95rem; font-weight: 600;
+  padding: .55rem 1.1rem; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
+  cursor: pointer; transition: all .2s var(--ease);
+}
+.prepa-onglet:hover { border-color: var(--vine); color: var(--vine); }
+.prepa-onglet.is-active { background: var(--vine); border-color: var(--vine); color: var(--chalk); }
+
+.prepa-carte {
+  background: var(--chalk); border-radius: var(--r-lg); box-shadow: var(--sh);
+  padding: clamp(1.4rem, 4vw, 2.4rem); margin-bottom: 1.25rem;
+}
+.prepa-carte--etroite { max-width: 460px; }
+.prepa-carte h2 { margin-bottom: .35em; }
+.prepa-carte h3 { margin-top: 1.6rem; }
+
+.prepa-message {
+  padding: .9rem 1.2rem; border-radius: var(--r); margin-bottom: 1.25rem;
+  font-weight: 500; border-left: 4px solid var(--vine); background: var(--chalk);
+}
+.prepa-message--erreur { border-left-color: var(--wine); color: var(--wine-2); }
+.prepa-message--ok { border-left-color: var(--shoot-dark); }
+
+/* ---------- Formulaires ---------- */
+.prepa-champ { display: block; margin-bottom: 1rem; }
+.prepa-champ > span { display: block; font-size: .85rem; font-weight: 600; color: var(--ink-soft); margin-bottom: .35rem; }
+.prepa-champ input, .prepa-note textarea {
+  width: 100%; font-family: var(--f-body); font-size: 1rem; color: var(--ink);
+  padding: .7rem .9rem; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--limestone-2); transition: border-color .2s var(--ease);
+}
+.prepa-champ input:focus, .prepa-note textarea:focus { border-color: var(--vine); outline: none; }
+.prepa-champ--court { max-width: 130px; }
+.prepa-ligne { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+.prepa-radio, .prepa-case { display: flex; gap: .6rem; align-items: flex-start; margin: .5rem 0 1rem; cursor: pointer; }
+.prepa-case { padding: .9rem 1.1rem; border: 1px solid var(--line); border-radius: var(--r); background: var(--limestone-2); }
+
+.prepa-programmes { display: grid; gap: .75rem; margin: 1rem 0 1.5rem; }
+.prepa-programme {
+  display: flex; gap: .9rem; align-items: flex-start; cursor: pointer;
+  padding: 1rem 1.2rem; border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--limestone-2); transition: all .2s var(--ease);
+}
+.prepa-programme:hover { border-color: var(--vine); }
+.prepa-programme:has(input:checked) { border-color: var(--vine); background: color-mix(in srgb, var(--shoot) 10%, var(--chalk)); }
+.prepa-programme__corps { display: grid; gap: .2rem; }
+.prepa-programme__nom { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; }
+.prepa-programme__meta { font-family: var(--f-mono); font-size: .82rem; color: var(--muted); }
+.prepa-programme__prerequis { font-size: .88rem; color: var(--ink-soft); font-style: italic; }
+
+/* ---------- Séances ---------- */
+.prepa-entete {
+  display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: space-between; align-items: flex-start;
+  background: var(--vine-deep); color: var(--chalk);
+  border-radius: var(--r-lg); padding: clamp(1.4rem, 4vw, 2.2rem); margin-bottom: 1.5rem;
+}
+.prepa-entete h2 { color: var(--chalk); margin: .2em 0; }
+.prepa-entete .eyebrow { color: var(--shoot); }
+.prepa-intention { color: rgba(250, 248, 241, .82); margin: 0; max-width: 52ch; }
+.prepa-carte .prepa-intention { color: var(--ink-soft); }
+.prepa-compteur { text-align: center; font-family: var(--f-mono); }
+.prepa-compteur strong { display: block; font-size: 2.6rem; line-height: 1; color: var(--shoot); }
+.prepa-compteur span { font-size: .82rem; color: rgba(250, 248, 241, .7); }
+
+.prepa-seance {
+  background: var(--chalk); border: 1px solid var(--line); border-left: 5px solid var(--zone, var(--vine));
+  border-radius: var(--r); padding: 1.25rem 1.4rem; margin-bottom: 1rem;
+}
+.prepa-seance.est-validee { background: color-mix(in srgb, var(--shoot) 12%, var(--chalk)); }
+.prepa-seance__tete { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; margin-bottom: .6rem; }
+.prepa-seance__tete h4 { margin: 0; flex: 1; font-family: var(--f-display); font-size: 1.02rem; }
+.prepa-seance__meta { font-family: var(--f-mono); font-size: .85rem; color: var(--muted); }
+.prepa-seance__desc { margin: 0 0 .5rem; }
+.prepa-seance__objectif { margin: 0 0 1rem; color: var(--ink-soft); font-style: italic; font-size: .93rem; }
+.prepa-seance__actions { display: flex; gap: .8rem; flex-wrap: wrap; align-items: center; }
+.prepa-seance .btn { padding: .5rem 1rem; font-size: .9rem; }
+
+.prepa-puce {
+  display: inline-block; font-family: var(--f-mono); font-weight: 700; font-size: .78rem;
+  padding: .18rem .62rem; border-radius: var(--r-pill);
+  background: var(--zone, var(--vine)); color: var(--chalk);
+}
+
+.prepa-ressenti { display: flex; gap: .4rem; flex-wrap: wrap; }
+.prepa-ressenti__btn {
+  font-family: var(--f-body); font-size: .88rem; cursor: pointer;
+  padding: .45rem .9rem; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: var(--chalk); color: var(--ink-soft);
+  transition: all .2s var(--ease);
+}
+.prepa-ressenti__btn:hover { border-color: var(--vine); }
+.prepa-ressenti__btn[aria-pressed="true"] { background: var(--vine); border-color: var(--vine); color: var(--chalk); }
+
+.prepa-note { margin-top: .9rem; }
+.prepa-note summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
+.prepa-note textarea { margin: .6rem 0; }
+.prepa-note .btn { padding: .4rem .9rem; font-size: .85rem; }
+
+/* ---------- Semaines verrouillées ---------- */
+.prepa-carte--verrou { position: relative; overflow: hidden; }
+.prepa-verrou { filter: blur(5px); user-select: none; pointer-events: none; opacity: .55; }
+.prepa-verrou-libelle {
+  font-family: var(--f-mono); font-size: .88rem; color: var(--muted);
+  text-align: center; margin: .5rem 0 0;
+}
+
+/* ---------- Divers ---------- */
+.prepa-jauge { height: 8px; border-radius: var(--r-pill); background: var(--limestone-2); overflow: hidden; margin: 1rem 0 .5rem; }
+.prepa-jauge span { display: block; height: 100%; background: linear-gradient(90deg, var(--vine), var(--shoot)); }
+
+.prepa-liste { list-style: none; padding: 0; margin: .8rem 0 0; display: grid; gap: .5rem; }
+.prepa-liste li { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+
+.prepa-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: .93rem; }
+.prepa-table th, .prepa-table td { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.prepa-table th { font-family: var(--f-mono); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.prepa-chiffre { font-family: var(--f-mono); }
+
+.prepa-alerte { padding: .6rem .9rem; border-radius: var(--r-sm); border-left: 4px solid var(--muted); background: var(--limestone-2); display: block; }
+.prepa-alerte--difficulte { border-left-color: var(--wine); }
+
+.prepa-mention { font-size: .85rem; color: var(--muted); margin-top: 1.5rem; }
+
+@media (max-width: 640px) {
+  .prepa-entete { flex-direction: column; }
+  .prepa-compteur { text-align: left; }
+  .prepa-table { display: block; overflow-x: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prepa-onglet, .prepa-programme, .prepa-ressenti__btn { transition: none; }
+}
+
+/* L'attribut hidden doit primer sur les display des blocs ci-dessus. */
+.prepa-onglets[hidden], .prepa-carte[hidden], .prepa-ligne[hidden],
+.prepa-case[hidden], .prepa-message[hidden], .prepa-seance[hidden] { display: none !important; }
+.prepa-apercu { color: var(--wine); font-weight: 700; }
+
+/* ---------- Bandeau de course ---------- */
+.prepa-course {
+  background: var(--vine-deep);
+  color: var(--chalk);
+  border-radius: var(--r-lg);
+  padding: clamp(1.5rem, 4vw, 2.6rem);
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.prepa-course .eyebrow { color: var(--shoot); }
+.prepa-course__nom {
+  font-family: var(--f-display);
+  font-size: clamp(1.9rem, 6vw, 3.4rem);
+  line-height: 1.02;
+  color: var(--chalk);
+  margin: .25em 0 .3em;
+  letter-spacing: -.02em;
+}
+.prepa-course__date {
+  font-family: var(--f-mono);
+  font-size: .95rem;
+  color: rgba(250, 248, 241, .78);
+  margin: 0;
+  display: flex;
+  gap: .9rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.prepa-course__compte {
+  background: var(--shoot);
+  color: var(--vine-deep);
+  padding: .22rem .8rem;
+  border-radius: var(--r-pill);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+/* ---------- Légende des zones ---------- */
+.prepa-zones summary {
+  cursor: pointer;
+  font-family: var(--f-body);
+  font-size: 1.02rem;
+  margin-bottom: .3rem;
+}
+.prepa-zones summary strong { font-family: var(--f-display); }
+.prepa-zones__intro { color: var(--ink-soft); font-size: .93rem; margin: .8rem 0 0; }
+.prepa-zones .prepa-table td { vertical-align: middle; }
+.prepa-zone__nom { font-weight: 600; white-space: nowrap; }
+.prepa-zone__bpm { color: var(--vine); font-weight: 700; white-space: nowrap; }
+.prepa-zone__sensation { color: var(--ink-soft); font-size: .9rem; }
+.prepa-zones__saisie { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-top: 1rem; }
+.prepa-zones__fcm { margin-top: 1rem; color: var(--ink-soft); font-size: .92rem; }
+.prepa-lien {
+  background: none; border: none; padding: 0;
+  font-family: var(--f-body); font-size: inherit; color: var(--vine);
+  text-decoration: underline; cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .prepa-zone__sensation { display: none; }
+  .prepa-course__date { font-size: .85rem; }
+}
+
+/* ---------- Présentation de la prépa ---------- */
+.prepa-duo { display: grid; gap: 1.25rem; grid-template-columns: 1fr 1fr; }
+.prepa-duo .prepa-carte { margin-bottom: 0; }
+.prepa-duo h3, .prepa-carte > h3 { font-family: var(--f-display); margin: .3em 0 .5em; }
+
+.prepa-points { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .9rem; }
+.prepa-points li { padding-left: 1.6rem; position: relative; color: var(--ink-soft); line-height: 1.55; }
+.prepa-points li::before {
+  content: ''; position: absolute; left: 0; top: .55em;
+  width: 9px; height: 9px; border-radius: 2px;
+  background: var(--shoot); transform: rotate(45deg);
+}
+.prepa-points strong { color: var(--ink); }
+
+.prepa-puce--neutre { background: var(--muted); }
+
+.prepa-depart { text-align: center; padding: 1.5rem 0 .5rem; }
+.prepa-depart__btn { font-size: 1.18rem; padding: 1rem 2.6rem; }
+.prepa-depart__note { margin-top: .9rem; font-size: .88rem; color: var(--muted); }
+
+@media (max-width: 760px) { .prepa-duo { grid-template-columns: 1fr; } }
+
+/* ---------- Allures personnelles ---------- */
+.prepa-champ--moyen { max-width: 220px; }
+.prepa-zone__allure { color: var(--wine); font-weight: 700; white-space: nowrap; }
+.prepa-zones__avert {
+  margin-top: 1rem; padding: .8rem 1rem;
+  background: var(--limestone-2); border-radius: var(--r-sm);
+  font-size: .89rem; color: var(--ink-soft);
+}
+
+.prepa-seance__allure {
+  display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center;
+  margin: 0 0 .8rem; padding: .55rem .8rem;
+  background: var(--limestone-2); border-radius: var(--r-sm);
+  font-size: .89rem;
+}
+.prepa-seance__allure-titre {
+  font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted);
+}
+.prepa-allure { display: inline-flex; align-items: center; gap: .4rem; }
+.prepa-allure .prepa-puce { font-size: .7rem; padding: .1rem .45rem; }
+
+@media (max-width: 640px) {
+  .prepa-zone__allure { white-space: normal; }
+}
+
+/* ---------- Objectif et adaptation ---------- */
+.prepa-aide { font-size: .9rem; color: var(--muted); margin: .4rem 0 1rem; }
+.prepa-objectif { border-left: 5px solid var(--shoot); }
+.prepa-objectif h3 { font-size: 1.6rem; }
+
+.prepa-adapt {
+  border-radius: var(--r); padding: 1.1rem 1.3rem; margin-bottom: 1.25rem;
+  border-left: 5px solid var(--vine); background: var(--chalk); box-shadow: var(--sh-sm);
+  display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap;
+}
+.prepa-adapt p { margin: 0; flex: 1; min-width: 260px; color: var(--ink-soft); }
+.prepa-adapt strong { color: var(--ink); }
+.prepa-adapt--vite { border-left-color: var(--shoot-dark); }
+.prepa-adapt--dur { border-left-color: var(--wine); }
+.prepa-adapt .btn { padding: .6rem 1.2rem; font-size: .92rem; }
+
+/* =========================================================
+   PRÉPA : LA VIGNE QUI TOURNE
+   La préparation court de juillet à novembre, le moment où la vigne
+   passe du vert à l'or puis au bordeaux. Cette bascule devient le
+   langage de l'intensité : plus l'effort monte, plus la couleur mûrit.
+   ========================================================= */
+:root {
+  --sauge: #8fa887;      /* Z1, la feuille au printemps */
+  --or-vigne: #d9a441;   /* Z3, la feuille qui tourne */
+  --or-vigne-2: #b8862c;
+  --terre: #b8663a;      /* Z4, le sol de septembre */
+  --terre-2: #96502c;
+}
+
+/* La rampe d'intensité, du vert tendre à la vendange. */
+.zone-Z1 { --zone: var(--sauge);     --zone-tint: rgba(143, 168, 135, .10); }
+.zone-Z2 { --zone: var(--vine);      --zone-tint: rgba(46, 107, 62, .09); }
+.zone-Z3 { --zone: var(--or-vigne-2); --zone-tint: rgba(217, 164, 65, .16); }
+.zone-Z4 { --zone: var(--terre);     --zone-tint: rgba(184, 102, 58, .13); }
+.zone-Z5 { --zone: var(--wine);      --zone-tint: rgba(110, 26, 42, .10); }
+
+/* ---------- Les séances portent leur couleur ---------- */
+.prepa-seance {
+  border-left-width: 6px;
+  position: relative;
+}
+.prepa-seance.est-validee {
+  border-left-color: var(--shoot-dark);
+}
+.prepa-seance__tete { gap: .65rem; }
+.prepa-seance__tete h4 { color: var(--zone, var(--ink)); }
+.prepa-seance.est-validee .prepa-seance__tete h4 { color: var(--vine-2); }
+
+.prepa-glyphe {
+  width: 30px; height: 30px; flex: 0 0 30px;
+  color: var(--zone, var(--vine));
+}
+.prepa-glyphe svg { width: 100%; height: 100%; display: block; }
+
+/* ---------- L'en-tête de semaine s'allège ----------
+   Deux blocs vert foncé empilés écrasaient la page : le bandeau de
+   course reste le seul ancrage sombre, la semaine passe en clair et
+   prend la couleur de sa phase. */
+.prepa-entete {
+  background: var(--chalk);
+  color: var(--ink);
+  border-top: 6px solid var(--phase, var(--vine));
+  box-shadow: var(--sh);
+  align-items: center;
+}
+.prepa-entete h2 { color: var(--ink); }
+.prepa-entete .eyebrow { color: var(--phase, var(--vine)); }
+.prepa-entete .prepa-intention { color: var(--ink-soft); }
+
+.phase-bloc1 { --phase: var(--vine); }
+.phase-bloc2 { --phase: var(--or-vigne-2); }
+.phase-bloc3 { --phase: var(--terre); }
+.phase-allegee { --phase: var(--sauge); }
+.phase-recuperation-active { --phase: var(--sauge); }
+.phase-affutage { --phase: var(--wine); }
+.phase-recuperation { --phase: var(--muted); }
+
+/* ---------- L'anneau de progression remplace le chiffre nu ---------- */
+.prepa-anneau { position: relative; width: 108px; height: 108px; flex: 0 0 108px; }
+.prepa-anneau svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.prepa-anneau__fond { fill: none; stroke: var(--limestone-2); stroke-width: 9; }
+.prepa-anneau__arc {
+  fill: none; stroke: var(--phase, var(--vine)); stroke-width: 9; stroke-linecap: round;
+  transition: stroke-dasharray .6s var(--ease);
+}
+.prepa-anneau__texte {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+  font-family: var(--f-mono); line-height: 1.1;
+}
+.prepa-anneau__texte strong { font-size: 1.9rem; color: var(--phase, var(--vine)); }
+.prepa-anneau__texte span { font-size: .68rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { .prepa-anneau__arc { transition: none; } }
+
+/* ---------- Le bandeau de course prend la photo ----------
+   Voile global léger pour que la vigne reste lisible, contraste obtenu
+   par un dégradé local sous le texte plutôt qu'en noircissant l'image. */
+.prepa-course {
+  background:
+    linear-gradient(100deg, rgba(20, 51, 30, .88) 0%, rgba(20, 51, 30, .72) 45%, rgba(20, 51, 30, .28) 100%),
+    linear-gradient(rgba(20, 51, 30, .10), rgba(20, 51, 30, .10)),
+    url('../assets/photo-entrainement.jpg') center 62% / cover no-repeat;
+  min-height: 210px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.prepa-course__nom { text-shadow: 0 2px 18px rgba(15, 39, 23, .45); }
+
+/* ---------- Le lavis de zone tient toute la carte ----------
+   Une couleur ne peut pas se superposer a une autre en background : la
+   teinte passe par un degrade plat, seule facon d'empiler un calque. */
+.prepa-seance {
+  background: linear-gradient(var(--zone-tint, transparent), var(--zone-tint, transparent)), var(--chalk);
+}
+.prepa-seance.est-validee {
+  background: linear-gradient(rgba(169, 206, 60, .18), rgba(169, 206, 60, .18)), var(--chalk);
+}
+
+/* ---------- Le bandeau d'allure prend la couleur de la séance ---------- */
+.prepa-seance__allure {
+  background: var(--chalk);
+  border: 1px solid var(--zone, var(--line));
+  border-left: 4px solid var(--zone, var(--vine));
+}
+.prepa-seance__allure-titre { color: var(--zone, var(--muted)); font-weight: 700; }
+
+/* ---------- Les onglets respirent la même rampe ---------- */
+.prepa-onglet.is-active { background: var(--vine-deep); border-color: var(--vine-deep); }
+
+@media (max-width: 640px) {
+  .prepa-course { min-height: 170px; }
+}
+
+/* =========================================================
+   PRÉPA : LE DÉROULÉ DES SÉANCES
+   La description d'une séance se lit bien assise au calme, beaucoup
+   moins bien en tenue devant sa montre. Le serveur la découpe en
+   étapes, ce tableau les pose une par ligne : combien de temps, dans
+   quelle zone, et ce qui vient après.
+   ========================================================= */
+.prepa-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+.prepa-deroule {
+  width: 100%; border-collapse: collapse;
+  margin: 0 0 .9rem; font-size: .93rem;
+}
+.prepa-deroule th {
+  font-family: var(--f-mono); font-size: .7rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+  text-align: left; padding: 0 .6rem .35rem; border-bottom: 1px solid var(--line);
+}
+.prepa-deroule td { padding: .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.prepa-deroule tbody tr:last-child td { border-bottom: none; }
+
+/* Chaque ligne porte la couleur de sa propre zone : l'intensité de la
+   séance se lit de haut en bas sans avoir à lire le texte. */
+.prepa-deroule tbody tr { background: var(--zone-tint, transparent); }
+
+.prepa-deroule__rang { width: 1.6rem; font-family: var(--f-mono); font-size: .8rem; color: var(--muted); }
+.prepa-deroule__duree { width: 5.6rem; font-family: var(--f-mono); color: var(--ink); }
+.prepa-deroule__zone { width: 3rem; }
+.prepa-deroule__quoi { line-height: 1.5; }
+.prepa-deroule__env {
+  display: block; font-size: .68rem; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted);
+}
+.prepa-deroule__sous { display: block; font-size: .85rem; color: var(--ink-soft); margin-top: .2rem; }
+
+.prepa-seance__preambule {
+  margin: 0 0 .7rem; padding: .55rem .8rem;
+  background: var(--limestone-2); border-left: 3px solid var(--muted);
+  border-radius: var(--r-sm); font-size: .9rem; color: var(--ink-soft);
+}
+.prepa-seance__conseil {
+  margin: 0 0 .8rem; padding: .6rem .85rem;
+  background: var(--limestone-2); border-radius: var(--r-sm);
+  font-size: .9rem; color: var(--ink-soft);
+}
+
+/* Sur un téléphone, quatre colonnes ne tiennent pas. La ligne devient un
+   bloc : le rang et la durée se rangent au-dessus du texte, qui garde
+   toute la largeur. Le tableau reste un tableau pour le lecteur d'écran. */
+@media (max-width: 620px) {
+  .prepa-deroule thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .prepa-deroule tbody tr {
+    display: grid; grid-template-columns: auto auto 1fr; gap: .1rem .5rem;
+    align-items: baseline; padding: .6rem .7rem; margin-bottom: .35rem;
+    border-radius: var(--r-sm); border-left: 3px solid var(--zone, var(--line));
+  }
+  .prepa-deroule td { border: none; padding: 0; }
+  .prepa-deroule__rang { grid-column: 1; }
+  .prepa-deroule__duree { width: auto; grid-column: 2; font-weight: 700; }
+  .prepa-deroule__zone { grid-column: 3; justify-self: start; }
+  .prepa-deroule__quoi { grid-column: 1 / -1; margin-top: .3rem; }
+  .prepa-deroule__env { display: inline; font-size: .72rem; }
+}

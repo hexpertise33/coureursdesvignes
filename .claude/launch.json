@@ -7,6 +7,12 @@
       "runtimeArgs": ["server.js"],
       "port": 4599,
       "autoPort": true
+    },
+    {
+      "name": "prepa-api",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "prepa-api", "wrangler", "dev", "--config", "prepa-api/wrangler.toml", "--port", "8787"],
+      "port": 8787
     }
   ]
 }
