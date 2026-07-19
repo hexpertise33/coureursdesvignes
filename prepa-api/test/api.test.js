@@ -8,7 +8,10 @@ import { ZONES } from '../src/programmes/seances.js';
 import { RESSENTIS } from '../src/validations.js';
 // Horloge maîtrisée : voir test/horloge.js. Ces utilitaires y ont été
 // extraits pour être partagés avec la suite du back-office (test/admin.test.js).
-import { SECONDE, requeteA, jsonA, AVANT_TOUT, MI_PARCOURS, APRES_TOUT } from './horloge.js';
+import { SECONDE, requeteA, jsonA, commeSi, AVANT_TOUT, MI_PARCOURS, APRES_TOUT } from './horloge.js';
+// Le handler scheduled n'est atteignable que par l'objet exporte : SELF ne
+// sert que les requetes HTTP.
+import worker from '../src/index.js';
 
 // Fabrique un cookie de session valide sans passer par la route de session :
 // les tests de contenu n'ont pas à dépendre du code d'accès.
@@ -1490,5 +1493,56 @@ describe('validation de séance : sécurité de l\'identifiant coureur', () => {
       });
       expect(statut).toBe(400);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cron du samedi
+// ---------------------------------------------------------------------------
+//
+// Le handler scheduled est resté vide toute la durée du chantier, et rien
+// n'exerçait le seul chemin d'exécution du Worker qui ne passe pas par une
+// requête HTTP. Ces tests le font tourner pour de bon, sous horloge maîtrisée,
+// avec la vraie base : c'est là qu'on voit qu'il ne tombe pas et qu'il annonce
+// la bonne semaine.
+//
+// L'envoi lui-même ne part pas : le binding EMAIL n'existe pas en test, et
+// envoyerRappel rend alors 'sans-binding' sans lever. Ce qu'on vérifie ici est
+// donc le calcul et la robustesse, pas la remise du message.
+describe('cron du samedi', () => {
+  const JOUR = 86400000;
+  const veilleDe = (n) => instantPublication(n) - JOUR;
+
+  async function jouerCron(instant) {
+    const evenement = { cron: '0 7 * * 6', scheduledTime: instant, noRetry() {} };
+    const taches = [];
+    const contexte = { waitUntil: (p) => taches.push(p), passThroughOnException() {} };
+    return commeSi(instant, async () => {
+      await worker.scheduled(evenement, env, contexte);
+      // Les envois sont différés par waitUntil : on les attend explicitement,
+      // sinon une erreur d'envoi passerait inaperçue.
+      const resultats = await Promise.all(taches);
+      return resultats;
+    });
+  }
+
+  it('annonce la semaine 1 le samedi qui précède son ouverture', async () => {
+    const resultats = await jouerCron(veilleDe(1));
+    expect(resultats).toEqual(['sans-binding']);
+  });
+
+  it('tourne sans échouer en cours de saison, avec des coureurs en base', async () => {
+    const c = await cookie('coureur');
+    await creerCoureur(c, { prenom: 'Cron', initiale: 'C', programme: 'P1', faitIzon: false });
+    const resultats = await jouerCron(veilleDe(5));
+    expect(resultats).toEqual(['sans-binding']);
+  });
+
+  it("n'envoie plus rien une fois la dernière semaine parue", async () => {
+    const resultats = await jouerCron(APRES_TOUT);
+    // Aucune tâche différée : le handler est sorti avant de construire quoi
+    // que ce soit. C'est la sortie hors saison, sans elle le cron annoncerait
+    // une semaine 18 inexistante tous les samedis, indéfiniment.
+    expect(resultats).toEqual([]);
   });
 });

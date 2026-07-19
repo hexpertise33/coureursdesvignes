@@ -15,4 +15,20 @@ crons = ["0 7 * * 6"]
 
 [vars]
 EMAIL_ADMIN = "tridav00@gmail.com"
+EMAIL_EXPEDITEUR = "prepa@coureursdesvignes.fr"
 SITE_URL = "https://coureursdesvignes.fr"
+
+# Binding d'envoi du rappel du samedi.
+#
+# Il exige que l'adresse de destination soit verifiee dans Cloudflare Email
+# Routing, ce qui passe par un lien de confirmation envoye a tridav00@gmail.com
+# et cliquable par David seul. Tant que ce n'est pas fait, le binding fait
+# echouer le deploiement.
+#
+# Le code, lui, est deja en place et inoffensif sans le binding : envoyerRappel
+# rend 'sans-binding' et le cron se termine normalement. On peut donc mettre en
+# ligne sans lui et l'activer ensuite, ce qui evite de faire dependre une date
+# de parution d'une verification d'adresse.
+# [[send_email]]
+# name = "EMAIL"
+# destination_address = "tridav00@gmail.com"

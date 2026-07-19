@@ -34,6 +34,7 @@ import { creerOuTrouver, parId, parCle, nomAffiche } from './coureurs.js';
 import { PROGRAMMES, semaineDuProgramme } from './programmes/index.js';
 import { ZONES, zonesSecondairesDe } from './programmes/seances.js';
 import { valider, devalider, pourCoureur } from './validations.js';
+import { construireRappel, envoyerRappel, semaineDuRappel } from './email.js';
 import {
   tableau,
   alertes,
@@ -822,7 +823,34 @@ export default {
     return new Response(estHead ? null : brute.body, { status: brute.status, headers: entetes });
   },
 
+  /**
+   * Cron du samedi matin : prévenir l'encadrant de ce qui part demain.
+   *
+   * Le contenu d'une semaine se publie tout seul le dimanche à 19 h, sans que
+   * personne ne l'ait relu entre-temps. C'est la seule occasion donnée à
+   * l'encadrant d'intervenir avant la parution, et elle ne vaut que s'il sait
+   * aussi quels coureurs regarder : les alertes voyagent donc avec le rappel.
+   *
+   * Rien ici ne conditionne la publication. Un envoi qui échoue laisse la
+   * semaine paraître normalement, et c'est voulu : le produit ne doit pas
+   * dépendre de la bonne santé d'un service d'e-mail.
+   */
   async scheduled(event, env, ctx) {
-    // Rempli en tâche 14.
+    const semaine = semaineDuRappel(Date.now());
+
+    // Hors saison, il n'y a rien à annoncer. Le cron continue de se déclencher
+    // tous les samedis, et sans cette sortie il enverrait indéfiniment un
+    // rappel pour une semaine qui n'existe pas.
+    if (semaine === null) return;
+
+    // Les alertes se lisent sur la dernière semaine parue, la seule sur
+    // laquelle des séances ont pu être validées. Avant l'ouverture de la
+    // semaine 1, il n'y en a aucune et alertes() rend une liste vide.
+    const listeAlertes = await alertes(env.DB, semaine - 1);
+    const message = construireRappel(semaine, listeAlertes, env.SITE_URL);
+
+    // waitUntil et non await : le handler rend la main tout de suite, et
+    // l'envoi dispose quand même du temps d'exécution nécessaire.
+    ctx.waitUntil(envoyerRappel(env, message));
   },
 };
