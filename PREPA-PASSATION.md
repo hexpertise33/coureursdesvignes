@@ -189,13 +189,33 @@ Penser aussi à `npx wrangler d1 migrations apply prepa --local` : la base local
 de Miniflare est indexée sur le `database_id`, et celui-ci a changé quand la
 base de production a été créée.
 
+## Le rappel du samedi
+
+Actif depuis le 19 juillet 2026. Chaque samedi à 9 h, le Worker envoie à
+tridav00@gmail.com un message annonçant la semaine qui paraît le lendemain et
+nommant les coureurs à surveiller. Il s'arrête de lui-même après la dernière
+semaine de la saison.
+
+Ce qu'il a fallu configurer sur Cloudflare, une fois pour toutes :
+
+- **Email Routing activé** sur la zone `coureursdesvignes.fr`, avec ses cinq
+  enregistrements DNS (trois MX, un DKIM, un SPF). Sans lui, l'envoi échoue sur
+  `could not find account config of sending domain` : Cloudflare refuse
+  d'expédier depuis un domaine qu'il ne gère pas.
+- **tridav00@gmail.com vérifiée** en adresse de destination. La vérification
+  passe par un lien envoyé dans cette boîte, que seul David peut cliquer. Sans
+  elle, l'envoi échoue sur `destination address is not a verified address`.
+
+**Pour tester sans attendre samedi**, se connecter en encadrant et appeler
+`POST /api/admin/rappel`. Il rend `{ statut, semaine, alertes }`, le statut
+valant `envoye`, `sans-binding`, `sans-adresse`, `echec` ou `hors-saison`.
+C'est le même code que le cron, un test vérifie que les deux chemins donnent le
+même résultat. Cette route a diagnostiqué en trente secondes ce qui aurait
+demandé une semaine d'attente.
+
 ## Ce qui reste à faire
 
-**Le rappel du samedi**, seul point en attente et non bloquant. Le code est
-écrit, testé et déployé, mais inerte : `envoyerRappel` rend `sans-binding` et le
-cron se termine normalement. Pour l'activer, vérifier tridav00@gmail.com dans
-Cloudflare Email Routing (lien de confirmation à cliquer par David), puis
-décommenter le bloc `[[send_email]]` de `wrangler.toml` et redéployer.
+Rien de bloquant. Voir les points ouverts ci-dessous.
 
 ## Les points ouverts, à trancher par David
 
