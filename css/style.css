@@ -1154,31 +1154,41 @@ p { margin: 0 0 1rem; }
 }
 .prepa-reprise p { margin: 0; color: var(--ink-soft); }
 
-.prepa-catalogue {
-  display: grid; gap: 1.25rem;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+.prepa-catalogue { display: block; }
+.prepa-catalogue__date {
+  margin: 1.6rem 0 .6rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid var(--line);
 }
-.prepa-course-carte {
-  display: flex; flex-direction: column; gap: .55rem;
+.prepa-catalogue__date:first-child { margin-top: 0; }
+
+/* Une course par ligne : le texte a gauche, l'entree en prepa a droite,
+   toujours a la meme place d'une ligne a l'autre. */
+.prepa-course-ligne {
+  display: flex; align-items: center; gap: 1.5rem;
   background: var(--chalk); border: 1px solid var(--line);
   border-left: 5px solid var(--vine);
-  border-radius: var(--r); padding: 1.3rem 1.4rem;
+  border-radius: var(--r); padding: 1.1rem 1.3rem; margin-bottom: .7rem;
   transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
 }
-.prepa-course-carte:hover { border-color: var(--vine); box-shadow: var(--sh-sm); }
-.prepa-course-carte h3 { margin: 0; font-family: var(--f-display); font-size: 1.25rem; }
-.prepa-course-carte__meta {
-  margin: 0; font-family: var(--f-mono); font-size: .82rem; color: var(--muted);
+.prepa-course-ligne:hover { border-color: var(--vine); box-shadow: var(--sh-sm); }
+.prepa-course-ligne__corps { flex: 1; min-width: 0; display: grid; gap: .25rem; }
+.prepa-course-ligne h3 { margin: 0; font-family: var(--f-display); font-size: 1.15rem; }
+.prepa-course-ligne__meta {
+  margin: 0; font-family: var(--f-mono); font-size: .8rem; color: var(--muted);
 }
-.prepa-course-carte__resume { margin: .2rem 0 0; color: var(--ink-soft); line-height: 1.55; }
-.prepa-course-carte__profil,
-.prepa-course-carte__prerequis {
-  margin: 0; font-size: .89rem; color: var(--ink-soft); line-height: 1.5;
+.prepa-course-ligne__resume { margin: .15rem 0 0; color: var(--ink-soft); line-height: 1.5; font-size: .93rem; }
+.prepa-course-ligne__prerequis {
+  margin: 0; font-size: .86rem; font-style: italic; color: var(--muted); line-height: 1.45;
 }
-.prepa-course-carte__prerequis { font-style: italic; }
-/* Le bouton est poussé en bas : dans une grille, six cartes de hauteurs
-   différentes alignent malgré tout leur appel à l'action. */
-.prepa-course-carte .btn { margin-top: auto; align-self: flex-start; }
+.prepa-course-ligne .btn { flex: none; }
+
+@media (max-width: 700px) {
+  /* Sur un telephone la ligne se replie, le bouton passe dessous et prend
+     toute la largeur : il reste la cible la plus facile a atteindre. */
+  .prepa-course-ligne { flex-direction: column; align-items: stretch; gap: .8rem; }
+  .prepa-course-ligne .btn { width: 100%; text-align: center; }
+}
 
 /* Rappel de la course choisie, sur l'écran du code et celui de l'identité. */
 .prepa-choisie {
@@ -1188,6 +1198,3 @@ p { margin: 0 0 1rem; }
 }
 .prepa-choisie strong { color: var(--ink); }
 
-@media (max-width: 640px) {
-  .prepa-catalogue { grid-template-columns: 1fr; }
-}

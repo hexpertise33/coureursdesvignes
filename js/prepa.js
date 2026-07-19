@@ -159,6 +159,50 @@
    * verrou du produit porte sur le contenu de l'entraînement, et il reste
    * entier : le code est demandé dès qu'on veut entrer dans une prépa.
    */
+  /**
+   * Les courses en lignes, dans l'ordre où elles se courent.
+   *
+   * L'ordre de déclaration des programmes est un ordre de code (P1, P2, ...),
+   * qui n'apprend rien au coureur. Celui-ci choisit d'abord une date : ce qui
+   * se court fin septembre, ce qui se court en novembre. Le tri se fait donc
+   * sur la date de course, et le tri de JavaScript étant stable, deux courses
+   * du même jour gardent leur ordre de déclaration, qui va du plus court au
+   * plus long.
+   *
+   * Les quatre courses de novembre se regroupent sous une seule date plutôt
+   * que de la répéter quatre fois : le 8 novembre porte trois épreuves, et le
+   * voir d'un coup est exactement ce qui aide à choisir.
+   */
+  function rendreLignesCourses() {
+    var triees = PROGRAMMES.slice().sort(function (a, b) {
+      return a.dateISO < b.dateISO ? -1 : (a.dateISO > b.dateISO ? 1 : 0);
+    });
+
+    var html = '';
+    var dateVue = null;
+    triees.forEach(function (p) {
+      if (p.dateISO !== dateVue) {
+        dateVue = p.dateISO;
+        html += '<p class="prepa-catalogue__date"><span class="eyebrow">' + echapper(p.date) + '</span></p>';
+      }
+      var f = FICHES[p.code] || {};
+      html +=
+        '<article class="prepa-course-ligne">' +
+          '<div class="prepa-course-ligne__corps">' +
+            '<h3>' + echapper(p.nom) + '</h3>' +
+            '<p class="prepa-course-ligne__meta">' +
+              echapper(f.distance || '') + (f.lieu ? ' · ' + echapper(f.lieu) : '') +
+              ' · ' + echapper(p.duree) +
+            '</p>' +
+            (f.resume ? '<p class="prepa-course-ligne__resume">' + echapper(f.resume) + '</p>' : '') +
+            '<p class="prepa-course-ligne__prerequis">' + echapper(p.prerequis) + '</p>' +
+          '</div>' +
+          '<button class="btn btn--vine prepa-choisir" data-code="' + p.code + '">Préparer</button>' +
+        '</article>';
+    });
+    return html;
+  }
+
   function rendreCatalogue() {
     var reprise = (etat.role && etat.prenom && etat.programme)
       ? '<div class="prepa-carte prepa-reprise">' +
@@ -174,23 +218,7 @@
         '<p class="prepa-intention">Six préparations, toutes construites sur le même principe : trois séances de course par semaine et une de renforcement, écrites en zones d\'intensité et jamais en allure imposée, pour que tout le groupe puisse suivre le même programme quel que soit son niveau.</p>' +
       '</div>' +
       reprise +
-      '<div class="prepa-catalogue">' +
-      PROGRAMMES.map(function (p) {
-        var f = FICHES[p.code] || {};
-        return '<article class="prepa-course-carte">' +
-          '<span class="eyebrow">' + echapper(p.date) + '</span>' +
-          '<h3>' + echapper(p.nom) + '</h3>' +
-          '<p class="prepa-course-carte__meta">' +
-            echapper(f.distance || '') + (f.lieu ? ' · ' + echapper(f.lieu) : '') +
-            ' · ' + echapper(p.duree) +
-          '</p>' +
-          (f.resume ? '<p class="prepa-course-carte__resume">' + echapper(f.resume) + '</p>' : '') +
-          (f.profil ? '<p class="prepa-course-carte__profil"><strong>Le parcours.</strong> ' + echapper(f.profil) + '</p>' : '') +
-          '<p class="prepa-course-carte__prerequis"><strong>Pour qui.</strong> ' + echapper(p.prerequis) + '</p>' +
-          '<button class="btn btn--vine prepa-choisir" data-code="' + p.code + '">Préparer cette course</button>' +
-        '</article>';
-      }).join('') +
-      '</div>';
+      '<div class="prepa-catalogue">' + rendreLignesCourses() + '</div>';
 
     var reprendre = $('btn-reprendre');
     if (reprendre) reprendre.addEventListener('click', function () { demarrer(true); });
