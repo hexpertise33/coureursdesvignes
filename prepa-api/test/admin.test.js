@@ -49,13 +49,13 @@ async function coureur(base, programme = 'P1') {
 /**
  * Identifiants des séances d'une semaine réelle du programme.
  *
- * Aucun dédoublonnage. Cinquante-sept des cent cinquante semaines résolues du
- * corpus portent deux séances de même code (deux endurances fondamentales,
- * toutes deux « EF »), et ce sont bien deux séances distinctes : la semaine 1
- * de P1 rend donc quatre identifiants, EF-1, EF-2, SL-1 et RENFO-1. Tant que
- * la clé de validation était le code, cette liste devait être dédoublonnée
- * sous peine de faire croire à un test qu'il écrivait quatre lignes quand la
- * base n'en gardait que trois. L'identifiant de séance a supprimé ce piège.
+ * Aucun dédoublonnage. Cinquante-trois des cent cinquante semaines résolues du
+ * corpus portent plusieurs séances de même code, et ce sont bien des séances
+ * distinctes : la semaine 10 de P1, avec ses trois footings de récupération,
+ * rend quatre identifiants, RECUP-1, RECUP-2, RECUP-3 et RENFO-1. Tant que la
+ * clé de validation était le code, cette liste devait être dédoublonnée sous
+ * peine de faire croire à un test qu'il écrivait quatre lignes quand la base
+ * n'en gardait que deux. L'identifiant de séance a supprimé ce piège.
  */
 function identifiantsSeances(programme, numero) {
   return semaineDuProgramme(programme, numero, { faitIzon: false }).seances.map((s) => s.id);
@@ -107,8 +107,8 @@ describe('tableau d\'assiduité', () => {
       semaine: 1, seanceId: premiere, ressenti: 'ok', note: 'RAS',
       valideLe: expect.any(String), connue: true,
     });
-    // La semaine 1 de P1 aligne EF, EF, SL, RENFO : quatre séances, dont deux
-    // de même code. Le tableau attend donc bien quatre séances, et non trois.
+    // La semaine 1 de P1 aligne EF, VMA, SL, RENFO : quatre séances de codes
+    // tous différents. Le tableau en attend donc bien quatre.
     expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({ semaine: 1, attendues: 4, faites: 1 });
   });
 
@@ -557,46 +557,50 @@ describe('édition d\'une semaine depuis le back-office', () => {
 // Assiduité sur une semaine à séances homonymes
 // ---------------------------------------------------------------------------
 //
-// La raison d'être de l'identifiant de séance. La semaine 1 de P1 contient
-// deux endurances fondamentales : tant que la clé de validation était le
+// La raison d'être de l'identifiant de séance. La semaine 10 de P1 contient
+// trois footings de récupération : tant que la clé de validation était le
 // code, un coureur qui faisait ses quatre séances n'en faisait apparaître que
-// trois, et l'encadrant lisait un décrochage qui n'existait pas.
+// deux, et l'encadrant lisait un décrochage qui n'existait pas.
+//
+// Le cas était porté par la semaine 1 et ses deux endurances fondamentales,
+// jusqu'à ce que le troisième footing de cette semaine devienne une séance de
+// qualité. Le défaut couvert, lui, n'a pas changé d'un mot.
 
 describe('assiduité sur une semaine à séances homonymes', () => {
-  it('compte les quatre séances de la semaine 1 de P1, dont les deux endurances', async () => {
-    const s1 = semaineDuProgramme('P1', 1, { faitIzon: false });
-    expect(s1.seances.map((x) => x.code)).toEqual(['EF', 'EF', 'SL', 'RENFO']);
-    // Trois codes distincts pour quatre séances : c'est tout le défaut.
-    expect(new Set(s1.seances.map((x) => x.code)).size).toBe(3);
+  it('compte les quatre séances de la semaine 10 de P1, dont les trois footings', async () => {
+    const s10 = semaineDuProgramme('P1', 10, { faitIzon: false });
+    expect(s10.seances.map((x) => x.code)).toEqual(['RECUP', 'RECUP', 'RECUP', 'RENFO']);
+    // Deux codes distincts pour quatre séances : c'est tout le défaut.
+    expect(new Set(s10.seances.map((x) => x.code)).size).toBe(2);
 
     const c = await coureur('Complet');
-    for (const identifiant of identifiantsSeances('P1', 1)) {
-      await valider(env.DB, c.id, { semaine: 1, seanceId: identifiant, ressenti: 'ok' });
+    for (const identifiant of identifiantsSeances('P1', 10)) {
+      await valider(env.DB, c.id, { semaine: 10, seanceId: identifiant, ressenti: 'ok' });
     }
 
     const { coureurs } = await tableau(env.DB);
     const ligne = coureurs.find((x) => x.id === c.id);
-    expect(ligne.validations.filter((v) => v.semaine === 1)).toHaveLength(4);
-    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
-      semaine: 1, attendues: 4, faites: 4,
+    expect(ligne.validations.filter((v) => v.semaine === 10)).toHaveLength(4);
+    expect(ligne.assiduite.find((a) => a.semaine === 10)).toEqual({
+      semaine: 10, attendues: 4, faites: 4,
     });
     expect(ligne.validations.every((v) => v.connue)).toBe(true);
   });
 
-  it('distingue une semaine complète d\'une semaine où une seule endurance est faite', async () => {
+  it('distingue une semaine complète d\'une semaine où un seul footing est fait', async () => {
     const c = await coureur('Moitie');
-    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-1', ressenti: 'ok' });
+    await valider(env.DB, c.id, { semaine: 10, seanceId: 'RECUP-1', ressenti: 'ok' });
 
     const { coureurs } = await tableau(env.DB);
     const ligne = coureurs.find((x) => x.id === c.id);
-    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
-      semaine: 1, attendues: 4, faites: 1,
+    expect(ligne.assiduite.find((a) => a.semaine === 10)).toEqual({
+      semaine: 10, attendues: 4, faites: 1,
     });
-    // Avant l'identifiant de séance, cocher EF-1 puis EF-2 rendait toujours
-    // une seule ligne : le décompte ne pouvait pas dépasser 3 sur 3.
-    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-2', ressenti: 'difficile' });
+    // Avant l'identifiant de séance, cocher RECUP-1 puis RECUP-2 rendait
+    // toujours une seule ligne : le décompte ne pouvait pas dépasser 2 sur 2.
+    await valider(env.DB, c.id, { semaine: 10, seanceId: 'RECUP-2', ressenti: 'difficile' });
     const apres = (await tableau(env.DB)).coureurs.find((x) => x.id === c.id);
-    expect(apres.assiduite.find((a) => a.semaine === 1).faites).toBe(2);
+    expect(apres.assiduite.find((a) => a.semaine === 10).faites).toBe(2);
   });
 
   it('la semaine sans validation reste à zéro et le coureur est signalé absent', async () => {
@@ -651,31 +655,31 @@ describe('remaniement d\'une semaine déjà validée', () => {
 
   it('revenir au contenu source remet la validation en compte, à l\'identique', async () => {
     const c = await coureur('Retour');
-    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-2', ressenti: 'difficile' });
-    await enregistrerOverride(env.DB, 'P1', 1, contenuValide('aller'), false);
+    await valider(env.DB, c.id, { semaine: 10, seanceId: 'RECUP-2', ressenti: 'difficile' });
+    await enregistrerOverride(env.DB, 'P1', 10, contenuValide('aller'), false);
     expect(
       (await tableau(env.DB)).coureurs.find((x) => x.id === c.id)
-        .assiduite.find((a) => a.semaine === 1).faites,
+        .assiduite.find((a) => a.semaine === 10).faites,
     ).toBe(0);
 
     // L'identifiant étant déterministe, revenir au fichier source suffit :
     // aucune table de correspondance n'a été perdue en route.
-    await enregistrerOverride(env.DB, 'P1', 1, null, false);
+    await enregistrerOverride(env.DB, 'P1', 10, null, false);
     const ligne = (await tableau(env.DB)).coureurs.find((x) => x.id === c.id);
-    expect(ligne.validations.find((x) => x.seanceId === 'EF-2').connue).toBe(true);
-    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
-      semaine: 1, attendues: 4, faites: 1,
+    expect(ligne.validations.find((x) => x.seanceId === 'RECUP-2').connue).toBe(true);
+    expect(ligne.assiduite.find((a) => a.semaine === 10)).toEqual({
+      semaine: 10, attendues: 4, faites: 1,
     });
   });
 
   it('réordonner des séances de codes différents ne déplace aucune coche', async () => {
     const c = await coureur('Ordre');
-    await valider(env.DB, c.id, { semaine: 1, seanceId: 'EF-2', ressenti: 'ok' });
+    await valider(env.DB, c.id, { semaine: 10, seanceId: 'RECUP-2', ressenti: 'ok' });
 
     // Même contenu que la semaine source, séances remises dans un autre
-    // ordre : SL passe devant les deux EF. Le rang se comptant par code, les
-    // endurances restent EF-1 et EF-2.
-    const source = semaineDuProgramme('P1', 1, { faitIzon: false });
+    // ordre : le renfo passe devant les trois footings. Le rang se comptant
+    // par code, les footings restent RECUP-1, RECUP-2 et RECUP-3.
+    const source = semaineDuProgramme('P1', 10, { faitIzon: false });
     const depouillee = (x) => ({
       code: x.code, titre: x.titre, duree: x.duree, zone: x.zone,
       description: x.description, objectif: x.objectif,
@@ -684,18 +688,18 @@ describe('remaniement d\'une semaine déjà validée', () => {
       titre: source.titre,
       intention: source.intention,
       seances: [
-        depouillee(source.seances[2]), // SL
-        depouillee(source.seances[0]), // EF
-        depouillee(source.seances[1]), // EF
         depouillee(source.seances[3]), // RENFO
+        depouillee(source.seances[0]), // RECUP
+        depouillee(source.seances[1]), // RECUP
+        depouillee(source.seances[2]), // RECUP
       ],
     };
-    await enregistrerOverride(env.DB, 'P1', 1, remaniee, false);
+    await enregistrerOverride(env.DB, 'P1', 10, remaniee, false);
 
     const ligne = (await tableau(env.DB)).coureurs.find((x) => x.id === c.id);
-    expect(ligne.validations.find((x) => x.seanceId === 'EF-2').connue).toBe(true);
-    expect(ligne.assiduite.find((a) => a.semaine === 1)).toEqual({
-      semaine: 1, attendues: 4, faites: 1,
+    expect(ligne.validations.find((x) => x.seanceId === 'RECUP-2').connue).toBe(true);
+    expect(ligne.assiduite.find((a) => a.semaine === 10)).toEqual({
+      semaine: 10, attendues: 4, faites: 1,
     });
   });
 
