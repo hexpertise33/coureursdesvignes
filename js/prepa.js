@@ -1145,6 +1145,38 @@
 
   /* ---------- Écran 6 : encadrant ---------- */
 
+  /**
+   * Le nom d'un coureur tel qu'il doit s'afficher : prénom plus initiale.
+   *
+   * L'identité du projet est le couple prénom plus initiale, précisément
+   * parce que deux homonymes se confondraient. L'API le sert tout prêt dans
+   * `nomAffiche`, et l'écran de l'encadrant lisait `nom`, un champ qui
+   * n'existe pas : il retombait sur le prénom seul, ce qui défaisait
+   * exactement la précaution qu'on avait prise. Les replis restent, pour
+   * qu'un champ manquant n'affiche jamais « undefined » à l'encadrant.
+   */
+  function nomCoureur(c) {
+    if (c.nomAffiche) return c.nomAffiche;
+    if (c.prenom && c.initiale) return c.prenom + ' ' + c.initiale + '.';
+    return c.prenom || '';
+  }
+
+  /**
+   * La course préparée, en toutes lettres plutôt qu'en code.
+   *
+   * « P4 » ne dit rien à personne devant un tableau d'assiduité. Le marathon
+   * ajoute sa variante, sans quoi l'encadrant ne peut pas savoir lequel des
+   * deux son coureur prépare, alors que les deux ne se courent pas au même
+   * endroit.
+   */
+  function courseLisible(c) {
+    var p = PROGRAMMES.filter(function (x) { return x.code === c.programme; })[0];
+    var nom = p ? p.nom : c.programme;
+    if (!c.varianteCourse) return nom;
+    var libelle = { bordeaux: 'Bordeaux', 'nice-cannes': 'Nice-Cannes' }[c.varianteCourse] || c.varianteCourse;
+    return nom + ' (' + libelle + ')';
+  }
+
   async function voirAdmin() {
     onglet('admin');
     montrer('ecran-admin');
@@ -1161,17 +1193,17 @@
         ((alertes.alertes || []).length === 0
           ? '<p>Aucun coureur à surveiller cette semaine.</p>'
           : '<ul class="prepa-liste">' + alertes.alertes.map(function (a) {
-              return '<li class="prepa-alerte prepa-alerte--' + echapper(a.type) + '"><strong>' + echapper(a.prenom || a.nom) + '</strong> ' + echapper(a.detail) + '</li>';
+              return '<li class="prepa-alerte prepa-alerte--' + echapper(a.type) + '"><strong>' + echapper(nomCoureur(a)) + '</strong> ' + echapper(a.detail) + '</li>';
             }).join('') + '</ul>') +
       '</div>' +
       '<div class="prepa-carte">' +
         '<h2>Assiduité</h2>' +
         (coureurs.length === 0 ? '<p>Personne n\'est encore inscrit.</p>' :
-        '<table class="prepa-table"><thead><tr><th>Coureur</th><th>Programme</th><th>Izon</th><th>Séances validées</th></tr></thead><tbody>' +
+        '<table class="prepa-table"><thead><tr><th>Coureur</th><th>Course préparée</th><th>Izon</th><th>Séances validées</th></tr></thead><tbody>' +
         coureurs.map(function (c) {
-          return '<tr><td>' + echapper(c.nom || c.prenom) + '</td>' +
-            '<td>' + echapper(c.programme) + '</td>' +
-            '<td>' + (c.fait_izon ? 'oui' : '') + '</td>' +
+          return '<tr><td>' + echapper(nomCoureur(c)) + '</td>' +
+            '<td>' + echapper(courseLisible(c)) + '</td>' +
+            '<td>' + (c.faitIzon ? 'oui' : '') + '</td>' +
             '<td class="prepa-chiffre">' + ((c.validations || []).length) + '</td></tr>';
         }).join('') + '</tbody></table>') +
       '</div>';
