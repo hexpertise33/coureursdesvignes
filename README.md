@@ -38,6 +38,30 @@ coureurs-des-vignes/
    et pointez son lien vers votre nouveau fichier, avec sa vignette, sa catégorie,
    sa date, son titre et son accroche.
 
+### Les règles à respecter
+
+- **Jamais de cadratin** (le tiret long `—`). Utilisez deux-points, virgule, point
+  ou parenthèses. Le tiret long donne un ton artificiel au texte.
+- **600 à 800 mots** et **4 à 6 visuels** par article (couverture comprise), pour
+  garder un équilibre d'environ moitié texte, moitié images.
+- **Variez les mises en page** au lieu d'empiler des images pleine largeur :
+
+  | Classe sur la `<figure>` | Effet |
+  |---|---|
+  | `fig-side fig-side--right` | Image de 290 px à droite, le texte s'enroule autour |
+  | `fig-side fig-side--left` | Idem à gauche |
+  | `fig-side--tall` (à ajouter) | Force le format portrait (affiches) |
+  | `fig-duo` | Deux images côte à côte |
+  | `fig-wide` | Image large qui déborde la colonne de texte |
+
+  Tout repasse automatiquement en pleine largeur sur mobile.
+
+- Chaque `<figure>` porte une `<figcaption>` (la légende) et l'attribut
+  `onerror="this.closest('figure').remove()"` sur l'image, pour qu'un visuel
+  manquant disparaisse proprement au lieu d'afficher une icône cassée.
+- **N'inventez pas** de tarifs, d'horaires ni de parcours. Écrivez que
+  l'information sera précisée : c'est plus honnête et ça évite d'avoir à corriger.
+
 ## 🎨 Identité
 
 - **Couleurs** (modifiables en haut de `css/style.css`, bloc `:root`) : pierre

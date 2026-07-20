@@ -526,8 +526,37 @@ p { margin: 0 0 1rem; }
 .article__body li { margin-bottom: .5rem; }
 .article__body a { color: var(--vine); font-weight: 600; }
 .article__footer { margin-top: 2.4rem; padding-top: 1.6rem; border-top: 1px solid var(--line); }
+
+/* ---------- Blog : visuels dans le corps de l'article ---------- */
+.article__body figure { margin: 0 0 1.7rem; }
+.article__body figure img { display: block; width: 100%; border-radius: var(--r); box-shadow: var(--sh-sm); }
+.article__body figcaption { font-family: var(--f-mono); font-size: .74rem; line-height: 1.55; letter-spacing: .03em; color: var(--muted); margin-top: .55rem; }
+/* un h2 ne doit jamais remonter a cote d'une image flottante */
+.article__body h2 { clear: both; }
+
+/* Image laterale : le texte s'enroule autour */
+.fig-side { max-width: 290px; }
+.fig-side--left { float: left; margin: .35rem 1.9rem 1.1rem 0; }
+.fig-side--right { float: right; margin: .35rem 0 1.1rem 1.9rem; }
+/* format portrait (affiches, verticales) */
+.fig-side--tall img { aspect-ratio: 1 / 1.414; object-fit: cover; }
+
+/* Deux visuels cote a cote */
+.fig-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fig-duo img { aspect-ratio: 4 / 3; object-fit: cover; }
+
+/* Visuel large : deborde legerement la colonne de texte */
+.fig-wide { margin-inline: calc(-1 * clamp(0px, 5vw, 80px)); }
+.fig-wide img { aspect-ratio: 21 / 9; object-fit: cover; border-radius: var(--r-lg); }
+
 @media (max-width: 900px) { .articles { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 620px) { .articles { grid-template-columns: 1fr; } }
+@media (max-width: 620px) {
+  .articles { grid-template-columns: 1fr; }
+  /* sur mobile, plus de flottant : tout passe en pleine largeur */
+  .fig-side, .fig-side--left, .fig-side--right { float: none; max-width: none; margin: 0 0 1.5rem; }
+  .fig-duo { grid-template-columns: 1fr; }
+  .fig-wide { margin-inline: 0; }
+}
 
 /* ---------- FORMULAIRE ---------- */
 .form-card { background: var(--chalk); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(24px, 4vw, 42px); box-shadow: var(--sh); }
