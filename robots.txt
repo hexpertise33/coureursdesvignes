@@ -1,0 +1,8 @@
+# Les Coureurs des Vignes
+User-agent: *
+Allow: /
+
+# L'API du module Prépa n'a rien à offrir à un moteur de recherche.
+Disallow: /api/
+
+Sitemap: https://coureursdesvignes.fr/sitemap.xml

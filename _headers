@@ -2,3 +2,11 @@
   Cache-Control: public, max-age=0, must-revalidate
 /js/*
   Cache-Control: public, max-age=0, must-revalidate
+
+# Ces chemins ne doivent plus rien servir. Le no-store evite qu'une exposition
+# accidentelle reste bloquee des jours dans le cache de Cloudflare Pages, que
+# les purges du dashboard n'atteignent pas.
+/prepa-api/*
+  Cache-Control: no-store
+/server.js
+  Cache-Control: no-store
